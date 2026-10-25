@@ -1,0 +1,15 @@
+# Accepted Trivy findings. Each entry needs a reason; remove it if the design changes.
+misconfigurations:
+  # A customer-managed KMS key adds a monthly cost and gains nothing for content that is public anyway.
+  - id: AWS-0132
+    paths: [s3.tf]
+    statement: Bucket content is public website content; SSE-S3 (AES256) is sufficient.
+  # No WAF by design: it costs roughly $6/month and this is a static page with no endpoints to abuse.
+  - id: AWS-0011
+    paths: [cloudfront.tf]
+    statement: No WAF on the CloudFront distribution by design (cost); the static site has no sensitive endpoints.
+  # With no custom domain, CloudFront's default *.cloudfront.net certificate cannot enforce a TLS minimum.
+  # Setting domain_name switches to an ACM certificate with TLSv1.2_2021.
+  - id: AWS-0013
+    paths: [cloudfront.tf]
+    statement: Default CloudFront certificate cannot set a TLS minimum; a custom domain (domain_name) enforces TLSv1.2_2021.
