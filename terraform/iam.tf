@@ -7,6 +7,9 @@ data "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
 }
 
+# New GitHub repositories issue tokens with an immutable subject that includes the owner and repository IDs
+# (repo:<owner>@<id>/<repo>@<id>:ref:...), so renaming or recreating the repo cannot inherit this role.
+# The old name-only form (repo:<owner>/<repo>:...) is rejected for such repositories.
 resource "aws_iam_role" "github_deploy" {
   name                 = "scavenger-hunt-deploy-role"
   description          = "Assumed by GitHub Actions (main branch of ${var.github_repo} only) to deploy the scavenger hunt site"
@@ -21,7 +24,7 @@ resource "aws_iam_role" "github_deploy" {
       Condition = {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:ref:refs/heads/main"
+          "token.actions.githubusercontent.com:sub" = "${var.github_oidc_subject_prefix}:ref:refs/heads/main"
         }
       }
     }]
