@@ -36,5 +36,5 @@ Settings > Rules > Rulesets > New branch ruleset, target `main`: require a pull 
 
 - The deploy role is trusted only for this repo's `main` branch, matched on GitHub's immutable subject (`github_oidc_subject_prefix` in `tfvars/prod.tfvars`, which includes the owner and repo IDs; the plain `repo:owner/name` form is rejected for new repos), so `deploy.yml` works only when run from `main`; PR branches cannot assume it.
 - The GitHub OIDC provider is created by `surf-club-signin`'s Terraform (`aws_iam_openid_connect_provider.github`). This repo only looks it up. If that repo ever drops it, deploys here stop working until it is recreated.
-- `terraform/.terraform.lock.hcl` is not committed yet (it could not be generated without Terraform locally). Run `terraform init` in `terraform/` once with HCP access and commit the file so provider versions are pinned.
+- `terraform/.terraform.lock.hcl` pins the provider versions. Dependabot's Terraform updates refresh it; if you add a provider, run `terraform init` in `terraform/` and commit the updated file.
 - The bucket name `sorrento-sls-scavenger-hunt` must be globally unique; if the apply fails with `BucketAlreadyExists`, change `bucket_name` in `tfvars/prod.tfvars` **and** `BUCKET` in `deploy.yml`.
