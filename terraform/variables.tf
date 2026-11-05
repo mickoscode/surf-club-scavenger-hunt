@@ -1,12 +1,3 @@
-variable "aws_account_id" {
-  description = "AWS account ID used for resource ARNs"
-  type        = string
-  validation {
-    condition     = can(regex("^\\d{12}$", var.aws_account_id))
-    error_message = "AWS account ID must be a 12-digit number."
-  }
-}
-
 variable "bucket_name" {
   description = "S3 bucket name (private; only CloudFront can read it). S3 names are global, so it must be unique."
   type        = string
