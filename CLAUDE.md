@@ -13,7 +13,7 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27: a static site (`web/`
 ## Infrastructure
 
 - HCP Terraform org `mickoscode`, workspace `surf-club-scavenger-hunt` (remote execution; state and AWS credentials live there). Secrets are workspace variables, never in tfvars or the repo (the repo may be public).
-- The bucket is private, readable only by this CloudFront distribution (OAC). The deploy role (`scavenger-hunt-deploy-role`) trusts only this repo's `main` branch via the account's existing GitHub OIDC provider, which is owned by `surf-club-signin` and only looked up here.
+- The bucket is private, readable only by this CloudFront distribution (OAC). The deploy role (`scavenger-hunt-deploy-role`) trusts only this repo's `main` branch (matched on the immutable OIDC subject `github_oidc_subject_prefix`, not the repo name) via the account's existing GitHub OIDC provider, which is owned by `surf-club-signin` and only looked up here.
 - Trivy accepted findings are in `terraform/.trivyignore.yaml`, each with a reason.
 - `domain_name` is empty until a custom domain is chosen (see `docs/setup.md`).
 

@@ -16,6 +16,15 @@ variable "github_repo" {
   }
 }
 
+variable "github_oidc_subject_prefix" {
+  description = "Subject prefix of the repository's GitHub OIDC tokens. Get it with: gh api repos/<owner>/<repo>/actions/oidc/customization/sub --jq .sub_claim_prefix"
+  type        = string
+  validation {
+    condition     = can(regex("^repo:[^:*?]+$", var.github_oidc_subject_prefix))
+    error_message = "Subject prefix must look like repo:owner@id/name@id (no colons or wildcards)."
+  }
+}
+
 variable "domain_name" {
   description = "Custom domain for the site (e.g. hunt.example.org). Leave empty to serve from the generated *.cloudfront.net address. When set, apply creates an ACM certificate and waits until you add its DNS validation record (see the acm_validation_records output)."
   type        = string
