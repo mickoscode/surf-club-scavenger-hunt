@@ -1,0 +1,15 @@
+{
+  "name": "surf-club-scavenger-hunt",
+  "private": true,
+  "description": "Static website for the Sorrento SLS Youth Scavenger Hunt. npm is used only to fetch Bootstrap at build time and for the build test; nothing from node_modules is deployed except the one Bootstrap CSS file copied by scripts/build.sh.",
+  "scripts": {
+    "build": "bash scripts/build.sh",
+    "test": "node --test \"tests/*.test.js\""
+  },
+  "dependencies": {
+    "bootstrap": "5.3.8"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

@@ -1,0 +1,12 @@
+/* Site styles on top of Bootstrap (loaded first). Mobile first: base rules are for phones;
+   add @media (min-width: ...) blocks only to enlarge things on bigger screens. */
+:root {
+  --bs-primary: #0b5394;
+  --bs-primary-rgb: 11, 83, 148;
+  --bs-link-color: #0b5394;
+  --bs-link-color-rgb: 11, 83, 148;
+}
+
+body {
+  background: linear-gradient(180deg, #e8f4fb 0%, #ffffff 100%);
+}
