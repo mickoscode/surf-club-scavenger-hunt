@@ -1,0 +1,92 @@
+{
+    "zone 1" : {
+        "zone-name" : "Southside",
+        "zone-map" : "docs/game-zones/hunt-zone1.png",
+        "photo-challenge" : "Find a youth age manager and take a team photo with them - faces must be visible - upload to whatsapp",
+        "photo-score" : 10,
+        "questions" : [
+            {
+                "Q1" : "What is the capital of France?",
+                "answer" : "paris",
+                "score" : 10
+            },
+            {
+                "Q2" : "What is 2 + 2?",
+                "answer" : "4",
+                "score" : 10
+            }
+        ]
+    },
+    "zone 2" : {
+        "zone-name" : "Beach Park",
+        "zone-map" : "docs/game-zones/hunt-zone2.png",
+        "photo-challenge" : "Find a youth age manager and take a team photo with them - faces must be visible - upload to whatsapp",
+        "photo-score" : 10,
+        "questions" : [
+            {
+                "Q1" : "What is the capital of France?",
+                "answer" : "paris",
+                "score" : 10
+            },
+            {
+                "Q2" : "What is 2 + 2?",
+                "answer" : "4",
+                "score" : 10
+            }
+        ]
+    },
+    "zone 3" : {
+        "zone-name" : "AQWA",
+        "zone-map" : "docs/game-zones/hunt-zone3.png",
+        "photo-challenge" : "Find a youth age manager and take a team photo with them - faces must be visible - upload to whatsapp",
+        "photo-score" : 10,
+        "questions" : [
+            {
+                "Q1" : "What is the capital of France?",
+                "answer" : "paris",
+                "score" : 10
+            },
+            {
+                "Q2" : "What is 2 + 2?",
+                "answer" : "4",
+                "score" : 10
+            }
+        ]
+    },
+    "zone 4" : {
+        "zone-name" : "Marina Walkways",
+        "zone-map" : "docs/game-zones/hunt-zone4.png",
+        "photo-challenge" : "Find a youth age manager and take a team photo with them - faces must be visible - upload to whatsapp",
+        "photo-score" : 10,
+        "questions" : [
+            {
+                "Q1" : "What is the capital of France?",
+                "answer" : "paris",
+                "score" : 10
+            },
+            {
+                "Q2" : "What is 2 + 2?",
+                "answer" : "4",
+                "score" : 10
+            }
+        ]
+    },
+    "zone 5" : {
+        "zone-name" : "Marina Beach & Park",
+        "zone-map" : "docs/game-zones/hunt-zone5.png",
+        "photo-challenge" : "Find a youth age manager and take a team photo with them - faces must be visible - upload to whatsapp",
+        "photo-score" : 10,
+        "questions" : [
+            {
+                "Q1" : "What is the capital of France?",
+                "answer" : "paris",
+                "score" : 10
+            },
+            {
+                "Q2" : "What is 2 + 2?",
+                "answer" : "4",
+                "score" : 10
+            }
+        ]
+    }
+}
