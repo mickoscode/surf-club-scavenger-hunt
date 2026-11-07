@@ -51,3 +51,13 @@ test('scores are formatted exactly as the server formats them', async () => {
     assert.equal(formatScore(n), serverFormatScore(n), String(n));
   }
 });
+
+test('number fields keep only digits, and decimal fields one decimal point', async () => {
+  const { sanitizeAnswer } = await load('answer-input.js');
+  assert.equal(sanitizeAnswer('whole-number', '4a-2.x'), '42');
+  assert.equal(sanitizeAnswer('whole-number', ''), '');
+  assert.equal(sanitizeAnswer('decimal', '2.5.1x'), '2.51');
+  assert.equal(sanitizeAnswer('decimal', '.5'), '.5');
+  assert.equal(sanitizeAnswer('decimal', '-3,5'), '35');
+  assert.equal(sanitizeAnswer('string', 'Any text: 1.2!'), 'Any text: 1.2!'); // text questions are not touched
+});

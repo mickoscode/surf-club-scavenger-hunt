@@ -52,6 +52,18 @@ test('every module a script imports is in dist (a missing one is a blank page in
   assert.equal(fs.existsSync(path.join(dist, 'js', 'package.json')), false); // only for Node; not deployed
 });
 
+test('every zone of the game file has a thumbnail and a full-size map that are small enough for mobile data', () => {
+  const { mapId } = require('../../api/lib/gamedata.js');
+  const game = JSON.parse(fs.readFileSync(path.join(root, 'docs', 'game-questions.json'), 'utf8'));
+  for (const zoneKey of Object.keys(game)) {
+    const thumb = path.join(dist, 'maps', `${mapId(zoneKey)}-thumb.webp`);
+    const full = path.join(dist, 'maps', `${mapId(zoneKey)}.webp`);
+    assert.ok(fs.existsSync(thumb) && fs.existsSync(full), `${zoneKey}: map images missing`);
+    assert.ok(fs.statSync(thumb).size < 60 * 1024, `${zoneKey}: the thumbnail is over 60 KB`);
+    assert.ok(fs.statSync(full).size < 300 * 1024, `${zoneKey}: the full-size map is over 300 KB`);
+  }
+});
+
 test('pages use no inline script, style or event handler (blocked by the CSP)', () => {
   for (const page of pages()) {
     const html = fs.readFileSync(path.join(dist, page), 'utf8');

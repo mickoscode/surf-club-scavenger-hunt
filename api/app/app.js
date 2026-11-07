@@ -11,7 +11,7 @@ const { gameStatus, describeGame, can, validateConfig, AU_TIME_ZONES, DEFAULT_GA
 const { checkAnswer } = require('../lib/answers');
 const { questionPoints, isDecision } = require('../lib/scoring');
 const { validateTeamName, sortScoreboard } = require('../lib/teams');
-const { validateGameData } = require('../lib/gamedata');
+const { validateGameData, mapId } = require('../lib/gamedata');
 
 const PLAYER_ID = /^[0-9a-f]{32}$/;
 const QUESTION_ID = /^Q\d+$/;
@@ -20,7 +20,6 @@ const CACHEABLE = { 'cache-control': 'public, max-age=3' }; // the same for ever
 const questionId = (q) => Object.keys(q).find((k) => QUESTION_ID.test(k));
 // Own properties only: a request naming a zone "__proto__" or "constructor" must be "not found", not an error.
 const findZone = (game, key) => (typeof key === 'string' && game && Object.hasOwn(game, key) ? game[key] : undefined);
-const mapId = (zoneKey) => zoneKey.trim().replace(/\s+/g, '-'); // "zone 1" -> "zone-1": names the map image files
 
 // The zones as players may see them: no answers, ever.
 const publicZones = (game) => Object.entries(game).map(([key, zone]) => ({
