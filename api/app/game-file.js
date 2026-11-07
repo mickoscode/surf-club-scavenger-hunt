@@ -1,6 +1,6 @@
 'use strict';
 // Where the backend gets the zones and questions from when the admin saves the game config.
-// In AWS the deploy puts a copy of docs/game-questions.json next to the code (api/game-questions.json);
+// In AWS the Lambda package carries a copy of docs/game-questions.json next to the code (scripts/package-backend.sh);
 // when developing locally it falls back to the file in docs/. GAME_QUESTIONS_FILE overrides both.
 const fs = require('node:fs');
 const path = require('node:path');

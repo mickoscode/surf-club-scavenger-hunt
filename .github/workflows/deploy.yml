@@ -1,15 +1,20 @@
 name: Deploy site
 
-# Deploys the site to S3 on every merge to main that touches the frontend, and on manual dispatch.
+# Deploys the backend code and the site on every merge to main that touches either, and on manual dispatch.
 # Run it from main: the deploy role (terraform/iam.tf) only trusts the main branch.
-# Infrastructure comes first: the bucket, distribution and role are created by terraform-apply.yml.
+# Infrastructure comes first: the bucket, distribution, functions and role are created by terraform-apply.yml.
+# A change to the questions (docs/game-questions.json) deploys here too: the backend carries a copy of the file.
 on:
   push:
     branches:
       - main
     paths:
       - "web/**"
+      - "api/**"
+      - "docs/game-questions.json"
       - "scripts/build.sh"
+      - "scripts/package-backend.sh"
+      - "scripts/smoke-test.js"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/deploy.yml"
@@ -26,20 +31,22 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     env:
       BUCKET: sorrento-sls-scavenger-hunt
       AWS_REGION: ap-southeast-2
-      # Repository variable (Settings > Secrets and variables > Actions > Variables), from the
-      # cloudfront_distribution_id Terraform output.
+      PUBLIC_FUNCTION: scavenger-hunt-public
+      ADMIN_FUNCTION: scavenger-hunt-admin
+      # Repository variables (Settings > Secrets and variables > Actions > Variables), from the Terraform outputs.
       CF_DISTRIBUTION_ID: ${{ vars.CF_DISTRIBUTION_ID }}
+      SITE_URL: ${{ vars.SITE_URL }} # the site's address, e.g. https://d123abc.cloudfront.net (the site_url output)
 
     steps:
       - name: Check configuration
         run: |
-          if [ -z "$CF_DISTRIBUTION_ID" ]; then
-            echo "::error::Repository variable CF_DISTRIBUTION_ID is not set. Apply the Terraform first, then set it from the cloudfront_distribution_id output (see docs/setup.md)."
+          if [ -z "$CF_DISTRIBUTION_ID" ] || [ -z "$SITE_URL" ]; then
+            echo "::error::Repository variables CF_DISTRIBUTION_ID and SITE_URL must both be set. Apply the Terraform first, then set them from the cloudfront_distribution_id and site_url outputs (see docs/setup.md)."
             exit 1
           fi
 
@@ -49,7 +56,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
           cache: npm
@@ -57,8 +64,19 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      # Builds dist/ and runs the unit and in-memory API tests; nothing is deployed if they fail.
       - name: Build and test
         run: npm test
+
+      # The backend carries a copy of the questions, so check they are well formed before they go anywhere.
+      - name: Validate game data
+        run: node scripts/validate-game-data.js
+
+      # build/backend = the runtime code of api/ plus the game file (scripts/package-backend.sh).
+      - name: Package backend
+        run: |
+          bash scripts/package-backend.sh
+          (cd build/backend && zip -qr ../backend.zip .)
 
       # Assumes the deploy IAM role via GitHub OIDC (role defined in terraform/iam.tf);
       # no long-lived keys are stored in GitHub secrets.
@@ -68,6 +86,15 @@ jobs:
           role-to-assume: arn:aws:iam::722937635825:role/scavenger-hunt-deploy-role
           aws-region: ${{ env.AWS_REGION }}
 
+      # The functions' code is deployed here, not by Terraform (terraform/lambda.tf ignores it). The backend goes
+      # first so the site never calls an API route that does not exist yet.
+      - name: Deploy backend
+        run: |
+          for fn in "$PUBLIC_FUNCTION" "$ADMIN_FUNCTION"; do
+            aws lambda update-function-code --function-name "$fn" --zip-file fileb://build/backend.zip --query 'LastModified' --output text
+            aws lambda wait function-updated --function-name "$fn"
+          done
+
       # dist/ is the whole bucket, so one sync (with --delete) is enough. "no-cache" makes browsers re-check a
       # file (a cheap ETag request) instead of reusing a possibly stale copy.
       - name: Sync dist to S3
@@ -75,3 +102,8 @@ jobs:
 
       - name: Invalidate CloudFront cache
         run: aws cloudfront create-invalidation --distribution-id "$CF_DISTRIBUTION_ID" --paths "/*"
+
+      # Read-only checks of the live site and API (retried while the deploy reaches every edge location).
+      # A failure here does not roll anything back: fix forward, or revert the PR and run this workflow again.
+      - name: Smoke test
+        run: node scripts/smoke-test.js "$SITE_URL"

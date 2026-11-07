@@ -13,6 +13,7 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 | `scripts/build.sh` | Assembles `dist/` = `web/` + the Bootstrap CSS from `node_modules` (the exact contents of the bucket) |
 | `tests/unit/` | Unit tests (`npm test`): the built pages against the Content-Security-Policy, and the game-data validator. Later PRs add `tests/api/` and `tests/browser/`. |
 | `tests/api/` | The store contract tests (the same tests run against the in-memory store always, and against DynamoDB Local in CI) and the API behaviour tests (`app-*.test.js`: in-memory store, controllable clock) |
+| `scripts/package-backend.sh`, `scripts/smoke-test.js`, `scripts/dev-server.js` | Package the backend for Lambda; smoke-test a deployed site (`npm run smoke -- <url>`); serve the API locally with the in-memory store (`npm run dev:api`) |
 | `scripts/validate-game-data.js` | Checks the structure of `docs/game-questions.json` (`npm run validate:data`) |
 | `docs/` | Game design (`requirements.md`), game content (`game-questions.json`, `game-zones/`, `player-instructions.md`) and one-time setup (`setup.md`) |
 | `terraform/` | S3 bucket, CloudFront (HTTPS, security headers, page rewrites, `/api/*` to the API, optional custom domain), DynamoDB table, two Lambda functions behind an API Gateway HTTP API, and the GitHub deploy role |
@@ -50,8 +51,10 @@ Mobile first: write styles for phones in `web/css/site.css` and add `@media (min
 | `web-pr.yml` | PR touching `docs/game-questions.json` or the maps | Structure check of the game file. Required check: `Game data` |
 | `terraform-pr.yml` | PR touching `terraform/` | fmt, validate, tflint, Trivy security scan, speculative plan posted as a PR comment |
 | `terraform-apply.yml` | push to `main` touching `terraform/` | checks, plan, then an apply that waits for manual approval in the `terraform-production` environment |
-| `deploy.yml` | push to `main` touching the frontend, or manual | builds, syncs `dist/` to S3, invalidates CloudFront |
+| `deploy.yml` | push to `main` touching the frontend, the backend (`api/`) or the questions, or manual | builds and tests, deploys the Lambda code, syncs `dist/` to S3, invalidates CloudFront, then smoke-tests the live site |
 | `terraform-drift.yml` | weekly | plan only; fails if live AWS differs from `main` |
 | `delete-merged-branch.yml` | PR merged | deletes the PR's branch |
+
+The backend is deployed by `deploy.yml`, not by Terraform: merging a change to `api/` or to `docs/game-questions.json` updates the live game (no apply approval needed). If the smoke test fails, nothing is rolled back: fix forward, or revert the PR and re-run **Deploy site**.
 
 Dependabot proposes weekly updates for GitHub Actions, Terraform providers and Bootstrap. Merging to `main` deploys to production.

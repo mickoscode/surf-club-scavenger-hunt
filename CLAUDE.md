@@ -29,7 +29,7 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27: a static site (`web/`
 ## CI/CD
 
 - `web-pr.yml` (`Validate site`, `API tests`, `Game data`) and `terraform-pr.yml` (validate, security scan, plan comment) run on PRs and are skipped, not absent, when their folders are unchanged, so they can be required checks.
-- Merging to `main` deploys: `deploy.yml` for the frontend (needs repo variable `CF_DISTRIBUTION_ID`), `terraform-apply.yml` for `terraform/` (manual approval in the `terraform-production` environment). `terraform-drift.yml` checks weekly.
+- Merging to `main` deploys: `deploy.yml` for the backend and the frontend (needs repo variables `CF_DISTRIBUTION_ID` and `SITE_URL`). The backend zip is `build/backend` (`scripts/package-backend.sh`: only `api/app`, `handlers`, `lib`, `store` plus a copy of `docs/game-questions.json`), and `tests/api/package.test.js` runs it in isolation, so anything the Lambda needs must live under `api/`. After the deploy, `scripts/smoke-test.js` checks the live site (read-only, retried); add a check there when you add something that could fail silently in production, `terraform-apply.yml` for `terraform/` (manual approval in the `terraform-production` environment). `terraform-drift.yml` checks weekly.
 - Actions are pinned to commit SHAs with a version comment; Dependabot bumps them weekly.
 
 ## Working conventions

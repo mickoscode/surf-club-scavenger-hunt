@@ -18,7 +18,7 @@ Push the `bootstrap` branch, open a PR and let the checks run: `Validate site`, 
 
 1. `terraform-apply.yml` runs a plan, then waits. Open the run, review the plan, and click *Review deployments* > approve `terraform-production`.
 2. When the apply finishes, read the `cloudfront_distribution_id` and `site_url` values from the HCP Terraform run's outputs.
-3. Set repository variable **`CF_DISTRIBUTION_ID`** (Settings > Secrets and variables > Actions > *Variables*) to the distribution ID.
+3. Set repository variables **`CF_DISTRIBUTION_ID`** and **`SITE_URL`** (Settings > Secrets and variables > Actions > *Variables*) to the distribution ID and the `site_url` output (e.g. `https://d123abc.cloudfront.net`, no trailing slash needed). `SITE_URL` is used by the post-deploy smoke test; the deploy refuses to run without both.
 4. Run **Deploy site** from the Actions tab on `main` (*Run workflow*). The merge itself also triggered a deploy, but it fails fast with a clear message because the variable was not set yet. After this, every merge touching `web/` deploys automatically.
 5. Open `site_url`: you should see the coming-soon page.
 
