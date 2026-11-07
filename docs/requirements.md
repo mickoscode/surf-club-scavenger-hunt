@@ -11,6 +11,7 @@ Expected size: fewer than 50 teams. No cap on the number of teams is required.
 - The game needs shared state (teams, answers, scores, config), so the site also needs a small backend in the same AWS account, managed by Terraform: API Gateway + Lambda + DynamoDB (same pattern as the surf-club-signin repo).
 - All validation happens on the server: answer checking, scoring, one-submission-only, and game timing. The server clock is the only clock that counts; the browser clock is used only to display the countdown.
 - The official answers never leave the server. The browser never receives them, and never receives the answer a team submitted either (see "Answer rules").
+- Accepted risk: this repository is public, so anyone who looks can read the official answers in docs/game-questions.json on GitHub. The server only prevents them being sent to the players' browsers. (Decision 2026-11-07: accepted. Options considered: keep the real questions out of the repo, or make the repo private, which would lose rulesets and required reviewers on GitHub Free.)
 - The admin pages and their API calls have no authentication (accepted risk, see Admin Requirements).
 
 ## Website Pages

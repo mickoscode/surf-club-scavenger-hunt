@@ -7,11 +7,12 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 | Path | What it is |
 |---|---|
 | `web/` | The site itself: `index.html`, `404.html`, `css/site.css`, `js/main.js`, `favicon.svg` |
+| `api/app/`, `api/handlers/` | The API: routes and rules (`app/`) and the two Lambda entry points (`handlers/`). Reference: `docs/api.md`. |
 | `api/store/` | The data layer: one `store` interface with an in-memory version (local development and tests) and a DynamoDB version (the data model is described at the top of `dynamo.js`) |
 | `api/lib/` | Backend game logic as pure functions (timing, answer checking, scoring, team names, scoreboard order). No dependencies, no AWS: the Lambda handlers that use it come in a later PR. |
 | `scripts/build.sh` | Assembles `dist/` = `web/` + the Bootstrap CSS from `node_modules` (the exact contents of the bucket) |
 | `tests/unit/` | Unit tests (`npm test`): the built pages against the Content-Security-Policy, and the game-data validator. Later PRs add `tests/api/` and `tests/browser/`. |
-| `tests/api/` | The store contract tests: the same tests run against the in-memory store always, and against DynamoDB Local in CI |
+| `tests/api/` | The store contract tests (the same tests run against the in-memory store always, and against DynamoDB Local in CI) and the API behaviour tests (`app-*.test.js`: in-memory store, controllable clock) |
 | `scripts/validate-game-data.js` | Checks the structure of `docs/game-questions.json` (`npm run validate:data`) |
 | `docs/` | Game design (`requirements.md`), game content (`game-questions.json`, `game-zones/`, `player-instructions.md`) and one-time setup (`setup.md`) |
 | `terraform/` | S3 bucket, CloudFront (HTTPS, security headers, optional custom domain) and the GitHub deploy role |

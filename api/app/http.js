@@ -1,0 +1,51 @@
+'use strict';
+// Small HTTP helpers shared by the routes. A response is { status, headers, cookies, body } (body is an object).
+
+const MAX_BODY_BYTES = 4096;
+const COOKIE_NAME = 'hunt';
+const COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+
+class HttpError extends Error {
+  constructor(status, code, extra = {}) {
+    super(code);
+    this.status = status;
+    this.code = code;
+    this.extra = extra;
+  }
+}
+
+const respond = (status, body, headers = {}, cookies = []) => ({
+  status,
+  headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers },
+  cookies,
+  body,
+});
+
+function parseCookies(header) {
+  const cookies = {};
+  for (const part of String(header ?? '').split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0) cookies[part.slice(0, i).trim()] = part.slice(i + 1).trim();
+  }
+  return cookies;
+}
+
+// HttpOnly: scripts cannot read it. SameSite=Strict: other sites cannot make the browser send it. Path=/api:
+// only API calls carry it. It lasts 30 days, so closing the browser does not end a team's session.
+function sessionCookie(value, { secure = true } = {}) {
+  return `${COOKIE_NAME}=${value}; Path=/api; HttpOnly; SameSite=Strict; Max-Age=${COOKIE_MAX_AGE_SECONDS}${secure ? '; Secure' : ''}`;
+}
+
+// POST bodies must be JSON sent as application/json, which a plain HTML form on another site cannot send.
+function readJson(request) {
+  const type = String(request.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
+  if (type !== 'application/json') throw new HttpError(415, 'unsupported-media-type');
+  const text = request.body ?? '';
+  if (Buffer.byteLength(text) > MAX_BODY_BYTES) throw new HttpError(413, 'body-too-large');
+  let parsed;
+  try { parsed = JSON.parse(text); } catch { throw new HttpError(400, 'bad-json'); }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new HttpError(400, 'bad-json');
+  return parsed;
+}
+
+module.exports = { HttpError, respond, parseCookies, sessionCookie, readJson, COOKIE_NAME, MAX_BODY_BYTES };

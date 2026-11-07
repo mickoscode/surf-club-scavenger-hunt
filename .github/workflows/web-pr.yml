@@ -51,7 +51,7 @@ jobs:
           else
             echo "api=false" >> "$GITHUB_OUTPUT"
           fi
-          if grep -qE '^(docs/game-questions\.json$|docs/game-zones/|scripts/validate-game-data\.js$|tests/unit/game-data\.test\.js$|\.github/workflows/web-pr\.yml$)' <<< "$changed"; then
+          if grep -qE '^(docs/game-questions\.json$|docs/game-zones/|scripts/validate-game-data\.js$|api/lib/gamedata\.js$|tests/unit/game-data\.test\.js$|\.github/workflows/web-pr\.yml$)' <<< "$changed"; then
             echo "data=true" >> "$GITHUB_OUTPUT"
           else
             echo "data=false" >> "$GITHUB_OUTPUT"
