@@ -29,3 +29,18 @@ output "acm_validation_records" {
   } : {}
   description = "DNS records to create so ACM can validate the custom domain certificate"
 }
+
+output "api_url" {
+  value       = aws_apigatewayv2_api.api.api_endpoint
+  description = "The API Gateway address (CloudFront serves it at /api on the site's own address)"
+}
+
+output "table_name" {
+  value       = aws_dynamodb_table.game.name
+  description = "DynamoDB table holding the game data"
+}
+
+output "lambda_function_names" {
+  value       = { for role, f in aws_lambda_function.api : role => f.function_name }
+  description = "The function names the deploy workflow updates (deploy.yml)"
+}

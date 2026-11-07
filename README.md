@@ -15,7 +15,7 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 | `tests/api/` | The store contract tests (the same tests run against the in-memory store always, and against DynamoDB Local in CI) and the API behaviour tests (`app-*.test.js`: in-memory store, controllable clock) |
 | `scripts/validate-game-data.js` | Checks the structure of `docs/game-questions.json` (`npm run validate:data`) |
 | `docs/` | Game design (`requirements.md`), game content (`game-questions.json`, `game-zones/`, `player-instructions.md`) and one-time setup (`setup.md`) |
-| `terraform/` | S3 bucket, CloudFront (HTTPS, security headers, optional custom domain) and the GitHub deploy role |
+| `terraform/` | S3 bucket, CloudFront (HTTPS, security headers, page rewrites, `/api/*` to the API, optional custom domain), DynamoDB table, two Lambda functions behind an API Gateway HTTP API, and the GitHub deploy role |
 | `.github/workflows/` | CI/CD, see below |
 | `docs/setup.md` | One-time GitHub / HCP Terraform / AWS setup, and what to do after the first apply |
 
@@ -36,6 +36,8 @@ Mobile first: write styles for phones in `web/css/site.css` and add `@media (min
 
 - Runs in HCP Terraform (org `mickoscode`, workspace `surf-club-scavenger-hunt`), in the same AWS account as `surf-club-signin`, region `ap-southeast-2`.
 - The bucket is private. Only this CloudFront distribution can read it (Origin Access Control).
+- `/api/*` on the same address goes to API Gateway and two Lambda functions (`public` and `admin`, least-privilege roles) backed by one DynamoDB table. Terraform creates the functions with a placeholder (they answer 503 `not-deployed`); the deploy workflow pushes the real code, so a change to `api/` or the questions never needs a Terraform apply.
+- The admin pages (`/game-config/*`, `/game-score/*`) are served with `X-Robots-Tag: noindex`.
 - GitHub Actions deploys with OIDC and a role limited to this repo's `main` branch and this bucket; no AWS keys are stored in GitHub.
 - No custom domain yet: the site is served from the `*.cloudfront.net` address in the `site_url` output. Set `domain_name` in `terraform/tfvars/prod.tfvars` to switch (see `docs/setup.md`).
 

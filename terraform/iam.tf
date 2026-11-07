@@ -33,7 +33,7 @@ resource "aws_iam_role" "github_deploy" {
 
 resource "aws_iam_policy" "github_deploy" {
   name        = "scavenger-hunt-deploy-policy"
-  description = "Sync the scavenger hunt site bucket and invalidate its CloudFront cache"
+  description = "Sync the scavenger hunt site bucket, update its Lambda function code and invalidate its CloudFront cache"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -43,6 +43,12 @@ resource "aws_iam_policy" "github_deploy" {
         Effect   = "Allow"
         Action   = ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
         Resource = [aws_s3_bucket.site.arn, "${aws_s3_bucket.site.arn}/*"]
+      },
+      {
+        Sid      = "DeployFunctionCode"
+        Effect   = "Allow"
+        Action   = ["lambda:UpdateFunctionCode", "lambda:GetFunction", "lambda:GetFunctionConfiguration"]
+        Resource = [for f in aws_lambda_function.api : f.arn]
       },
       {
         Sid      = "InvalidateCache"
