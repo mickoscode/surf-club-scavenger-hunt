@@ -24,8 +24,8 @@ node_modules/
 .vscode/
 .idea/
 
-# Copy of docs/game-questions.json that the deploy puts next to the backend code (see docs/api.md)
-api/game-questions.json
-
 # Placeholder Lambda zips written by terraform plan/apply (terraform/lambda.tf)
 terraform/.placeholder-*.zip
+
+# Assembled backend (Lambda package contents), see scripts/package-backend.sh
+build/

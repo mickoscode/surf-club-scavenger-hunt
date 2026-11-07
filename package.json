@@ -6,7 +6,10 @@
     "build": "bash scripts/build.sh",
     "test": "node --test \"tests/unit/*.test.js\" \"tests/api/*.test.js\"",
     "validate:data": "node scripts/validate-game-data.js",
-    "test:api": "node --test \"tests/api/*.test.js\""
+    "test:api": "node --test \"tests/api/*.test.js\"",
+    "dev:api": "node scripts/dev-server.js",
+    "package:backend": "bash scripts/package-backend.sh",
+    "smoke": "node scripts/smoke-test.js"
   },
   "dependencies": {
     "bootstrap": "5.3.8"
