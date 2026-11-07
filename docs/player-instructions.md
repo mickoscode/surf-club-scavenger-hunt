@@ -1,9 +1,10 @@
 # Rules
 - Include your team number when sending photos to whatsapp group
   - no team number = no points!!
+- Your photo must clearly show which zone and challenge it is for - if we can't tell, no points!
 - Do not enter any water
 - Do not enter any buildings or shops
-- Do not cross West Coast Highway
+- Do not cross West Coast Drive
 - Return to the Flag on Sorrento Beach before the game ends
 - Answers and photo challenges can be submitted only once!
 

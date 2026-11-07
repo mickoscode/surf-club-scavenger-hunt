@@ -1,91 +1,191 @@
 {
     "zone 1" : {
         "zone-name" : "Southside",
-        "zone-map" : "docs/game-zones/hunt-zone1.png",
-        "photo-challenge" : "Find a youth age manager and take a team photo with them - faces must be visible - upload to whatsapp",
-        "photo-score" : 10,
+        "zone-map" : "docs/game-zones/hunt-zone-1.png",
+        "photo-challenge" : "Take a team photo in front of the Sorrento Surf Life Saving Club building - everyone's faces must be visible - upload to whatsapp",
+        "photo-score" : 30,
         "questions" : [
             {
-                "Q1" : "What is the capital of France?",
-                "answer" : "paris",
+                "Q1" : "What two colours are the flags that mark the safe swimming area on a patrolled beach? (use 'and' between the colours)",
+                "type" : "string",
+                "answer" : ["red and yellow", "yellow and red"],
                 "score" : 10
             },
             {
-                "Q2" : "What is 2 + 2?",
-                "answer" : "4",
+                "Q2" : "Complete the name: Surf Life ______ Club",
+                "type" : "string",
+                "answer" : "saving",
                 "score" : 10
+            },
+            {
+                "Q3" : "How many letters are in the word SORRENTO?",
+                "type" : "whole-number",
+                "answer" : "8",
+                "score" : 10
+            },
+            {
+                "Q4" : "What colour is the roof of the surf club building on your map?",
+                "type" : "string",
+                "answer" : "red",
+                "score" : 20
+            },
+            {
+                "Q5" : "What is 6 x 7?",
+                "type" : "whole-number",
+                "answer" : "42",
+                "score" : 20
             }
         ]
     },
     "zone 2" : {
         "zone-name" : "Beach Park",
-        "zone-map" : "docs/game-zones/hunt-zone2.png",
-        "photo-challenge" : "Find a youth age manager and take a team photo with them - faces must be visible - upload to whatsapp",
-        "photo-score" : 10,
+        "zone-map" : "docs/game-zones/hunt-zone-2.png",
+        "photo-challenge" : "Take a team photo with everyone doing a star jump on the Sorrento Beach Promenade path - faces must be visible - upload to whatsapp",
+        "photo-score" : 30,
         "questions" : [
             {
-                "Q1" : "What is the capital of France?",
-                "answer" : "paris",
+                "Q1" : "What word follows 'Sorrento Beach' on the green tree marker at the top of your map?",
+                "type" : "string",
+                "answer" : "promenade",
                 "score" : 10
             },
             {
-                "Q2" : "What is 2 + 2?",
-                "answer" : "4",
+                "Q2" : "The map shows parking for which kind of vehicle next to the beach path? (one word)",
+                "type" : "string",
+                "answer" : ["bike", "bicycle"],
                 "score" : 10
+            },
+            {
+                "Q3" : "In which direction does the sun set over the ocean from Sorrento Beach? (north, south, east or west)",
+                "type" : "string",
+                "answer" : "west",
+                "score" : 10
+            },
+            {
+                "Q4" : "How many days are in a leap year?",
+                "type" : "whole-number",
+                "answer" : "366",
+                "score" : 20
+            },
+            {
+                "Q5" : "How many minutes are in 2 hours?",
+                "type" : "whole-number",
+                "answer" : "120",
+                "score" : 20
             }
         ]
     },
     "zone 3" : {
         "zone-name" : "AQWA",
-        "zone-map" : "docs/game-zones/hunt-zone3.png",
-        "photo-challenge" : "Find a youth age manager and take a team photo with them - faces must be visible - upload to whatsapp",
-        "photo-score" : 10,
+        "zone-map" : "docs/game-zones/hunt-zone-3.png",
+        "photo-challenge" : "Take a team photo with a boat or the rock wall behind you - faces must be visible - upload to whatsapp",
+        "photo-score" : 30,
         "questions" : [
             {
-                "Q1" : "What is the capital of France?",
-                "answer" : "paris",
+                "Q1" : "AQWA is the Aquarium of Western ______?",
+                "type" : "string",
+                "answer" : "australia",
                 "score" : 10
             },
             {
-                "Q2" : "What is 2 + 2?",
-                "answer" : "4",
+                "Q2" : "What is a long wall of large rocks built out into the sea to protect a harbour called? (one word, ends in 'water')",
+                "type" : "string",
+                "answer" : "breakwater",
                 "score" : 10
+            },
+            {
+                "Q3" : "How many hearts does an octopus have?",
+                "type" : "whole-number",
+                "answer" : "3",
+                "score" : 10
+            },
+            {
+                "Q4" : "What is the largest animal in the ocean?",
+                "type" : "string",
+                "answer" : ["blue whale", "the blue whale"],
+                "score" : 20
+            },
+            {
+                "Q5" : "What do you call a baby seal?",
+                "type" : "string",
+                "answer" : "pup",
+                "score" : 20
             }
         ]
     },
     "zone 4" : {
         "zone-name" : "Marina Walkways",
-        "zone-map" : "docs/game-zones/hunt-zone4.png",
-        "photo-challenge" : "Find a youth age manager and take a team photo with them - faces must be visible - upload to whatsapp",
-        "photo-score" : 10,
+        "zone-map" : "docs/game-zones/hunt-zone-4.png",
+        "photo-challenge" : "Take a team photo on the boardwalk with boats visible behind you - faces must be visible - upload to whatsapp",
+        "photo-score" : 30,
         "questions" : [
             {
-                "Q1" : "What is the capital of France?",
-                "answer" : "paris",
+                "Q1" : "What type of lifting bridge is shown on the left of your map? Complete the name: ______ Bridge",
+                "type" : "string",
+                "answer" : "bascule",
                 "score" : 10
             },
             {
-                "Q2" : "What is 2 + 2?",
-                "answer" : "4",
+                "Q2" : "Complete the name of the ferry company marked on your map: Rottnest ____ Ferries",
+                "type" : "string",
+                "answer" : "fast",
                 "score" : 10
+            },
+            {
+                "Q3" : "How many sides does a hexagon have?",
+                "type" : "whole-number",
+                "answer" : "6",
+                "score" : 10
+            },
+            {
+                "Q4" : "What do boats drop into the water to stay in one place?",
+                "type" : "string",
+                "answer" : "anchor",
+                "score" : 20
+            },
+            {
+                "Q5" : "Complete the name of the walkway at the top left of your map: Hillarys ______",
+                "type" : "string",
+                "answer" : "boardwalk",
+                "score" : 20
             }
         ]
     },
     "zone 5" : {
         "zone-name" : "Marina Beach & Park",
-        "zone-map" : "docs/game-zones/hunt-zone5.png",
-        "photo-challenge" : "Find a youth age manager and take a team photo with them - faces must be visible - upload to whatsapp",
-        "photo-score" : 10,
+        "zone-map" : "docs/game-zones/hunt-zone-5.png",
+        "photo-challenge" : "Take a team photo standing on the round paved compass area in the park - faces must be visible - upload to whatsapp",
+        "photo-score" : 30,
         "questions" : [
             {
-                "Q1" : "What is the capital of France?",
-                "answer" : "paris",
+                "Q1" : "Complete the name of the beach at the top of your map: Hillarys Boat Harbour - ______ Beach",
+                "type" : "string",
+                "answer" : "north",
                 "score" : 10
             },
             {
-                "Q2" : "What is 2 + 2?",
-                "answer" : "4",
+                "Q2" : "What colour are the shade tents on the beach?",
+                "type" : "string",
+                "answer" : "blue",
                 "score" : 10
+            },
+            {
+                "Q3" : "What shape is the paved area in the middle of the park? (one word)",
+                "type" : "string",
+                "answer" : "circle",
+                "score" : 10
+            },
+            {
+                "Q4" : "Complete the name of the road on the right of your map: ______ Drive",
+                "type" : "string",
+                "answer" : "southside",
+                "score" : 20
+            },
+            {
+                "Q5" : "What is 10 divided by 4?",
+                "type" : "decimal",
+                "answer" : "2.5",
+                "score" : 20
             }
         ]
     }
