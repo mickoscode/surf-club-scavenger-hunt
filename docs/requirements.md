@@ -140,7 +140,7 @@ A form is marked done only after the server has confirmed the submission. If the
 
 Every question has a type (see "game-questions.json format"): string, whole-number or decimal.
 - After a submission the form shows "Done" only. The website NEVER displays what was submitted, and never says whether it was right or wrong, including after a reload or on another page. (This makes it harder for teams to share answers.)
-- string: the submitted text is trimmed, converted to lower case and compared with each accepted answer. Small typos are accepted: none for answers under 4 characters, 1 typo for 4 to 7 characters, 2 typos for 8 or more characters (typo = one added, missing or changed letter).
+- string: the submitted text is trimmed, converted to lower case and compared with each accepted answer. Small typos are accepted: none for answers under 4 characters, 1 typo for 4 to 7 characters, 2 typos for 8 or more characters (typo = one added, missing or changed letter, or two neighbouring letters swapped).
 - whole-number: the field accepts digits only (numeric keypad on phones). The value must match exactly.
 - decimal: the field accepts digits and a single decimal point. The value must match exactly as a number (2.50 and 2.5 are the same value).
 - Negative numbers are not supported.

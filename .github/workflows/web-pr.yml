@@ -2,7 +2,7 @@ name: Web PR checks
 
 # Checks on pull requests, so a broken page, a broken game file or a Content-Security-Policy violation is caught
 # before merge (merging to main deploys to prod).
-#   Validate site: builds the site and runs the unit tests (when the frontend or tests change)
+#   Validate site: builds the site and runs the unit tests (when the frontend, backend code or tests change)
 #   Game data:     checks the structure of docs/game-questions.json (when the game data or its validator changes)
 # Jobs are skipped (not absent) when their files are unchanged, so both can be required checks.
 on:
@@ -39,7 +39,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
-          if grep -qE '^(web/|tests/|scripts/|package(-lock)?\.json$|terraform/cloudfront\.tf$|\.github/workflows/(web-pr|deploy)\.yml$)' <<< "$changed"; then
+          if grep -qE '^(web/|api/|tests/|scripts/|package(-lock)?\.json$|terraform/cloudfront\.tf$|\.github/workflows/(web-pr|deploy)\.yml$)' <<< "$changed"; then
             echo "web=true" >> "$GITHUB_OUTPUT"
           else
             echo "web=false" >> "$GITHUB_OUTPUT"
