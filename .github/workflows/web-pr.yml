@@ -3,6 +3,7 @@ name: Web PR checks
 # Checks on pull requests, so a broken page, a broken game file or a Content-Security-Policy violation is caught
 # before merge (merging to main deploys to prod).
 #   Validate site: builds the site and runs the unit tests (when the frontend, backend code or tests change)
+#   API tests:     the store contract against DynamoDB Local (when the backend code or its tests change)
 #   Game data:     checks the structure of docs/game-questions.json (when the game data or its validator changes)
 # Jobs are skipped (not absent) when their files are unchanged, so both can be required checks.
 on:
@@ -25,6 +26,7 @@ jobs:
     outputs:
       web: ${{ steps.diff.outputs.web }}
       data: ${{ steps.diff.outputs.data }}
+      api: ${{ steps.diff.outputs.api }}
     steps:
       - name: Checkout repository code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -43,6 +45,11 @@ jobs:
             echo "web=true" >> "$GITHUB_OUTPUT"
           else
             echo "web=false" >> "$GITHUB_OUTPUT"
+          fi
+          if grep -qE '^(api/|tests/api/|package(-lock)?\.json$|\.github/workflows/web-pr\.yml$)' <<< "$changed"; then
+            echo "api=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "api=false" >> "$GITHUB_OUTPUT"
           fi
           if grep -qE '^(docs/game-questions\.json$|docs/game-zones/|scripts/validate-game-data\.js$|tests/unit/game-data\.test\.js$|\.github/workflows/web-pr\.yml$)' <<< "$changed"; then
             echo "data=true" >> "$GITHUB_OUTPUT"
@@ -97,3 +104,47 @@ jobs:
 
       - name: Validate docs/game-questions.json
         run: node scripts/validate-game-data.js
+
+  # The same contract tests run against the in-memory store (in "Validate site") and against the real
+  # DynamoDB API here, so the in-memory store used by the other tests can never drift from the real thing.
+  api-tests:
+    name: API tests
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      dynamodb:
+        image: amazon/dynamodb-local:2.6.1
+        ports:
+          - 8000:8000
+    env:
+      DYNAMODB_ENDPOINT: http://localhost:8000
+      REQUIRE_DYNAMODB: "1" # fail, rather than skip, if DynamoDB Local is not reachable
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # The container has no health check; any HTTP answer (even an error) means it is up.
+      - name: Wait for DynamoDB Local
+        run: |
+          for i in $(seq 1 30); do
+            if curl -s -o /dev/null "$DYNAMODB_ENDPOINT"; then exit 0; fi
+            sleep 1
+          done
+          echo "::error::DynamoDB Local did not start"
+          exit 1
+
+      - name: API tests
+        run: npm run test:api

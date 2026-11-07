@@ -7,9 +7,11 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 | Path | What it is |
 |---|---|
 | `web/` | The site itself: `index.html`, `404.html`, `css/site.css`, `js/main.js`, `favicon.svg` |
+| `api/store/` | The data layer: one `store` interface with an in-memory version (local development and tests) and a DynamoDB version (the data model is described at the top of `dynamo.js`) |
 | `api/lib/` | Backend game logic as pure functions (timing, answer checking, scoring, team names, scoreboard order). No dependencies, no AWS: the Lambda handlers that use it come in a later PR. |
 | `scripts/build.sh` | Assembles `dist/` = `web/` + the Bootstrap CSS from `node_modules` (the exact contents of the bucket) |
 | `tests/unit/` | Unit tests (`npm test`): the built pages against the Content-Security-Policy, and the game-data validator. Later PRs add `tests/api/` and `tests/browser/`. |
+| `tests/api/` | The store contract tests: the same tests run against the in-memory store always, and against DynamoDB Local in CI |
 | `scripts/validate-game-data.js` | Checks the structure of `docs/game-questions.json` (`npm run validate:data`) |
 | `docs/` | Game design (`requirements.md`), game content (`game-questions.json`, `game-zones/`, `player-instructions.md`) and one-time setup (`setup.md`) |
 | `terraform/` | S3 bucket, CloudFront (HTTPS, security headers, optional custom domain) and the GitHub deploy role |
@@ -23,6 +25,7 @@ npm ci            # installs Bootstrap (the only dependency)
 npm run build     # builds dist/
 npm test          # unit tests, including a build check of dist/
 npm run validate:data   # checks docs/game-questions.json
+DYNAMODB_ENDPOINT=http://localhost:8000 npm run test:api   # also test the DynamoDB store (start DynamoDB Local first: docker run --rm -p 8000:8000 amazon/dynamodb-local)
 python3 -m http.server -d dist 8000   # preview at http://localhost:8000
 ```
 
@@ -40,6 +43,7 @@ Mobile first: write styles for phones in `web/css/site.css` and add `@media (min
 | Workflow | Trigger | What it does |
 |---|---|---|
 | `web-pr.yml` | PR touching the frontend or tests | `npm test` (build + CSP checks + unit tests). Required check: `Validate site` |
+| `web-pr.yml` | PR touching `api/` or `tests/api/` | The store contract tests against DynamoDB Local. Required check: `API tests` |
 | `web-pr.yml` | PR touching `docs/game-questions.json` or the maps | Structure check of the game file. Required check: `Game data` |
 | `terraform-pr.yml` | PR touching `terraform/` | fmt, validate, tflint, Trivy security scan, speculative plan posted as a PR comment |
 | `terraform-apply.yml` | push to `main` touching `terraform/` | checks, plan, then an apply that waits for manual approval in the `terraform-production` environment |

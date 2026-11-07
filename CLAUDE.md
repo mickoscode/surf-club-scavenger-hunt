@@ -12,7 +12,7 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27: a static site (`web/`
 
 ## Backend
 
-- `api/` is the backend, plain CommonJS with no runtime dependencies (the AWS SDK comes with the Lambda runtime). `api/lib/` holds pure game logic: nothing there touches AWS, the clock (always passed in) or the network, so it is unit tested directly in `tests/unit/`. The handlers and data layer are added in later PRs.
+- `api/` is the backend, plain CommonJS with no runtime dependencies (the AWS SDK comes with the Lambda runtime). `api/lib/` holds pure game logic: nothing there touches AWS, the clock (always passed in) or the network, so it is unit tested directly in `tests/unit/`. `api/store/` is the data layer: one `store` interface with `memory.js` (local development, handler and browser tests) and `dynamo.js` (production; one table, a team's whole state is one item so "submit once + add to score" is one atomic conditional update). `tests/api/contract.js` is the specification both must pass: it runs against the memory store everywhere and against DynamoDB Local in CI (`API tests`). Change behaviour in the contract first. The Lambda handlers come in the next PR.
 - The server decides everything (timing, answer checking, scoring); official answers and submitted answers never go to the browser. Rules are in `docs/requirements.md`, and the code comments point to the relevant section.
 
 ## Infrastructure
@@ -24,13 +24,13 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27: a static site (`web/`
 
 ## CI/CD
 
-- `web-pr.yml` (`Validate site`, `Game data`) and `terraform-pr.yml` (validate, security scan, plan comment) run on PRs and are skipped, not absent, when their folders are unchanged, so they can be required checks.
+- `web-pr.yml` (`Validate site`, `API tests`, `Game data`) and `terraform-pr.yml` (validate, security scan, plan comment) run on PRs and are skipped, not absent, when their folders are unchanged, so they can be required checks.
 - Merging to `main` deploys: `deploy.yml` for the frontend (needs repo variable `CF_DISTRIBUTION_ID`), `terraform-apply.yml` for `terraform/` (manual approval in the `terraform-production` environment). `terraform-drift.yml` checks weekly.
 - Actions are pinned to commit SHAs with a version comment; Dependabot bumps them weekly.
 
 ## Working conventions
 
 - Raise PRs with `gh` from a feature branch and commit only the files you changed (explicit `git add` paths). The owner reviews and merges every PR and handles GitHub settings, HCP/AWS settings and Terraform applies.
-- Tests only where a regression would really hurt. No trivia or "guard" tests, and nothing that depends on wording: tests use their own fixtures, never `docs/game-questions.json`, the instructions or page copy. Find elements by `data-testid`, not by text. Layout: `tests/unit/` (`npm test`), later `tests/api/` (DynamoDB Local) and `tests/browser/` (Playwright under the real CSP).
+- Tests only where a regression would really hurt. No trivia or "guard" tests, and nothing that depends on wording: tests use their own fixtures, never `docs/game-questions.json`, the instructions or page copy. Find elements by `data-testid`, not by text. Layout: `tests/unit/` (`npm test`), later `tests/api/` (store contract, DynamoDB Local in CI) and `tests/browser/` (Playwright under the real CSP).
 - `scripts/validate-game-data.js` is the only thing that reads the real `docs/game-questions.json`, and it checks structure only (format in `docs/requirements.md`). It runs in CI as the `Game data` check.
 - Keep it simple: this site is deliberately much smaller than `surf-club-signin`.
