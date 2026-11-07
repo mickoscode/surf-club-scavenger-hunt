@@ -13,3 +13,8 @@ export const getJson = (path) => request(path);
 
 export const postJson = (path, data) =>
   request(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) });
+
+export const putJson = (path, data) =>
+  request(path, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) });
+
+export const deleteJson = (path) => request(path, { method: 'DELETE' });

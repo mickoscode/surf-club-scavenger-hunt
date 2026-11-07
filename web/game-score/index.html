@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Score photos - admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/site.css">
+  <script type="module" src="/js/score-page.js"></script>
+</head>
+<body class="d-flex flex-column min-vh-100">
+  <main class="container py-4">
+    <div class="mx-auto narrow">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h1 class="h3 mb-0">Score photos</h1>
+        <a href="/game-config/" data-testid="config-page-link">Game configuration</a>
+      </div>
+      <p class="text-muted small">Check each photo in the WhatsApp group (team number, and clearly which zone and challenge), then choose a score and press Apply. Photos not sent to WhatsApp, or without a team number, get nothing. Scores can be corrected: applying again replaces the previous decision.</p>
+
+      <p class="alert alert-warning" data-testid="load-error" hidden>Could not refresh. Trying again...</p>
+      <p class="alert alert-info" data-testid="scoring-notice" hidden>Scoring opens when the game starts.</p>
+      <p class="alert alert-danger" role="alert" data-testid="apply-error" hidden></p>
+
+      <p class="text-center text-muted" data-testid="no-photos" hidden>No photos have been sent yet.</p>
+      <ul class="list-group" data-testid="photo-list"></ul>
+    </div>
+  </main>
+</body>
+</html>
