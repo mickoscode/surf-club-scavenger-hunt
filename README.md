@@ -8,7 +8,9 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 |---|---|
 | `web/` | The site itself: `index.html`, `404.html`, `css/site.css`, `js/main.js`, `favicon.svg` |
 | `scripts/build.sh` | Assembles `dist/` = `web/` + the Bootstrap CSS from `node_modules` (the exact contents of the bucket) |
-| `tests/build.test.js` | Checks the built pages against the Content-Security-Policy (no inline code, no external resources, no missing files) |
+| `tests/unit/` | Unit tests (`npm test`): the built pages against the Content-Security-Policy, and the game-data validator. Later PRs add `tests/api/` and `tests/browser/`. |
+| `scripts/validate-game-data.js` | Checks the structure of `docs/game-questions.json` (`npm run validate:data`) |
+| `docs/` | Game design (`requirements.md`), game content (`game-questions.json`, `game-zones/`, `player-instructions.md`) and one-time setup (`setup.md`) |
 | `terraform/` | S3 bucket, CloudFront (HTTPS, security headers, optional custom domain) and the GitHub deploy role |
 | `.github/workflows/` | CI/CD, see below |
 | `docs/setup.md` | One-time GitHub / HCP Terraform / AWS setup, and what to do after the first apply |
@@ -18,7 +20,8 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 ```sh
 npm ci            # installs Bootstrap (the only dependency)
 npm run build     # builds dist/
-npm test          # builds, then checks dist/
+npm test          # unit tests, including a build check of dist/
+npm run validate:data   # checks docs/game-questions.json
 python3 -m http.server -d dist 8000   # preview at http://localhost:8000
 ```
 
@@ -35,7 +38,8 @@ Mobile first: write styles for phones in `web/css/site.css` and add `@media (min
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `web-pr.yml` | PR touching the frontend | `npm test` (build + CSP checks). Required check: `Validate site` |
+| `web-pr.yml` | PR touching the frontend or tests | `npm test` (build + CSP checks + unit tests). Required check: `Validate site` |
+| `web-pr.yml` | PR touching `docs/game-questions.json` or the maps | Structure check of the game file. Required check: `Game data` |
 | `terraform-pr.yml` | PR touching `terraform/` | fmt, validate, tflint, Trivy security scan, speculative plan posted as a PR comment |
 | `terraform-apply.yml` | push to `main` touching `terraform/` | checks, plan, then an apply that waits for manual approval in the `terraform-production` environment |
 | `deploy.yml` | push to `main` touching the frontend, or manual | builds, syncs `dist/` to S3, invalidates CloudFront |

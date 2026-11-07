@@ -19,12 +19,13 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27: a static site (`web/`
 
 ## CI/CD
 
-- `web-pr.yml` (`Validate site`) and `terraform-pr.yml` (validate, security scan, plan comment) run on PRs and are skipped, not absent, when their folders are unchanged, so they can be required checks.
+- `web-pr.yml` (`Validate site`, `Game data`) and `terraform-pr.yml` (validate, security scan, plan comment) run on PRs and are skipped, not absent, when their folders are unchanged, so they can be required checks.
 - Merging to `main` deploys: `deploy.yml` for the frontend (needs repo variable `CF_DISTRIBUTION_ID`), `terraform-apply.yml` for `terraform/` (manual approval in the `terraform-production` environment). `terraform-drift.yml` checks weekly.
 - Actions are pinned to commit SHAs with a version comment; Dependabot bumps them weekly.
 
 ## Working conventions
 
 - Raise PRs with `gh` from a feature branch and commit only the files you changed (explicit `git add` paths). The owner reviews and merges every PR and handles GitHub settings, HCP/AWS settings and Terraform applies.
-- Tests only where a regression would really hurt (currently the CSP/build check). No trivia or "guard" tests.
+- Tests only where a regression would really hurt. No trivia or "guard" tests, and nothing that depends on wording: tests use their own fixtures, never `docs/game-questions.json`, the instructions or page copy. Find elements by `data-testid`, not by text. Layout: `tests/unit/` (`npm test`), later `tests/api/` (DynamoDB Local) and `tests/browser/` (Playwright under the real CSP).
+- `scripts/validate-game-data.js` is the only thing that reads the real `docs/game-questions.json`, and it checks structure only (format in `docs/requirements.md`). It runs in CI as the `Game data` check.
 - Keep it simple: this site is deliberately much smaller than `surf-club-signin`.
