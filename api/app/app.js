@@ -1,6 +1,8 @@
 'use strict';
 // The API. Two roles share this code but are deployed as separate Lambda functions with separate permissions:
 //   public: join, play, scoreboard (everyone)         admin: config, scoring, teams, export/delete (no login: see docs)
+// Status codes: application errors never use 403 or 404, because CloudFront (terraform/cloudfront.tf) replaces ANY 403/404
+// from ANY origin with the site's 404 page. Wrong state (not joinable, game active, ...) is 409, unknown references 400.
 // Everything is decided here on the server: timing, answer checking, scoring. The browser never receives an
 // official answer, and never receives what a team submitted. Rules: docs/requirements.md.
 const crypto = require('node:crypto');
@@ -90,7 +92,7 @@ function createApp({
       const existing = await sessionTeam(request);
       if (existing) return respond(200, { team: { number: existing.number, name: existing.name } });
       const { status } = await snapshot();
-      if (!can(status, 'join')) throw new HttpError(403, 'not-joinable');
+      if (!can(status, 'join')) throw new HttpError(409, 'not-joinable');
       const name = validateTeamName(body.name);
       if (!name.ok) throw new HttpError(400, name.error);
       const playerId = newId();
@@ -103,10 +105,10 @@ function createApp({
       const body = readJson(request);
       const team = await requireTeam(request);
       const { saved, status, t } = await snapshot();
-      if (!can(status, 'play')) throw new HttpError(403, 'not-playing');
+      if (!can(status, 'play')) throw new HttpError(409, 'not-playing');
       const zone = findZone(saved.game, body.zone);
       const question = zone?.questions.find((q) => questionId(q) === body.question);
-      if (!question) throw new HttpError(404, 'unknown-question');
+      if (!question) throw new HttpError(400, 'unknown-question');
       const result = checkAnswer(question, body.answer);
       if (!result.valid) throw new HttpError(400, 'invalid-answer'); // does not use up the one submission
       const recorded = await store.recordAnswer(team.playerId, body.zone, body.question, {
@@ -120,8 +122,8 @@ function createApp({
       const body = readJson(request);
       const team = await requireTeam(request);
       const { saved, status, t } = await snapshot();
-      if (!can(status, 'play')) throw new HttpError(403, 'not-playing');
-      if (!findZone(saved.game, body.zone)) throw new HttpError(404, 'unknown-zone');
+      if (!can(status, 'play')) throw new HttpError(409, 'not-playing');
+      if (!findZone(saved.game, body.zone)) throw new HttpError(400, 'unknown-zone');
       const recorded = await store.recordPhotoSent(team.playerId, body.zone, { at: t });
       if (!recorded.ok) throw new HttpError(recorded.error === 'no-team' ? 401 : 409, recorded.error === 'no-team' ? 'no-session' : recorded.error);
       return respond(200, { done: true });
@@ -147,7 +149,7 @@ function createApp({
     'PUT /api/admin/config': async (request) => {
       const body = readJson(request);
       const { status } = await snapshot();
-      if (!can(status, 'configure')) throw new HttpError(403, 'game-active');
+      if (!can(status, 'configure')) throw new HttpError(409, 'game-active');
       const config = {
         name: typeof body.name === 'string' && body.name.trim() ? body.name.trim() : DEFAULT_GAME_NAME,
         timeZone: body.timeZone ?? DEFAULT_TIME_ZONE,
@@ -170,9 +172,9 @@ function createApp({
 
     'DELETE /api/admin/teams/:number': async (request, params) => {
       const { status } = await snapshot();
-      if (!can(status, 'removeTeam')) throw new HttpError(403, 'not-allowed');
+      if (!can(status, 'removeTeam')) throw new HttpError(409, 'not-allowed');
       const team = await teamByNumber(Number(params.number));
-      if (!team || !(await store.removeTeam(team.playerId))) throw new HttpError(404, 'no-team');
+      if (!team || !(await store.removeTeam(team.playerId))) throw new HttpError(400, 'no-team');
       return respond(200, { removed: true });
     },
 
@@ -197,14 +199,14 @@ function createApp({
     'POST /api/admin/photos/apply': async (request) => {
       const body = readJson(request);
       const { saved, status, t } = await snapshot();
-      if (!can(status, 'score')) throw new HttpError(403, 'not-scoring');
+      if (!can(status, 'score')) throw new HttpError(409, 'not-scoring');
       if (!isDecision(body.decision)) throw new HttpError(400, 'invalid-decision');
       const zone = findZone(saved?.game, body.zone);
-      if (!zone) throw new HttpError(404, 'unknown-zone');
+      if (!zone) throw new HttpError(400, 'unknown-zone');
       const team = Number.isInteger(body.teamNumber) ? await teamByNumber(body.teamNumber) : null;
-      if (!team) throw new HttpError(404, 'no-team');
+      if (!team) throw new HttpError(400, 'no-team');
       const applied = await store.applyPhotoDecision(team.playerId, body.zone, { decision: body.decision, photoScore: zone['photo-score'], at: t });
-      if (!applied.ok) throw new HttpError(404, applied.error);
+      if (!applied.ok) throw new HttpError(400, applied.error);
       return respond(200, { delta: applied.delta, score: applied.score });
     },
 
@@ -217,7 +219,7 @@ function createApp({
     'POST /api/admin/delete-all': async (request) => {
       const body = readJson(request);
       const { status } = await snapshot();
-      if (!can(status, 'deleteData')) throw new HttpError(403, 'game-active');
+      if (!can(status, 'deleteData')) throw new HttpError(409, 'game-active');
       if (body.confirm !== 'delete') throw new HttpError(400, 'confirmation-required');
       await store.deleteAllPlayerData();
       return respond(200, { deleted: true });

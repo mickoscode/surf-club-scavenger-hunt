@@ -37,7 +37,7 @@ test('photo decisions are checked: known decision, team, zone and a photo that w
   assert.equal((await apply({ teamNumber: 1, zone: 'zone 9', decision: 'full' })).body.error, 'unknown-zone');
   assert.equal((await apply({ teamNumber: 1, zone: '__proto__', decision: 'full' })).body.error, 'unknown-zone');
   assert.equal((await apply({ teamNumber: 1, zone: 'zone 1', decision: 'full' })).body.error, 'no-photo');
-  assert.equal((await apply({ teamNumber: '1', zone: 'zone 1', decision: 'full' })).status, 404);
+  assert.equal((await apply({ teamNumber: '1', zone: 'zone 1', decision: 'full' })).status, 400);
 });
 
 test('scoring is possible during and after the game, not before', async () => {
@@ -45,7 +45,7 @@ test('scoring is possible during and after the game, not before', async () => {
   await p.post('/api/photo', { zone: 'zone 1' });
   const apply = () => env.admin().post('/api/admin/photos/apply', { teamNumber: 1, zone: 'zone 1', decision: 'full' });
   env.clock.now = START - 1;
-  assert.equal((await apply()).status, 403);
+  assert.equal((await apply()).status, 409);
   env.clock.now = END + 1;
   assert.equal((await apply()).status, 200);
 });
@@ -64,7 +64,7 @@ test('saving the config loads the game file, validates both, and is refused whil
   assert.deepEqual([info.status, info.zoneCount, info.timeZones.length > 0], ['pre', 2, true]);
   env.clock.now = START;
   const active = await admin.put('/api/admin/config', CONFIG);
-  assert.deepEqual([active.status, active.body.error], [403, 'game-active']);
+  assert.deepEqual([active.status, active.body.error], [409, 'game-active']);
   env.clock.now = END + 1;
   assert.equal((await admin.put('/api/admin/config', CONFIG)).status, 200);
 });
@@ -80,7 +80,7 @@ test('a broken game file is reported to the admin and does not replace the curre
 test('removing a team works any time, by number, and frees its name', async () => {
   const { env } = await activeGame();
   assert.equal((await env.admin().del('/api/admin/teams/1')).status, 200);
-  assert.equal((await env.admin().del('/api/admin/teams/1')).status, 404);
+  assert.equal((await env.admin().del('/api/admin/teams/1')).status, 400);
   assert.equal((await env.player().post('/api/join', { name: 'Sea Dogs' })).status, 200);
 });
 
@@ -114,6 +114,25 @@ test('the two roles only serve their own routes', async () => {
   assert.equal((await env.admin().get('/api/scoreboard')).status, 404);
   assert.equal((await env.admin().post('/api/join', { name: 'x' })).status, 404);
   assert.equal((await env.player().get('/nope')).status, 404);
+});
+
+test('application errors never use 403 or 404, which CloudFront would replace with the site 404 page', async () => {
+  const { env, p } = await activeGame();
+  const admin = env.admin();
+  const calls = [
+    () => p.post('/api/answer', { zone: 'nope', question: 'Q1', answer: 'x' }), () => p.post('/api/photo', { zone: 'nope' }),
+    () => env.player().post('/api/answer', { zone: 'zone 1', question: 'Q1', answer: 'x' }), () => p.post('/api/join', {}),
+    () => admin.put('/api/admin/config', CONFIG), () => admin.post('/api/admin/delete-all', { confirm: 'delete' }),
+    () => admin.del('/api/admin/teams/99'), () => admin.post('/api/admin/photos/apply', { teamNumber: 1, zone: 'zone 1', decision: 'full' }),
+    () => admin.post('/api/admin/photos/apply', { teamNumber: 1, zone: 'nope', decision: 'full' }),
+  ];
+  for (const now of [START - 1, START + 1000, END + 1]) { // before, during and after the game
+    env.clock.now = now;
+    for (const call of calls) {
+      const { status } = await call();
+      assert.ok(![403, 404].includes(status), `status ${status} at ${now}`);
+    }
+  }
 });
 
 test('POST bodies must be JSON sent as application/json, small and well formed', async () => {

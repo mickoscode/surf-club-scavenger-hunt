@@ -41,11 +41,23 @@ resource "aws_acm_certificate_validation" "site" {
 }
 
 # -----------------------------------------------------------
-# Security headers added to every response (pages, assets and the 404 page).
+# Security headers added to every response (pages, assets, the 404 page and the API).
+# "site" is used everywhere except the admin pages, which use "admin": the same headers plus X-Robots-Tag, so
+# search engines never index them.
 # -----------------------------------------------------------
+moved {
+  from = aws_cloudfront_response_headers_policy.security
+  to   = aws_cloudfront_response_headers_policy.security["site"]
+}
+
 resource "aws_cloudfront_response_headers_policy" "security" {
-  name    = "${var.bucket_name}-security-headers"
-  comment = "Browser security headers for the static site"
+  for_each = {
+    site  = "Browser security headers for the static site"
+    admin = "Browser security headers for the admin pages, which search engines must not index"
+  }
+
+  name    = each.key == "site" ? "${var.bucket_name}-security-headers" : "${var.bucket_name}-security-headers-${each.key}"
+  comment = each.value
 
   security_headers_config {
     # Only ever use HTTPS for this domain (1 year).
@@ -85,7 +97,27 @@ resource "aws_cloudfront_response_headers_policy" "security" {
       value    = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
       override = true
     }
+
+    dynamic "items" {
+      for_each = each.key == "admin" ? [1] : []
+      content {
+        header   = "X-Robots-Tag"
+        value    = "noindex, nofollow"
+        override = true
+      }
+    }
   }
+}
+
+# -----------------------------------------------------------
+# Page rewrites: /view/ -> /view/index.html, /view -> /view/ (see rewrite.js). S3 only knows exact file names.
+# -----------------------------------------------------------
+resource "aws_cloudfront_function" "rewrite" {
+  name    = "${replace(var.bucket_name, ".", "-")}-rewrite" # function names cannot contain dots
+  runtime = "cloudfront-js-2.0"
+  comment = "Serve directory index pages and add the trailing slash"
+  publish = true
+  code    = file("${path.module}/rewrite.js")
 }
 
 # -----------------------------------------------------------
@@ -103,6 +135,44 @@ data "aws_cloudfront_cache_policy" "optimized" {
   name = "Managed-CachingOptimized"
 }
 
+data "aws_cloudfront_cache_policy" "disabled" {
+  name = "Managed-CachingDisabled"
+}
+
+# Forwards the cookie, headers and body the API needs, but not the Host header (API Gateway needs its own).
+data "aws_cloudfront_origin_request_policy" "all_viewer_except_host" {
+  name = "Managed-AllViewerExceptHostHeader"
+}
+
+# For the two API responses that are the same for everyone (/api/game, /api/scoreboard): CloudFront keeps them for
+# as long as the API says (Cache-Control max-age=3, at most 10 seconds), so many viewers share one lookup. With
+# no TTL from the API (or no-store) nothing is cached. No cookies are in the cache key, so ONLY routes that give
+# everybody the same answer may use this policy: everything personal goes through Managed-CachingDisabled.
+resource "aws_cloudfront_cache_policy" "api_shared" {
+  name        = "${local.name}-api-shared"
+  comment     = "Honour the API's own short Cache-Control; nothing in the cache key"
+  min_ttl     = 0
+  default_ttl = 0
+  max_ttl     = 10
+
+  parameters_in_cache_key_and_forwarded_to_origin {
+    enable_accept_encoding_gzip   = true
+    enable_accept_encoding_brotli = true
+
+    cookies_config {
+      cookie_behavior = "none"
+    }
+
+    headers_config {
+      header_behavior = "none"
+    }
+
+    query_strings_config {
+      query_string_behavior = "none"
+    }
+  }
+}
+
 resource "aws_cloudfront_distribution" "site" {
   comment             = "Sorrento SLS Youth Scavenger Hunt"
   enabled             = true
@@ -118,6 +188,18 @@ resource "aws_cloudfront_distribution" "site" {
     origin_access_control_id = aws_cloudfront_origin_access_control.site.id
   }
 
+  origin {
+    domain_name = replace(aws_apigatewayv2_api.api.api_endpoint, "https://", "")
+    origin_id   = "api"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
@@ -126,10 +208,67 @@ resource "aws_cloudfront_distribution" "site" {
 
     viewer_protocol_policy     = "redirect-to-https"
     cache_policy_id            = data.aws_cloudfront_cache_policy.optimized.id
-    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security["site"].id
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.rewrite.arn
+    }
+  }
+
+  # The API. The two shared responses first (more specific), then everything else uncached with the cookie passed on.
+  dynamic "ordered_cache_behavior" {
+    for_each = ["/api/game", "/api/scoreboard"]
+    content {
+      path_pattern     = ordered_cache_behavior.value
+      allowed_methods  = ["GET", "HEAD"]
+      cached_methods   = ["GET", "HEAD"]
+      target_origin_id = "api"
+      compress         = true
+
+      viewer_protocol_policy     = "https-only"
+      cache_policy_id            = aws_cloudfront_cache_policy.api_shared.id
+      response_headers_policy_id = aws_cloudfront_response_headers_policy.security["site"].id
+    }
+  }
+
+  ordered_cache_behavior {
+    path_pattern     = "/api/*"
+    allowed_methods  = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "api"
+    compress         = true
+
+    viewer_protocol_policy     = "https-only"
+    cache_policy_id            = data.aws_cloudfront_cache_policy.disabled.id
+    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security["site"].id
+  }
+
+  # The admin pages: same bucket, but marked noindex.
+  dynamic "ordered_cache_behavior" {
+    for_each = ["/game-config/*", "/game-score/*"]
+    content {
+      path_pattern     = ordered_cache_behavior.value
+      allowed_methods  = ["GET", "HEAD"]
+      cached_methods   = ["GET", "HEAD"]
+      target_origin_id = "site-bucket"
+      compress         = true
+
+      viewer_protocol_policy     = "redirect-to-https"
+      cache_policy_id            = data.aws_cloudfront_cache_policy.optimized.id
+      response_headers_policy_id = aws_cloudfront_response_headers_policy.security["admin"].id
+
+      function_association {
+        event_type   = "viewer-request"
+        function_arn = aws_cloudfront_function.rewrite.arn
+      }
+    }
   }
 
   # Without s3:ListBucket for CloudFront, S3 answers 403 (not 404) for a missing file.
+  # NOTE: custom error pages apply to EVERY behaviour, the API included, so the API never uses 403 or 404 for its own
+  # errors (see api/app/app.js and docs/api.md).
   custom_error_response {
     error_code            = 403
     response_code         = 404

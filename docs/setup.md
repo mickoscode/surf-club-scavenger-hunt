@@ -22,6 +22,12 @@ Push the `bootstrap` branch, open a PR and let the checks run: `Validate site`, 
 4. Run **Deploy site** from the Actions tab on `main` (*Run workflow*). The merge itself also triggered a deploy, but it fails fast with a clear message because the variable was not set yet. After this, every merge touching `web/` deploys automatically.
 5. Open `site_url`: you should see the coming-soon page.
 
+## The API (added after the first deploy)
+
+The API's infrastructure (DynamoDB, two Lambda functions, API Gateway, the `/api/*` route on CloudFront) is created by Terraform, so **the HCP workspace's AWS identity also needs permission** to create Lambda functions, API Gateway APIs, DynamoDB tables, CloudWatch log groups and CloudFront functions/cache policies, and to create IAM roles for the functions. Terraform creates the functions with a placeholder that answers `503 {"error":"not-deployed"}`; the deploy workflow replaces it with the real code (a later PR), so a change to `api/` or the questions never needs a Terraform apply.
+
+The `archive` provider is new: run `terraform init` in `terraform/` once and commit the updated `.terraform.lock.hcl` (CI works without it, because `init` adds the provider).
+
 ## Protect `main` (after the first PR has run once)
 
 Settings > Rules > Rulesets > New branch ruleset, target `main`: require a pull request, block force pushes and deletion, and require status checks `Validate site`, `Terraform validate`, `Terraform security scan` and `Terraform plan`. The check names only appear in the picker after they have run once, which is why this comes after the first PR. These jobs are skipped (not absent) when their folder is unchanged, so they can safely be required.

@@ -31,6 +31,8 @@ resource "aws_iam_role" "github_deploy" {
   })
 }
 
+# Do not edit the description: an IAM policy description cannot change in place, so Terraform would delete and
+# recreate the policy (and its attachment), briefly removing the deploy role's permissions.
 resource "aws_iam_policy" "github_deploy" {
   name        = "scavenger-hunt-deploy-policy"
   description = "Sync the scavenger hunt site bucket and invalidate its CloudFront cache"
@@ -43,6 +45,12 @@ resource "aws_iam_policy" "github_deploy" {
         Effect   = "Allow"
         Action   = ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
         Resource = [aws_s3_bucket.site.arn, "${aws_s3_bucket.site.arn}/*"]
+      },
+      {
+        Sid      = "DeployFunctionCode"
+        Effect   = "Allow"
+        Action   = ["lambda:UpdateFunctionCode", "lambda:GetFunction", "lambda:GetFunctionConfiguration"]
+        Resource = [for f in aws_lambda_function.api : f.arn]
       },
       {
         Sid      = "InvalidateCache"

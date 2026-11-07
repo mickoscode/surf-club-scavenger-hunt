@@ -19,6 +19,10 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27: a static site (`web/`
 
 - HCP Terraform org `mickoscode`, workspace `surf-club-scavenger-hunt` (remote execution; state and AWS credentials live there). Secrets are workspace variables, never in tfvars or the repo (the repo may be public).
 - The bucket is private, readable only by this CloudFront distribution (OAC). The deploy role (`scavenger-hunt-deploy-role`) trusts only this repo's `main` branch (matched on the immutable OIDC subject `github_oidc_subject_prefix`, not the repo name) via the account's existing GitHub OIDC provider, which is owned by `surf-club-signin` and only looked up here.
+- API: CloudFront sends `/api/*` to an API Gateway HTTP API (two Lambda functions, one DynamoDB table; `terraform/lambda.tf`, `api-gateway.tf`, `dynamodb.tf`). Lambda code is NOT managed by Terraform (placeholder + `ignore_changes`): the deploy workflow pushes it. Only the routes listed in `api-gateway.tf` exist; add a route there when you add one in `api/app/app.js`.
+- CloudFront custom error pages apply to every behaviour, so the API must never answer 403/404 for its own errors (a test enforces it).
+- Only `/api/game` and `/api/scoreboard` are cached (3 s, nothing in the cache key); everything else under `/api/*` is uncached with the session cookie passed through. Never point a personal route at the shared cache policy.
+- `terraform/rewrite.js` (CloudFront Function) serves `/view/` as `/view/index.html` and redirects `/view` to `/view/`; `tests/unit/rewrite.test.js` runs it.
 - Trivy accepted findings are in `terraform/.trivyignore.yaml`, each with a reason.
 - `domain_name` is empty until a custom domain is chosen (see `docs/setup.md`).
 

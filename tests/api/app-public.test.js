@@ -11,7 +11,7 @@ const join = (p, name = 'Sea Dogs') => p.post('/api/join', { name });
 test('nobody can join before a game is configured', async () => {
   const env = setup();
   const res = await join(env.player());
-  assert.deepEqual([res.status, res.body.error], [403, 'not-joinable']);
+  assert.deepEqual([res.status, res.body.error], [409, 'not-joinable']);
 });
 
 test('joining before and during the game works, and sets a protected session cookie', async () => {
@@ -29,7 +29,7 @@ test('joining before and during the game works, and sets a protected session coo
 test('nobody can join after the game ends', async () => {
   const env = setup({ now: END + 1 });
   await configure(env);
-  assert.equal((await join(env.player())).status, 403);
+  assert.equal((await join(env.player())).status, 409);
 });
 
 test('bad and duplicate team names are refused with a code', async () => {
@@ -71,9 +71,9 @@ test('answers are refused before the game starts and after it ends, to the milli
   const { env, p } = await activeGame();
   env.clock.now = START - 1;
   const early = await answer(p, 'zone 1', 'Q2', '42');
-  assert.deepEqual([early.status, early.body.error], [403, 'not-playing']);
+  assert.deepEqual([early.status, early.body.error], [409, 'not-playing']);
   env.clock.now = END + 1;
-  assert.equal((await answer(p, 'zone 1', 'Q2', '42')).status, 403);
+  assert.equal((await answer(p, 'zone 1', 'Q2', '42')).status, 409);
   env.clock.now = END;
   assert.equal((await answer(p, 'zone 1', 'Q2', '42')).status, 200);
 });
@@ -118,9 +118,9 @@ test('an input that cannot be an answer is rejected without using up the one sub
 
 test('unknown questions and zones, and missing sessions, are refused', async () => {
   const { env, p } = await activeGame();
-  assert.equal((await answer(p, 'zone 9', 'Q1', 'x')).status, 404);
-  assert.equal((await answer(p, 'zone 1', 'Q9', 'x')).status, 404);
-  assert.equal((await answer(p, '__proto__', 'Q1', 'x')).status, 404);
+  assert.equal((await answer(p, 'zone 9', 'Q1', 'x')).status, 400);
+  assert.equal((await answer(p, 'zone 1', 'Q9', 'x')).status, 400);
+  assert.equal((await answer(p, '__proto__', 'Q1', 'x')).status, 400);
   assert.equal((await answer(env.player(), 'zone 1', 'Q2', '42')).status, 401);
   assert.equal((await env.player().post('/api/photo', { zone: 'zone 1' })).status, 401);
 });
@@ -138,7 +138,7 @@ test('a photo is sent once per zone, and nothing scores until the admin applies 
   const { env, p } = await activeGame();
   assert.deepEqual((await p.post('/api/photo', { zone: 'zone 1' })).body, { done: true });
   assert.equal((await p.post('/api/photo', { zone: 'zone 1' })).status, 409);
-  assert.equal((await p.post('/api/photo', { zone: 'zone 7' })).status, 404);
+  assert.equal((await p.post('/api/photo', { zone: 'zone 7' })).status, 400);
   assert.equal(await scoreOf(env, 'Sea Dogs'), 0);
 });
 

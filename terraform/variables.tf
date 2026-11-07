@@ -34,3 +34,23 @@ variable "domain_name" {
     error_message = "Domain name must be empty or a lowercase fully qualified domain name."
   }
 }
+
+variable "api_throttle_rate_limit" {
+  description = "Steady-state requests per second allowed across the whole API"
+  type        = number
+  default     = 50
+  validation {
+    condition     = var.api_throttle_rate_limit >= 1
+    error_message = "Rate limit must be at least 1 request per second."
+  }
+}
+
+variable "api_throttle_burst_limit" {
+  description = "Maximum burst of requests allowed across the whole API"
+  type        = number
+  default     = 100
+  validation {
+    condition     = var.api_throttle_burst_limit >= 1
+    error_message = "Burst limit must be at least 1."
+  }
+}
