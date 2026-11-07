@@ -43,6 +43,8 @@ function apiClient(url) {
     },
     removeTeam: (number) => call('DELETE', `/api/admin/teams/${number}`, undefined),
     scoreOf: async (number) => (await call('GET', '/api/scoreboard')).body.teams.find((t) => t.number === number)?.score,
+    config: async () => (await call('GET', '/api/admin/config')).body,
+    apply: (teamNumber, zone, decision) => call('POST', '/api/admin/photos/apply', { teamNumber, zone, decision }),
     photosToScore: async () => (await call('GET', '/api/admin/photos')).body.photos,
     // Joins as a new team and returns what that team can then do.
     join: async (name) => {
@@ -59,10 +61,10 @@ function apiClient(url) {
   };
 }
 
-async function startSite({ now = START + 60_000, intercept } = {}) {
+async function startSite({ now = START + 60_000, intercept, game = GAME } = {}) {
   ensureBuilt();
   const clock = { now };
-  const server = createSiteServer({ store: createMemoryStore(), now: () => clock.now, loadGame: () => structuredClone(GAME), intercept });
+  const server = createSiteServer({ store: createMemoryStore(), now: () => clock.now, loadGame: () => structuredClone(game), intercept });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}`;
   return { url, clock, api: apiClient(url), close: () => new Promise((resolve) => server.close(resolve)) };

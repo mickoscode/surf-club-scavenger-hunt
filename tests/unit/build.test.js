@@ -32,6 +32,7 @@ test('every local stylesheet, script and icon a page references is in dist', () 
     const html = fs.readFileSync(path.join(dist, page), 'utf8');
     for (const [, ref] of html.matchAll(/\b(?:href|src)="([^"]+)"/g)) {
       if (ref.startsWith('#') || ref.startsWith('mailto:')) continue;
+      if (ref.startsWith('/api/')) continue; // served by the backend, not a file
       assert.ok(ref.startsWith('/'), `${page}: "${ref}" must be a site-absolute path (no CDN or external resources)`);
       const file = ref === '/' ? 'index.html' : ref.slice(1);
       assert.ok(fs.existsSync(path.join(dist, file)), `${page}: ${ref} is missing from dist`);
@@ -61,6 +62,13 @@ test('every zone of the game file has a thumbnail and a full-size map that are s
     assert.ok(fs.existsSync(thumb) && fs.existsSync(full), `${zoneKey}: map images missing`);
     assert.ok(fs.statSync(thumb).size < 60 * 1024, `${zoneKey}: the thumbnail is over 60 KB`);
     assert.ok(fs.statSync(full).size < 300 * 1024, `${zoneKey}: the full-size map is over 300 KB`);
+  }
+});
+
+test('both admin pages exist and tell search engines not to index them', () => {
+  for (const page of ['game-config/index.html', 'game-score/index.html']) {
+    const html = fs.readFileSync(path.join(dist, page), 'utf8');
+    assert.match(html, /<meta name="robots" content="[^"]*noindex/, page);
   }
 });
 

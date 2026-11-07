@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Game configuration - admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/site.css">
+  <script type="module" src="/js/config-page.js"></script>
+</head>
+<body class="d-flex flex-column min-vh-100">
+  <main class="container py-4">
+    <div class="mx-auto narrow">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0">Game configuration</h1>
+        <a href="/game-score/" data-testid="score-page-link">Score photos</a>
+      </div>
+
+      <p class="alert alert-warning" data-testid="load-error" hidden>Could not load. Trying again...</p>
+
+      <section class="card card-body mb-4">
+        <p class="mb-1">Status: <span class="badge text-bg-secondary" data-testid="game-status" data-status="loading">loading</span></p>
+        <p class="mb-0 small text-muted" data-testid="status-detail">&nbsp;</p>
+        <p class="alert alert-info mt-3 mb-0" data-testid="active-notice" hidden>The game is in progress, so the configuration cannot be changed and player data cannot be deleted. Teams can still be removed.</p>
+      </section>
+
+      <section class="card card-body mb-4">
+        <h2 class="h5">Game</h2>
+        <form data-testid="config-form" novalidate>
+          <div class="mb-3">
+            <label class="form-label" for="config-name">Game name</label>
+            <input class="form-control" id="config-name" name="name" type="text" maxlength="80" data-testid="config-name">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="config-timezone">Time zone</label>
+            <select class="form-select" id="config-timezone" name="timeZone" data-testid="config-timezone"></select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="config-day">Game day</label>
+            <input class="form-control" id="config-day" name="day" type="date" data-testid="config-day">
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label" for="config-start">Start</label>
+              <input class="form-control" id="config-start" name="start" type="time" data-testid="config-start">
+            </div>
+            <div class="col-6">
+              <label class="form-label" for="config-end">End</label>
+              <input class="form-control" id="config-end" name="end" type="time" data-testid="config-end">
+            </div>
+          </div>
+          <button class="btn btn-primary w-100" type="submit" data-testid="config-save">Save</button>
+          <p class="text-muted small mt-2 mb-0">Saving also loads the zones and questions from the published game file.</p>
+          <p class="text-danger mt-2 mb-0" role="alert" data-testid="config-error" hidden></p>
+          <ul class="text-danger small mt-1 mb-0" data-testid="config-problems" hidden></ul>
+          <p class="text-success mt-2 mb-0" role="status" data-testid="config-success" hidden></p>
+        </form>
+      </section>
+
+      <section class="card card-body mb-4">
+        <h2 class="h5">Teams</h2>
+        <p class="text-muted" data-testid="no-teams" hidden>No teams yet.</p>
+        <ul class="list-group" data-testid="teams-list"></ul>
+      </section>
+
+      <section class="card card-body mb-4">
+        <h2 class="h5">Player data</h2>
+        <p class="small text-muted">Delete all teams, answers and scores from a finished game, so the next game starts clean. Download the data first: that is how you keep it.</p>
+        <p><a class="btn btn-outline-primary w-100" href="/api/admin/export" download data-testid="export-link">1. Download the player data</a></p>
+        <label class="form-label" for="delete-confirm">2. Type <strong>delete</strong> to confirm</label>
+        <input class="form-control mb-2" id="delete-confirm" type="text" autocomplete="off" data-testid="delete-confirm">
+        <button class="btn btn-danger w-100" type="button" data-testid="delete-button" disabled>3. Delete all player data</button>
+        <p class="small text-muted mt-2 mb-0" data-testid="delete-notice"></p>
+        <p class="text-success mt-2 mb-0" role="status" data-testid="delete-result" hidden></p>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
