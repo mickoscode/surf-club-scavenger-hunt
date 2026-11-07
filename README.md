@@ -16,9 +16,9 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 | `scripts/build-maps.js` | Build step: turns each zone's map PNG (about 1 MB each) into a small thumbnail and a full-size WebP in `dist/maps` (about 100 KB each), named with the zone's `mapId` |
 | `scripts/render-instructions.js` | Build step: renders `docs/player-instructions.md` into the play page (raw HTML in it is shown as text) |
 | `scripts/package-backend.sh`, `scripts/smoke-test.js`, `scripts/dev-server.js` | Package the backend for Lambda; smoke-test a deployed site (`npm run smoke -- <url>`); serve the site and API locally with the in-memory store (`npm run dev`) |
-| `tests/browser/` | The pages in real Chromium (Playwright) served with the real Content-Security-Policy (`npm run test:browser`) |
+| `tests/browser/` | The pages in real Chromium (Playwright) served with the real Content-Security-Policy (`npm run test:browser`), including `full-game.test.js`: a whole game from set-up to clean-up with an admin, two teams and a spectator |
 | `scripts/validate-game-data.js` | Checks the structure of `docs/game-questions.json` (`npm run validate:data`) |
-| `docs/` | Game design (`requirements.md`), game content (`game-questions.json`, `game-zones/`, `player-instructions.md`) and one-time setup (`setup.md`) |
+| `docs/` | Game design (`requirements.md`, `api.md`), game content (`game-questions.json`, `game-zones/`, `player-instructions.md`), **how to run a game (`runbook.md`, `rehearsal-checklist.md`)** and one-time setup (`setup.md`) |
 | `terraform/` | S3 bucket, CloudFront (HTTPS, security headers, page rewrites, `/api/*` to the API, optional custom domain), DynamoDB table, two Lambda functions behind an API Gateway HTTP API, and the GitHub deploy role |
 | `.github/workflows/` | CI/CD, see below |
 | `docs/setup.md` | One-time GitHub / HCP Terraform / AWS setup, and what to do after the first apply |

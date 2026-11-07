@@ -9,8 +9,9 @@ import { createMeArea } from './me-area.js';
 const clock = createClock();
 let started = false; // set once the first scoreboard has arrived: before that, nothing is known about the game
 let me = null; // { number, name, score } once this device has joined
+let meAsked = false; // /api/me cannot be shared between people, so a visitor with no team asks only once, not every refresh
 
-const meArea = createMeArea({ container: $('me-area'), onJoined: refresh });
+const meArea = createMeArea({ container: $('me-area'), onJoined: () => refresh(true) });
 const canJoin = () => ['pre', 'active'].includes(clock.phase());
 
 function renderMeArea() {
@@ -46,12 +47,14 @@ function renderScoreboard(teams) {
   $('no-teams').hidden = teams.length > 0;
 }
 
-async function refresh() {
-  const [board, mine] = await Promise.all([getJson('/api/scoreboard'), getJson('/api/me')]);
+// forceMe: ask who this is even though we know nobody (just joined, or came back to the tab).
+async function refresh(forceMe = false) {
+  const askMe = forceMe || !meAsked || me !== null; // a team keeps asking, to notice if the admin removes it
+  const [board, mine] = await Promise.all([getJson('/api/scoreboard'), askMe ? getJson('/api/me') : null]);
   $('load-error').hidden = board.ok;
   if (!board.ok) return; // keep showing what we have; the next refresh tries again
   clock.update(board.body.game);
-  if (mine.ok) me = mine.body.team;
+  if (mine?.ok) { me = mine.body.team; meAsked = true; }
   started = true;
   renderScoreboard(board.body.teams);
   clock.render();
@@ -65,4 +68,4 @@ setInterval(() => { // the countdown ticks every second; joining opens and close
   clock.render();
   renderMeArea();
 }, 1000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(true); });

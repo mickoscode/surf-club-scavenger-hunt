@@ -2,6 +2,10 @@
 
 Website for the Sorrento SLS Youth Scavenger Hunt 2026/27: a static site (`web/`) in a private S3 bucket behind CloudFront, Terraform in `terraform/`, GitHub Actions for CI/CD. Same AWS account as `surf-club-signin` (account `722937635825`, `ap-southeast-2`). Currently a coming-soon page only. See `README.md` for layout and `docs/setup.md` for one-time setup.
 
+## Running a game
+
+`docs/runbook.md` (what the admin does, in order, and what to do when something goes wrong) and `docs/rehearsal-checklist.md` (the manual dress rehearsal on real phones) are the operating manual: keep them in step with the pages and the admin controls. `tests/browser/full-game.test.js` is the automated rehearsal of a whole game; when you change how a game runs, run it.
+
 ## Frontend
 
 - Pages are plain ES modules in `web/js/` (no framework, no bundler; `web/js/package.json` marks them as modules for Node and is not deployed). Logic that must agree with the server (phase, score format) lives in small pure modules (`time.js`, `format.js`) and `tests/unit/frontend.test.js` checks it against the server code. Team names and any other user text go on the page with `textContent`, never `innerHTML`.
