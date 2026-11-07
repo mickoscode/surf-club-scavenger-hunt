@@ -10,6 +10,11 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27: a static site (`web/`
 - Use site-absolute paths (`/css/site.css`), because `404.html` is served from any URL.
 - Static assets are synced with `Cache-Control: no-cache` and CloudFront is invalidated on each deploy, so there is no filename hashing.
 
+## Backend
+
+- `api/` is the backend, plain CommonJS with no runtime dependencies (the AWS SDK comes with the Lambda runtime). `api/lib/` holds pure game logic: nothing there touches AWS, the clock (always passed in) or the network, so it is unit tested directly in `tests/unit/`. The handlers and data layer are added in later PRs.
+- The server decides everything (timing, answer checking, scoring); official answers and submitted answers never go to the browser. Rules are in `docs/requirements.md`, and the code comments point to the relevant section.
+
 ## Infrastructure
 
 - HCP Terraform org `mickoscode`, workspace `surf-club-scavenger-hunt` (remote execution; state and AWS credentials live there). Secrets are workspace variables, never in tfvars or the repo (the repo may be public).
