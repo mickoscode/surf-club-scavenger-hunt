@@ -64,6 +64,13 @@ test('structural mistakes are reported', () => {
   }
 });
 
+test('map files are only checked when asked to (the backend has no images)', () => {
+  const data = valid();
+  data['zone 1']['zone-map'] = 'missing.png';
+  assert.ok(validateGameData(data, { rootDir }).length > 0);
+  assert.deepEqual(validateGameData(data, { rootDir, checkMaps: false }), []);
+});
+
 test('an empty file or a non-object is rejected', () => {
   assert.ok(validateGameData({}, { rootDir }).length > 0);
   assert.ok(validateGameData([], { rootDir }).length > 0);
