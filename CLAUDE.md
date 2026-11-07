@@ -4,6 +4,9 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27: a static site (`web/`
 
 ## Frontend
 
+- Pages are plain ES modules in `web/js/` (no framework, no bundler; `web/js/package.json` marks them as modules for Node and is not deployed). Logic that must agree with the server (phase, score format) lives in small pure modules (`time.js`, `format.js`) and `tests/unit/frontend.test.js` checks it against the server code. Team names and any other user text go on the page with `textContent`, never `innerHTML`.
+- Pages find elements by `data-testid` and expose state as `data-*` attributes (`data-phase`, `data-seconds`, `data-team-number`, `data-score`): tests read those, never wording. `/` is only a redirect page to `/view/`.
+- `?refresh=500` shortens the scoreboard refresh (the browser tests use it).
 - Bootstrap 5 (npm dependency, pinned) is copied into `dist/vendor/bootstrap/` by `scripts/build.sh`; it is not committed. `dist/` is the exact bucket contents and is gitignored.
 - Mobile first: base styles are for phones, `@media (min-width: ...)` only enlarges. Prefer Bootstrap utilities and grid before adding CSS to `web/css/site.css`.
 - The CSP (`terraform/cloudfront.tf`, `local.content_security_policy`) allows only same-origin scripts, styles, images (plus `data:`), fonts and connections. No inline `<script>`/`<style>`/`style=""`/`on*=` handlers and no CDN or external URLs. If a feature needs more (an API, an image host), widen the CSP deliberately in the same PR and update `tests/build.test.js` if its assumptions change.
@@ -28,13 +31,13 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27: a static site (`web/`
 
 ## CI/CD
 
-- `web-pr.yml` (`Validate site`, `API tests`, `Game data`) and `terraform-pr.yml` (validate, security scan, plan comment) run on PRs and are skipped, not absent, when their folders are unchanged, so they can be required checks.
+- `web-pr.yml` (`Validate site`, `API tests`, `Browser tests`, `Game data`) and `terraform-pr.yml` (validate, security scan, plan comment) run on PRs and are skipped, not absent, when their folders are unchanged, so they can be required checks.
 - Merging to `main` deploys: `deploy.yml` for the backend and the frontend (needs repo variables `CF_DISTRIBUTION_ID` and `SITE_URL`). The backend zip is `build/backend` (`scripts/package-backend.sh`: only `api/app`, `handlers`, `lib`, `store` plus a copy of `docs/game-questions.json`), and `tests/api/package.test.js` runs it in isolation, so anything the Lambda needs must live under `api/`. After the deploy, `scripts/smoke-test.js` checks the live site (read-only, retried); add a check there when you add something that could fail silently in production, `terraform-apply.yml` for `terraform/` (manual approval in the `terraform-production` environment). `terraform-drift.yml` checks weekly.
 - Actions are pinned to commit SHAs with a version comment; Dependabot bumps them weekly.
 
 ## Working conventions
 
 - Raise PRs with `gh` from a feature branch and commit only the files you changed (explicit `git add` paths). The owner reviews and merges every PR and handles GitHub settings, HCP/AWS settings and Terraform applies.
-- Tests only where a regression would really hurt. No trivia or "guard" tests, and nothing that depends on wording: tests use their own fixtures, never `docs/game-questions.json`, the instructions or page copy. Find elements by `data-testid`, not by text. Layout: `tests/unit/` (`npm test`), later `tests/api/` (store contract, DynamoDB Local in CI) and `tests/browser/` (Playwright under the real CSP).
+- Tests only where a regression would really hurt. No trivia or "guard" tests, and nothing that depends on wording: tests use their own fixtures, never `docs/game-questions.json`, the instructions or page copy. Find elements by `data-testid`, not by text. Layout: `tests/unit/` and `tests/api/` (both run by `npm test`; the store contract also runs against DynamoDB Local in CI) and `tests/browser/` (`npm run test:browser`: Playwright and Chromium against the real pages and API code, served with the CSP read from `terraform/cloudfront.tf`). Browser tests skip locally if Chromium is missing and fail in CI (`REQUIRE_BROWSER=1`). When you change a page, mutate it once to check the test really fails (e.g. swap `textContent` for `innerHTML`).
 - `scripts/validate-game-data.js` is the only thing that reads the real `docs/game-questions.json`, and it checks structure only (format in `docs/requirements.md`). It runs in CI as the `Game data` check.
 - Keep it simple: this site is deliberately much smaller than `surf-club-signin`.

@@ -6,14 +6,15 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 
 | Path | What it is |
 |---|---|
-| `web/` | The site itself: `index.html`, `404.html`, `css/site.css`, `js/main.js`, `favicon.svg` |
+| `web/` | The site itself: `index.html` (sends people to `/view/`), `view/` (the scoreboard), `404.html`, `css/site.css`, `js/` (ES modules, no framework), `favicon.svg` |
 | `api/app/`, `api/handlers/` | The API: routes and rules (`app/`) and the two Lambda entry points (`handlers/`). Reference: `docs/api.md`. |
 | `api/store/` | The data layer: one `store` interface with an in-memory version (local development and tests) and a DynamoDB version (the data model is described at the top of `dynamo.js`) |
 | `api/lib/` | Backend game logic as pure functions (timing, answer checking, scoring, team names, scoreboard order). No dependencies, no AWS: the Lambda handlers that use it come in a later PR. |
 | `scripts/build.sh` | Assembles `dist/` = `web/` + the Bootstrap CSS from `node_modules` (the exact contents of the bucket) |
-| `tests/unit/` | Unit tests (`npm test`): the built pages against the Content-Security-Policy, and the game-data validator. Later PRs add `tests/api/` and `tests/browser/`. |
+| `tests/unit/` | Unit tests (`npm test`): the built pages against the Content-Security-Policy, the page code that must agree with the server (`web/js`), the rewrite function, and the game-data validator |
 | `tests/api/` | The store contract tests (the same tests run against the in-memory store always, and against DynamoDB Local in CI) and the API behaviour tests (`app-*.test.js`: in-memory store, controllable clock) |
-| `scripts/package-backend.sh`, `scripts/smoke-test.js`, `scripts/dev-server.js` | Package the backend for Lambda; smoke-test a deployed site (`npm run smoke -- <url>`); serve the API locally with the in-memory store (`npm run dev:api`) |
+| `scripts/package-backend.sh`, `scripts/smoke-test.js`, `scripts/dev-server.js` | Package the backend for Lambda; smoke-test a deployed site (`npm run smoke -- <url>`); serve the site and API locally with the in-memory store (`npm run dev`) |
+| `tests/browser/` | The pages in real Chromium (Playwright) served with the real Content-Security-Policy (`npm run test:browser`) |
 | `scripts/validate-game-data.js` | Checks the structure of `docs/game-questions.json` (`npm run validate:data`) |
 | `docs/` | Game design (`requirements.md`), game content (`game-questions.json`, `game-zones/`, `player-instructions.md`) and one-time setup (`setup.md`) |
 | `terraform/` | S3 bucket, CloudFront (HTTPS, security headers, page rewrites, `/api/*` to the API, optional custom domain), DynamoDB table, two Lambda functions behind an API Gateway HTTP API, and the GitHub deploy role |
@@ -23,12 +24,14 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 ## Develop
 
 ```sh
-npm ci            # installs Bootstrap (the only dependency)
+npm ci            # installs Bootstrap and the test tools
 npm run build     # builds dist/
 npm test          # unit tests, including a build check of dist/
 npm run validate:data   # checks docs/game-questions.json
 DYNAMODB_ENDPOINT=http://localhost:8000 npm run test:api   # also test the DynamoDB store (start DynamoDB Local first: docker run --rm -p 8000:8000 amazon/dynamodb-local)
-python3 -m http.server -d dist 8000   # preview at http://localhost:8000
+npx playwright install chromium   # once, for the browser tests
+npm run test:browser              # the pages in real Chromium (skipped if Chromium is missing)
+npm run dev       # builds, then serves the site and API on http://localhost:8787 (in-memory data; restart to reset)
 ```
 
 Mobile first: write styles for phones in `web/css/site.css` and add `@media (min-width: ...)` blocks only to enlarge things on bigger screens. Use Bootstrap's grid and utility classes in the HTML first. The CSP allows only files served from the site itself: no inline `<script>`, `<style>` or `style=""`, and no CDNs (`npm test` fails if you break this).
@@ -47,6 +50,7 @@ Mobile first: write styles for phones in `web/css/site.css` and add `@media (min
 | Workflow | Trigger | What it does |
 |---|---|---|
 | `web-pr.yml` | PR touching the frontend or tests | `npm test` (build + CSP checks + unit tests). Required check: `Validate site` |
+| `web-pr.yml` | PR touching the frontend, backend or tests | The pages in real Chromium. Required check: `Browser tests` |
 | `web-pr.yml` | PR touching `api/` or `tests/api/` | The store contract tests against DynamoDB Local. Required check: `API tests` |
 | `web-pr.yml` | PR touching `docs/game-questions.json` or the maps | Structure check of the game file. Required check: `Game data` |
 | `terraform-pr.yml` | PR touching `terraform/` | fmt, validate, tflint, Trivy security scan, speculative plan posted as a PR comment |

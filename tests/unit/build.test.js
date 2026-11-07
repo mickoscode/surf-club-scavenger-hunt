@@ -14,11 +14,10 @@ test.before(() => {
   assert.equal(r.status, 0, r.stderr || r.stdout);
 });
 
-const pages = () => fs.readdirSync(dist).filter((f) => f.endsWith('.html'));
+const pages = () => fs.readdirSync(dist, { recursive: true }).filter((f) => f.endsWith('.html')); // including pages in folders
 
-test('the site has a home page and a 404 page', () => {
-  assert.ok(pages().includes('index.html'));
-  assert.ok(pages().includes('404.html'));
+test('the site has a home page, a scoreboard page and a 404 page', () => {
+  for (const page of ['index.html', 'view/index.html', '404.html']) assert.ok(pages().includes(page), page);
 });
 
 test('every local stylesheet, script and icon a page references is in dist', () => {
@@ -31,6 +30,19 @@ test('every local stylesheet, script and icon a page references is in dist', () 
       assert.ok(fs.existsSync(path.join(dist, file)), `${page}: ${ref} is missing from dist`);
     }
   }
+});
+
+test('every module a script imports is in dist (a missing one is a blank page in the browser)', () => {
+  const scripts = fs.readdirSync(path.join(dist, 'js'), { recursive: true }).filter((f) => f.endsWith('.js'));
+  assert.ok(scripts.length > 0);
+  for (const script of scripts) {
+    const dir = path.dirname(path.join(dist, 'js', script));
+    const code = fs.readFileSync(path.join(dist, 'js', script), 'utf8');
+    for (const [, spec] of code.matchAll(/\bfrom\s+'(\.{1,2}\/[^']+)'/g)) {
+      assert.ok(fs.existsSync(path.resolve(dir, spec)), `${script} imports ${spec}, which is not in dist`);
+    }
+  }
+  assert.equal(fs.existsSync(path.join(dist, 'js', 'package.json')), false); // only for Node; not deployed
 });
 
 test('pages use no inline script, style or event handler (blocked by the CSP)', () => {
