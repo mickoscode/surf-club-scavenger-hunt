@@ -1,6 +1,6 @@
 // Helpers for the browser tests: the real site (built dist/) and the real API code on a local address with the in-memory
 // store, a controllable server clock, and a real Chromium. Fixture game only (tests/api/helpers.js), never the real one.
-const http = require('node:http');
+const test = require('node:test');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { chromium } = require('playwright');
@@ -41,6 +41,7 @@ function apiClient(url) {
       const res = await call('PUT', '/api/admin/config', { ...CONFIG, ...over });
       if (res.status !== 200) throw new Error(`configure failed: ${JSON.stringify(res.body)}`);
     },
+    removeTeam: (number) => call('DELETE', `/api/admin/teams/${number}`, undefined),
     // Joins as a new team and returns what that team can then do.
     join: async (name) => {
       const res = await call('POST', '/api/join', { name });
@@ -48,6 +49,7 @@ function apiClient(url) {
       const { cookie } = res;
       return {
         number: res.body.team.number,
+        cookie,
         answer: (zone, question, answer) => call('POST', '/api/answer', { zone, question, answer }, cookie),
         photo: (zone) => call('POST', '/api/photo', { zone }, cookie),
       };
@@ -62,6 +64,32 @@ async function startSite({ now = START + 60_000, intercept } = {}) {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}`;
   return { url, clock, api: apiClient(url), close: () => new Promise((resolve) => server.close(resolve)) };
+}
+
+// Makes this browser belong to a team that joined through the API, as if it had joined on the page.
+async function signIn(context, siteUrl, team) {
+  const [name, value] = team.cookie.split('=');
+  await context.addCookies([{ name, value, url: siteUrl, httpOnly: true, sameSite: 'Strict' }]);
+}
+
+// One real Chromium per test file; withPage(name, options, body) runs a test with a fresh site and page, and cleans up.
+function browserSuite() {
+  let browser;
+  test.before(async () => { browser = await launchBrowser(); });
+  test.after(async () => { await browser?.close(); });
+
+  const withPage = (name, options, body) => test(name, async (t) => {
+    if (!browser) return t.skip('Chromium is not installed (CI installs it and requires it)');
+    const site = await startSite(options.site);
+    const view = await openPage(browser, options.page);
+    try {
+      await body({ site, browser, ...view });
+    } finally {
+      await view.context.close();
+      await site.close();
+    }
+  });
+  return { withPage };
 }
 
 // Polls until fn() is truthy (the page updates by itself, so tests wait for the result rather than for a fixed time).
@@ -80,6 +108,10 @@ async function until(fn, { timeoutMs = 10000, intervalMs = 100 } = {}) {
 async function openPage(browser, { viewport } = {}) {
   const context = await browser.newContext({ viewport: viewport ?? { width: 390, height: 844 } });
   const page = await context.newPage();
+  // The API says "cache for 3 seconds" (meant for CloudFront) and Chromium obeys that too. The tests change the
+  // server's data and clock between page loads, so they need to see every change at once. Playwright turns the browser
+  // cache off while a route is registered, so register a do-nothing one for the API.
+  await context.route('**/api/**', (route) => route.continue());
   const problems = [];
   await page.addInitScript(() => {
     window.__csp = [];
@@ -93,4 +125,4 @@ async function openPage(browser, { viewport } = {}) {
   return { context, page, problems, cspViolations };
 }
 
-module.exports = { launchBrowser, startSite, openPage, until, GAME, CONFIG, START, END };
+module.exports = { launchBrowser, startSite, openPage, browserSuite, signIn, until, GAME, CONFIG, START, END };

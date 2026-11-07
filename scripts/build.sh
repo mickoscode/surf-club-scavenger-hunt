@@ -15,4 +15,7 @@ cp node_modules/bootstrap/LICENSE dist/vendor/bootstrap/LICENSE
 # Drop the source-map comment: the .map file is not deployed, so browsers would log a 404 for it.
 sed '/sourceMappingURL/d' "$bootstrap_css" > dist/vendor/bootstrap/bootstrap.min.css
 
+# The instructions page content comes from docs/player-instructions.md.
+node scripts/render-instructions.js
+
 echo "Built dist/ ($(find dist -type f | wc -l) files)"

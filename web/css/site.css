@@ -20,3 +20,12 @@ body {
 .team-name {
   overflow-wrap: anywhere;
 }
+
+/* The instructions block on the play page: tapping the heading shows or hides the text. */
+.instructions ul {
+  padding-left: 1.25rem;
+}
+
+summary {
+  cursor: pointer;
+}

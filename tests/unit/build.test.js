@@ -16,8 +16,15 @@ test.before(() => {
 
 const pages = () => fs.readdirSync(dist, { recursive: true }).filter((f) => f.endsWith('.html')); // including pages in folders
 
-test('the site has a home page, a scoreboard page and a 404 page', () => {
-  for (const page of ['index.html', 'view/index.html', '404.html']) assert.ok(pages().includes(page), page);
+test('the site has a home page, a scoreboard page, a play page and a 404 page', () => {
+  for (const page of ['index.html', 'view/index.html', 'play/index.html', '404.html']) assert.ok(pages().includes(page), page);
+});
+
+test('the play page carries the instructions, built in from the Markdown file (and the placeholder is gone)', () => {
+  const html = fs.readFileSync(path.join(dist, 'play', 'index.html'), 'utf8');
+  assert.ok(!html.includes('<!--instructions-->'), 'the placeholder is still there');
+  const inside = /<div class="instructions[^"]*">([\s\S]*?)<\/div>/.exec(html);
+  assert.ok(inside && inside[1].includes('<li>'), 'the instructions are empty');
 });
 
 test('every local stylesheet, script and icon a page references is in dist', () => {

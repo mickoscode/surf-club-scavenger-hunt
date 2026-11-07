@@ -1,49 +1,33 @@
-// The /view/ page: the live scoreboard and the game countdown. Team names are only ever put on the page as text.
+// The /view/ page: join (or play), the live scoreboard and the game countdown.
+// Team names are only ever put on the page as text.
 import { getJson } from './api.js';
+import { $, refreshInterval } from './dom.js';
 import { formatScore } from './format.js';
-import { phaseOf, countdownTarget, secondsUntil, formatCountdown } from './time.js';
+import { createClock } from './clock.js';
+import { createMeArea } from './me-area.js';
 
-const $ = (testId) => document.querySelector(`[data-testid="${testId}"]`);
-const DEFAULT_REFRESH_MS = 5000;
+const clock = createClock();
+let started = false; // set once the first scoreboard has arrived: before that, nothing is known about the game
+let me = null; // { number, name, score } once this device has joined
 
-// ?refresh=500 speeds up the refresh (used by the browser tests); anything outside 0.5 to 60 seconds is ignored.
-function refreshInterval() {
-  const asked = Number(new URLSearchParams(location.search).get('refresh'));
-  return asked >= 500 && asked <= 60000 ? asked : DEFAULT_REFRESH_MS;
-}
+const meArea = createMeArea({ container: $('me-area'), onJoined: refresh });
+const canJoin = () => ['pre', 'active'].includes(clock.phase());
 
-const STATUS_TEXT = { unconfigured: 'Coming soon', pre: 'Game starts in', active: 'Time left', post: 'Game over' };
-
-let game = null;
-let clockSkewMs = 0; // server time minus this device's time, so the countdown does not trust the phone's clock
-
-function renderGame() {
-  const phase = phaseOf(game, Date.now() + clockSkewMs);
-  const status = $('status');
-  status.dataset.phase = phase;
-  status.textContent = STATUS_TEXT[phase];
-  if (game?.name) $('game-name').textContent = game.name;
-
-  const countdown = $('countdown');
-  countdown.dataset.phase = phase;
-  const target = game ? countdownTarget(game, phase) : null;
-  if (target === null) {
-    countdown.hidden = true;
-    delete countdown.dataset.seconds;
-  } else {
-    const seconds = secondsUntil(target, Date.now() + clockSkewMs);
-    countdown.hidden = false;
-    countdown.dataset.seconds = String(seconds);
-    countdown.textContent = formatCountdown(seconds);
-  }
+function renderMeArea() {
+  if (started) meArea.render({ team: me, canJoin: canJoin() });
 }
 
 function renderScoreboard(teams) {
   const rows = teams.map((team) => {
+    const mine = me?.number === team.number;
     const row = document.createElement('tr');
     row.dataset.testid = 'scoreboard-row';
     row.dataset.teamNumber = String(team.number);
     row.dataset.score = String(team.score);
+    if (mine) {
+      row.dataset.mine = 'true';
+      row.className = 'table-primary';
+    }
     const cells = [
       [String(team.number), 'text-muted'],
       [team.name, 'team-name'],
@@ -63,16 +47,22 @@ function renderScoreboard(teams) {
 }
 
 async function refresh() {
-  const res = await getJson('/api/scoreboard');
-  $('load-error').hidden = res.ok;
-  if (!res.ok) return; // keep showing what we have; the next refresh tries again
-  game = res.body.game;
-  clockSkewMs = game.serverNowMs - Date.now();
-  renderScoreboard(res.body.teams);
-  renderGame();
+  const [board, mine] = await Promise.all([getJson('/api/scoreboard'), getJson('/api/me')]);
+  $('load-error').hidden = board.ok;
+  if (!board.ok) return; // keep showing what we have; the next refresh tries again
+  clock.update(board.body.game);
+  if (mine.ok) me = mine.body.team;
+  started = true;
+  renderScoreboard(board.body.teams);
+  clock.render();
+  renderMeArea();
 }
 
 refresh();
 setInterval(refresh, refreshInterval());
-setInterval(() => { if (game) renderGame(); }, 1000); // the countdown ticks every second
+setInterval(() => { // the countdown ticks every second; joining opens and closes as the phase changes
+  if (!started) return;
+  clock.render();
+  renderMeArea();
+}, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });

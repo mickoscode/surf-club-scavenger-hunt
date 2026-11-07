@@ -3,7 +3,8 @@ name: Deploy site
 # Deploys the backend code and the site on every merge to main that touches either, and on manual dispatch.
 # Run it from main: the deploy role (terraform/iam.tf) only trusts the main branch.
 # Infrastructure comes first: the bucket, distribution, functions and role are created by terraform-apply.yml.
-# A change to the questions (docs/game-questions.json) deploys here too: the backend carries a copy of the file.
+# A change to the questions (docs/game-questions.json) or the instructions (docs/player-instructions.md) deploys here
+# too: the backend carries a copy of the questions, and the instructions are built into the play page.
 on:
   push:
     branches:
@@ -12,6 +13,8 @@ on:
       - "web/**"
       - "api/**"
       - "docs/game-questions.json"
+      - "docs/player-instructions.md"
+      - "scripts/render-instructions.js"
       - "scripts/build.sh"
       - "scripts/package-backend.sh"
       - "scripts/smoke-test.js"
