@@ -31,6 +31,7 @@ test('the packaged backend is self-contained: both handlers load and the game fi
   const run = spawnSync(process.execPath, ['-e', script], {
     cwd: lambdaRoot, encoding: 'utf8', env: { ...process.env, NODE_PATH: path.join(root, 'node_modules') },
   });
+  fs.rmSync(lambdaRoot, { recursive: true, force: true });
   assert.equal(run.status, 0, run.stderr);
 });
 

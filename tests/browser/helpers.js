@@ -1,0 +1,96 @@
+// Helpers for the browser tests: the real site (built dist/) and the real API code on a local address with the in-memory
+// store, a controllable server clock, and a real Chromium. Fixture game only (tests/api/helpers.js), never the real one.
+const http = require('node:http');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
+const { chromium } = require('playwright');
+const { createSiteServer } = require('../../scripts/dev-server.js');
+const { createMemoryStore } = require('../../api/store/memory.js');
+const { GAME, CONFIG, START, END } = require('../api/helpers.js');
+
+const root = path.join(__dirname, '..', '..');
+let built = false;
+function ensureBuilt() {
+  if (built) return;
+  const r = spawnSync('bash', ['scripts/build.sh'], { cwd: root, encoding: 'utf8' });
+  if (r.status !== 0) throw new Error(`build failed: ${r.stderr || r.stdout}`);
+  built = true;
+}
+
+// Chromium may not be installed on a laptop: tests then skip. CI sets REQUIRE_BROWSER=1, so there a missing browser fails.
+async function launchBrowser() {
+  try {
+    return await chromium.launch();
+  } catch (e) {
+    if (process.env.REQUIRE_BROWSER) throw e;
+    return null;
+  }
+}
+
+// What a "player" or the admin does to the API directly (to set the scene), with their own cookie.
+function apiClient(url) {
+  const call = async (method, p, body, cookie) => {
+    const res = await fetch(url + p, {
+      method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const set = res.headers.getSetCookie().find((c) => c.startsWith('hunt='));
+    return { status: res.status, body: await res.json(), cookie: set?.split(';')[0] };
+  };
+  return {
+    configure: async (over = {}) => {
+      const res = await call('PUT', '/api/admin/config', { ...CONFIG, ...over });
+      if (res.status !== 200) throw new Error(`configure failed: ${JSON.stringify(res.body)}`);
+    },
+    // Joins as a new team and returns what that team can then do.
+    join: async (name) => {
+      const res = await call('POST', '/api/join', { name });
+      if (res.status !== 200) throw new Error(`join failed: ${JSON.stringify(res.body)}`);
+      const { cookie } = res;
+      return {
+        number: res.body.team.number,
+        answer: (zone, question, answer) => call('POST', '/api/answer', { zone, question, answer }, cookie),
+        photo: (zone) => call('POST', '/api/photo', { zone }, cookie),
+      };
+    },
+  };
+}
+
+async function startSite({ now = START + 60_000, intercept } = {}) {
+  ensureBuilt();
+  const clock = { now };
+  const server = createSiteServer({ store: createMemoryStore(), now: () => clock.now, loadGame: () => structuredClone(GAME), intercept });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const url = `http://127.0.0.1:${server.address().port}`;
+  return { url, clock, api: apiClient(url), close: () => new Promise((resolve) => server.close(resolve)) };
+}
+
+// Polls until fn() is truthy (the page updates by itself, so tests wait for the result rather than for a fixed time).
+async function until(fn, { timeoutMs = 10000, intervalMs = 100 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const value = await fn();
+    if (value) return value;
+    if (Date.now() > deadline) throw new Error('timed out waiting for the page');
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+}
+
+// A page that records everything that goes wrong: console errors, uncaught errors, failed or error responses from the
+// site itself, and Content-Security-Policy violations.
+async function openPage(browser, { viewport } = {}) {
+  const context = await browser.newContext({ viewport: viewport ?? { width: 390, height: 844 } });
+  const page = await context.newPage();
+  const problems = [];
+  await page.addInitScript(() => {
+    window.__csp = [];
+    document.addEventListener('securitypolicyviolation', (e) => window.__csp.push(`${e.violatedDirective} ${e.blockedURI}`));
+  });
+  page.on('console', (m) => { if (m.type() === 'error') problems.push(`console: ${m.text()}`); });
+  page.on('pageerror', (e) => problems.push(`page error: ${e}`));
+  page.on('requestfailed', (r) => problems.push(`request failed: ${r.url()}`));
+  page.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('/nope')) problems.push(`${r.status()} ${r.url()}`); });
+  const cspViolations = () => page.evaluate(() => window.__csp);
+  return { context, page, problems, cspViolations };
+}
+
+module.exports = { launchBrowser, startSite, openPage, until, GAME, CONFIG, START, END };

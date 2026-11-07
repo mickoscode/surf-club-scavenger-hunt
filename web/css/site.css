@@ -10,3 +10,13 @@
 body {
   background: linear-gradient(180deg, #e8f4fb 0%, #ffffff 100%);
 }
+
+/* Pages are one narrow column, centred on bigger screens. */
+.narrow {
+  max-width: 36rem;
+}
+
+/* A long team name (30 characters, no spaces) must wrap inside the table, never widen the page. */
+.team-name {
+  overflow-wrap: anywhere;
+}

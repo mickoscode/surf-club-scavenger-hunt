@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scoreboard - Sorrento SLS Youth Scavenger Hunt</title>
+  <meta name="description" content="Live scoreboard for the Sorrento SLS Youth Scavenger Hunt.">
+  <meta name="theme-color" content="#0b5394">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/site.css">
+  <script type="module" src="/js/view.js"></script>
+</head>
+<body class="d-flex flex-column min-vh-100">
+  <header class="container text-center pt-4 pb-2">
+    <h1 class="h3 fw-bold" data-testid="game-name">Sorrento Youth Scavenger Hunt</h1>
+    <p class="lead mb-0" data-testid="status" data-phase="loading">&nbsp;</p>
+    <p class="display-6 fw-bold mb-0" data-testid="countdown" data-phase="loading" hidden></p>
+  </header>
+
+  <main class="container flex-grow-1 py-3">
+    <div class="mx-auto narrow">
+      <!-- Join button, team name and play link go here (added with the play page) -->
+      <div data-testid="me-area"></div>
+
+      <p class="alert alert-warning text-center" data-testid="load-error" hidden>Could not refresh the scoreboard. Trying again...</p>
+
+      <table class="table table-sm align-middle" data-testid="scoreboard" hidden>
+        <thead>
+          <tr><th scope="col" class="text-muted">#</th><th scope="col">Team</th><th scope="col" class="text-end">Score</th></tr>
+        </thead>
+        <tbody data-testid="scoreboard-body"></tbody>
+      </table>
+      <p class="text-center text-muted" data-testid="no-teams" hidden>No teams yet.</p>
+    </div>
+  </main>
+</body>
+</html>

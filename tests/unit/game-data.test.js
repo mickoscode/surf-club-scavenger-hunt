@@ -9,6 +9,7 @@ const { validateGameData } = require('../../scripts/validate-game-data.js');
 
 const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'game-data-'));
 fs.writeFileSync(path.join(rootDir, 'map.png'), '');
+test.after(() => fs.rmSync(rootDir, { recursive: true, force: true }));
 
 const question = (n, over = {}) => ({ [`Q${n}`]: 'a question', type: 'string', answer: 'yes', score: 10, ...over });
 const zone = (name, over = {}) => ({

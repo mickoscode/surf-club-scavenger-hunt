@@ -10,6 +10,7 @@ bootstrap_css=node_modules/bootstrap/dist/css/bootstrap.min.css
 rm -rf dist
 mkdir -p dist/vendor/bootstrap
 cp -R web/. dist/
+rm -f dist/js/package.json # only marks web/js as ES modules for the tests; the browser does not need it
 cp node_modules/bootstrap/LICENSE dist/vendor/bootstrap/LICENSE
 # Drop the source-map comment: the .map file is not deployed, so browsers would log a 404 for it.
 sed '/sourceMappingURL/d' "$bootstrap_css" > dist/vendor/bootstrap/bootstrap.min.css
