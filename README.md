@@ -6,13 +6,14 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 
 | Path | What it is |
 |---|---|
-| `web/` | The site itself: `index.html` (sends people to `/view/`), `view/` (the scoreboard), `404.html`, `css/site.css`, `js/` (ES modules, no framework), `favicon.svg` |
+| `web/` | The site itself: `index.html` (sends people to `/view/`), `view/` (scoreboard, join, Play link), `play/` (team, countdown, instructions, zones), `404.html`, `css/site.css`, `js/` (ES modules, no framework), `favicon.svg` |
 | `api/app/`, `api/handlers/` | The API: routes and rules (`app/`) and the two Lambda entry points (`handlers/`). Reference: `docs/api.md`. |
 | `api/store/` | The data layer: one `store` interface with an in-memory version (local development and tests) and a DynamoDB version (the data model is described at the top of `dynamo.js`) |
 | `api/lib/` | Backend game logic as pure functions (timing, answer checking, scoring, team names, scoreboard order). No dependencies, no AWS: the Lambda handlers that use it come in a later PR. |
 | `scripts/build.sh` | Assembles `dist/` = `web/` + the Bootstrap CSS from `node_modules` (the exact contents of the bucket) |
 | `tests/unit/` | Unit tests (`npm test`): the built pages against the Content-Security-Policy, the page code that must agree with the server (`web/js`), the rewrite function, and the game-data validator |
 | `tests/api/` | The store contract tests (the same tests run against the in-memory store always, and against DynamoDB Local in CI) and the API behaviour tests (`app-*.test.js`: in-memory store, controllable clock) |
+| `scripts/render-instructions.js` | Build step: renders `docs/player-instructions.md` into the play page (raw HTML in it is shown as text) |
 | `scripts/package-backend.sh`, `scripts/smoke-test.js`, `scripts/dev-server.js` | Package the backend for Lambda; smoke-test a deployed site (`npm run smoke -- <url>`); serve the site and API locally with the in-memory store (`npm run dev`) |
 | `tests/browser/` | The pages in real Chromium (Playwright) served with the real Content-Security-Policy (`npm run test:browser`) |
 | `scripts/validate-game-data.js` | Checks the structure of `docs/game-questions.json` (`npm run validate:data`) |

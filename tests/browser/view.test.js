@@ -1,25 +1,9 @@
 // The /view/ page in a real browser (Chromium), served with the real Content-Security-Policy. Elements are found by
 // data-testid and state is read from data-* attributes (phase, seconds, team number, score), never from wording.
-const test = require('node:test');
 const assert = require('node:assert/strict');
-const { launchBrowser, startSite, openPage, until, START, END } = require('./helpers.js');
+const { browserSuite, until, START, END } = require('./helpers.js');
 
-let browser;
-test.before(async () => { browser = await launchBrowser(); });
-test.after(async () => { await browser?.close(); });
-
-// Runs a test body with a fresh site and page, and cleans both up.
-const withPage = (name, options, body) => test(name, async (t) => {
-  if (!browser) return t.skip('Chromium is not installed (CI installs it and requires it)');
-  const site = await startSite(options.site);
-  const view = await openPage(browser, options.page);
-  try {
-    await body({ site, ...view });
-  } finally {
-    await view.context.close();
-    await site.close();
-  }
-});
+const { withPage } = browserSuite();
 
 const rowsOf = (page) => page.locator('[data-testid="scoreboard-row"]');
 const numbers = (page) => rowsOf(page).evaluateAll((els) => els.map((e) => e.dataset.teamNumber));

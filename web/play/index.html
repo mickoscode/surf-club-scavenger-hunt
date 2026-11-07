@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Play - Sorrento SLS Youth Scavenger Hunt</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0b5394">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/site.css">
+  <script type="module" src="/js/play.js"></script>
+</head>
+<body class="d-flex flex-column min-vh-100">
+  <header class="container text-center pt-4 pb-2">
+    <h1 class="h6 text-muted mb-1" data-testid="game-name">Sorrento Youth Scavenger Hunt</h1>
+    <p class="display-4 fw-bold mb-0" data-testid="team-number" data-team-number="">&nbsp;</p>
+    <p class="h5 mb-2 team-name" data-testid="team-name"></p>
+    <p class="mb-3"><a href="/view/" data-testid="scoreboard-link">View scoreboard</a></p>
+    <p class="lead mb-0" data-testid="status" data-phase="loading">&nbsp;</p>
+    <p class="display-6 fw-bold mb-0" data-testid="countdown" data-phase="loading" hidden></p>
+  </header>
+
+  <main class="container flex-grow-1 py-3">
+    <div class="mx-auto narrow">
+      <p class="alert alert-warning text-center" data-testid="load-error" hidden>Could not refresh. Trying again...</p>
+
+      <details class="border rounded bg-white p-3 mb-3" data-testid="instructions">
+        <summary class="fw-semibold" data-testid="instructions-heading">Instructions (tap to show/hide)</summary>
+        <div class="instructions mt-2"><!--instructions--></div>
+      </details>
+
+      <p class="text-center text-muted" data-testid="play-message" hidden></p>
+
+      <!-- The zone tiles and question forms go here (added in the next PR) -->
+      <div data-testid="zones" hidden></div>
+    </div>
+  </main>
+</body>
+</html>
