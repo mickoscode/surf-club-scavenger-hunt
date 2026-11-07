@@ -42,7 +42,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
-          if grep -qE '^(web/|api/|tests/|scripts/|docs/player-instructions\.md$|package(-lock)?\.json$|terraform/(cloudfront\.tf|rewrite\.js)$|\.github/workflows/(web-pr|deploy)\.yml$)' <<< "$changed"; then
+          if grep -qE '^(web/|api/|tests/|scripts/|docs/(player-instructions\.md$|game-zones/)|package(-lock)?\.json$|terraform/(cloudfront\.tf|rewrite\.js)$|\.github/workflows/(web-pr|deploy)\.yml$)' <<< "$changed"; then
             echo "web=true" >> "$GITHUB_OUTPUT"
           else
             echo "web=false" >> "$GITHUB_OUTPUT"

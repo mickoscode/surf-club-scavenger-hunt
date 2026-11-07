@@ -3,8 +3,10 @@
 import { getJson } from './api.js';
 import { $, refreshInterval } from './dom.js';
 import { createClock } from './clock.js';
+import { createZones } from './zones.js';
 
 const clock = createClock();
+const zones = createZones({ container: $('zones'), onSubmitted: refresh });
 let started = false;
 let shownTeam = null;
 
@@ -43,7 +45,9 @@ async function refresh() {
     clock.update(game.body.game);
     started = true;
     renderPhase();
+    if (game.body.zones.length > 0) zones.render(game.body.zones);
   }
+  if (me.ok && me.body.done) zones.applyDone(me.body.done);
 }
 
 refresh();

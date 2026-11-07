@@ -42,6 +42,8 @@ function apiClient(url) {
       if (res.status !== 200) throw new Error(`configure failed: ${JSON.stringify(res.body)}`);
     },
     removeTeam: (number) => call('DELETE', `/api/admin/teams/${number}`, undefined),
+    scoreOf: async (number) => (await call('GET', '/api/scoreboard')).body.teams.find((t) => t.number === number)?.score,
+    photosToScore: async () => (await call('GET', '/api/admin/photos')).body.photos,
     // Joins as a new team and returns what that team can then do.
     join: async (name) => {
       const res = await call('POST', '/api/join', { name });

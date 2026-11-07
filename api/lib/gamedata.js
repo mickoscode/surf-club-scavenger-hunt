@@ -76,4 +76,8 @@ function validateGameData(data, { rootDir = process.cwd(), checkMaps = true } = 
   return problems;
 }
 
-module.exports = { validateGameData };
+// "zone 1" -> "zone-1": names a zone's map image files (dist/maps/zone-1.webp, zone-1-thumb.webp). The API sends it
+// as mapId and the site build (scripts/build-maps.js) writes the files with it, so both must use this one function.
+const mapId = (zoneKey) => zoneKey.trim().replace(/\s+/g, '-');
+
+module.exports = { validateGameData, mapId };

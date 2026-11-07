@@ -29,3 +29,41 @@ body {
 summary {
   cursor: pointer;
 }
+
+/* Zone tiles: square map thumbnails. */
+.zone-tile img {
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
+/* The map on a zone's panel: a wide strip; tapping it opens the full-size map. */
+.map-button img {
+  width: 100%;
+  max-height: 14rem;
+  object-fit: cover;
+}
+
+/* The full-size map, over everything; the page behind stays where it was. It scrolls if the map is taller than the screen. */
+.map-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  overflow: auto;
+  padding: 3.5rem 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.88);
+}
+
+.map-overlay img {
+  display: block;
+  width: 100%;
+  max-width: 60rem;
+  height: auto;
+  margin: 0 auto;
+  background: #fff;
+}
+
+.map-overlay .close {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+}
