@@ -128,3 +128,16 @@ withPage('on a phone a very long team name wraps instead of widening the page', 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   assert.ok(overflow <= 0, `the page is ${overflow}px wider than the screen`);
 });
+
+withPage('a visitor with no team does not ask who they are on every refresh (the API cannot share that between people)', {}, async ({ site, page }) => {
+  await site.api.configure();
+  const requests = { me: 0, scoreboard: 0 };
+  page.on('request', (r) => {
+    if (r.url().includes('/api/me')) requests.me += 1;
+    if (r.url().includes('/api/scoreboard')) requests.scoreboard += 1;
+  });
+  await page.goto(`${site.url}/view/?refresh=500`);
+  await new Promise((resolve) => setTimeout(resolve, 3000)); // about six refreshes
+  assert.ok(requests.scoreboard >= 4, `the scoreboard was only refreshed ${requests.scoreboard} times`);
+  assert.equal(requests.me, 1);
+});

@@ -230,3 +230,18 @@ page: <cloudfront_url>/view/
 - Restoring an old game: uploading the downloaded json file back into the website.
 - Recovering a team's session after a cleared browser or a different phone (e.g. rejoin with team number and name).
 - Admin passcode for the admin pages.
+
+## As built
+
+Where the finished site is more specific than the text above (details settled while building; the code and `docs/api.md` are the reference):
+
+- **Scoreboard**: three columns (team number, team name, score); the player's own row is highlighted; scores show as whole numbers or with one decimal place only when needed.
+- **Countdown**: "N min" until the last 5 minutes, then "m:ss"; before the start it counts to the start. It uses the server's clock.
+- **Statuses**: the game is `unconfigured`, `pre`, `active` or `post`; the end is inclusive and exact (no grace period).
+- **Questions appear only while the game is active** (the API does not send them earlier or later).
+- **Admin pages**: team removal asks for confirmation; deleting player data needs the download link used and the word "delete" typed, and is refused while the game is active. The scoring page identifies a team by hidden form fields (team number and zone); Apply is enabled only when scoring is open and the choice differs from what is recorded.
+- **API status codes** avoid 403 and 404 for the API's own errors (CloudFront replaces those with the site's 404 page): wrong state is 409, unknown references 400.
+- **Zone and question counts** are whatever `game-questions.json` holds when the admin saves the configuration (the zones are copied at that moment).
+- **Maps** are converted at build time to small thumbnails and full-size WebP files.
+- **Not built (parked)**: restoring an old game from its download, recovering a lost session, an admin passcode. See also "Accepted risk" above.
+

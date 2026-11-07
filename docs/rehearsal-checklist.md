@@ -1,0 +1,50 @@
+# Dress rehearsal checklist
+
+Do this a week or two before the real game, on the real site, with **at least three real phones** (a mix of iPhone and Android if you can) and one laptop for the admin pages. The automated test `tests/browser/full-game.test.js` already runs this whole journey in a desktop browser on every change to the site; what only you can check is **real phones, real mobile data and real WhatsApp**.
+
+Allow about 30 minutes. Tick as you go; write down anything odd.
+
+## Before you start
+- [ ] The real questions, photo challenges, maps and instructions are merged and **Deploy site** is green (`runbook.md`, section 1)
+- [ ] WhatsApp group exists with the helpers who will act as teams
+- [ ] On the laptop: `/game-config/` and `/game-score/` open (keep these addresses private)
+
+## Set up a short test game
+- [ ] `/game-config/`: day = today, start a few minutes from now, end 30 minutes later, correct time zone. **Save**
+- [ ] The page reports the right number of zones; status "before the game"
+- [ ] On a phone: open the site address (scan the QR code if you have one). It shows the scoreboard, a countdown to the start and a **Join** button
+
+## Joining (before the start)
+- [ ] Each phone joins with a different team name; the team name and **Play** link replace the Join button
+- [ ] A name already taken is refused with a clear message; an empty name too
+- [ ] Close the browser completely and reopen the site: still joined
+- [ ] The scoreboard on every phone shows all teams, updating within about 5 seconds
+- [ ] `/game-config/` lists the teams; remove one, confirm it disappears everywhere, and that the phone goes back to being able to join
+
+## Playing (after the start)
+- [ ] When the countdown reaches zero the zone tiles appear on the play page within about 10 seconds (no reload needed)
+- [ ] Every zone's map thumbnail loads on mobile data; tapping a map shows it full size and **Close** returns to the questions
+- [ ] The instructions are hidden until the heading is tapped
+- [ ] Answer a text question (try a small typo and a capital letter), a whole-number question (the number keypad appears; letters are not accepted) and a decimal question
+- [ ] After submitting, the form shows **Done** and nothing else; submitting a second time is not possible. Reload the page: still Done
+- [ ] The team's score on the scoreboard goes up for a correct answer and does not for a wrong one (but both show Done)
+- [ ] Press **Photo sent to WhatsApp** and really send a photo with the team number to the WhatsApp group
+- [ ] The countdown matches the end time you set (the game ends exactly then)
+
+## Scoring (admin)
+- [ ] `/game-score/` lists the photos in the order they were pressed; match them with WhatsApp
+- [ ] Apply Full to one, Half to another; check the scoreboard (Half shows a decimal if the points are odd)
+- [ ] Change one decision and apply again: the score is **replaced**, not added to
+- [ ] During the game the configuration page is locked; after the end it unlocks
+
+## After the end
+- [ ] Teams' pages say "Game over" and refuse answers; the final scoreboard stays
+- [ ] You can still score photos
+- [ ] `/game-config/`: **Download the player data** (open the file: teams, answers and scores are in it), type `delete`, delete
+- [ ] The scoreboard is empty; the next team to join is **Team 1**
+
+## Then the real game
+- [ ] Set up the real game (`runbook.md`, section 3). Remember: if you changed questions after the rehearsal's Save, **Save again**
+- [ ] Check once more that the status reads "before the game" and no teams are listed
+
+Anything that went wrong or looked confusing on a phone is worth fixing before the real day: note it and raise it.
