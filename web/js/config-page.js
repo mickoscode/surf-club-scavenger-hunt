@@ -42,7 +42,32 @@ function renderStatus(info, teamCount) {
   const active = status === 'active';
   $('active-notice').hidden = !active;
   for (const input of [...Object.values(fields), $('config-save')]) input.disabled = active;
+  results = { published: info.results.published, unscored: info.unscoredPhotos };
+  renderPublish();
   renderDeleteSection();
+}
+
+// The final-results form: only possible once the game is over, and only after ticking that all scores have been applied.
+let results = { published: false, unscored: 0 };
+function renderPublish() {
+  const over = status === 'post';
+  const { published, unscored } = results;
+  const state = $('results-state');
+  state.dataset.published = String(published);
+  state.textContent = published ? 'final (published)' : 'provisional';
+  state.className = `badge ${published ? 'text-bg-success' : 'text-bg-secondary'}`;
+  $('results-notice').textContent = published
+    ? 'Players can see their results, and scores are locked. Return to provisional to change a score.'
+    : over ? 'The game is over. Publishing shows each team its results and the official answers.' : 'Available when the game is over.';
+  const note = $('unscored-note');
+  note.hidden = published || !over || unscored === 0;
+  note.textContent = `${unscored} photo${unscored === 1 ? ' has' : 's have'} not been scored yet and will count as 0%.`;
+  const confirm = $('publish-confirm');
+  confirm.disabled = !over || published;
+  if (published) confirm.checked = false;
+  $('publish-button').hidden = published;
+  $('publish-button').disabled = !over || published || !confirm.checked;
+  $('unpublish-button').hidden = !published;
 }
 
 function renderDeleteSection() {
@@ -116,6 +141,28 @@ form.addEventListener('submit', async (event) => {
     problems.replaceChildren(...res.body.problems.map((p) => el('li', {}, p)));
     problems.hidden = false;
   }
+});
+
+$('publish-confirm').addEventListener('change', renderPublish);
+$('publish-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const error = $('publish-error');
+  error.hidden = true;
+  $('publish-button').disabled = true;
+  const res = await postJson('/api/admin/results/publish', { confirm: $('publish-confirm').checked });
+  if (!res.ok) {
+    const code = res.status === 0 ? 'network' : (res.body?.error ?? 'unknown');
+    error.dataset.error = code;
+    error.textContent = { 'game-not-over': 'The game is not over yet.', 'confirmation-required': 'Tick the box to confirm every score has been applied.', network: 'Could not publish. Check the connection and try again.' }[code] ?? 'Something went wrong. Please try again.';
+    error.hidden = false;
+  }
+  await refresh();
+});
+$('unpublish-button').addEventListener('click', async () => {
+  $('unpublish-button').disabled = true;
+  await postJson('/api/admin/results/unpublish', {});
+  $('unpublish-button').disabled = false;
+  await refresh();
 });
 
 $('export-link').addEventListener('click', () => { downloaded = true; renderDeleteSection(); });

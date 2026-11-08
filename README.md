@@ -6,7 +6,7 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 
 | Path | What it is |
 |---|---|
-| `web/` | The site itself: `index.html` (sends people to `/view/`), `view/` (scoreboard, join, Play link), `play/` (team, countdown, instructions, zone tiles and question/photo forms), `game-config/` and `game-score/` (the admin pages, no login: the addresses are simply not shared), `404.html`, `css/site.css`, `js/` (ES modules, no framework), `favicon.svg` |
+| `web/` | The site itself: `index.html` (sends people to `/view/`), `view/` (scoreboard, join, Play link), `play/` (team, countdown, instructions, zone tiles and question/photo forms), `results/` (a team's place and answer breakdown once the final results are published), `game-config/` and `game-score/` (the admin pages, no login: the addresses are simply not shared), `404.html`, `css/site.css`, `js/` (ES modules, no framework), `favicon.svg` |
 | `api/app/`, `api/handlers/` | The API: routes and rules (`app/`) and the two Lambda entry points (`handlers/`). Reference: `docs/api.md`. |
 | `api/store/` | The data layer: one `store` interface with an in-memory version (local development and tests) and a DynamoDB version (the data model is described at the top of `dynamo.js`) |
 | `api/lib/` | Backend game logic as pure functions (timing, answer checking, scoring, team names, scoreboard order). No dependencies, no AWS: the Lambda handlers that use it come in a later PR. |

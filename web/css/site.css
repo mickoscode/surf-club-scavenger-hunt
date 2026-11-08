@@ -72,3 +72,8 @@ summary {
 .play-team-name {
   color: #343a40;
 }
+
+/* The results page: a heading with a medal, then a card per question or photo. */
+.list-group-item {
+  overflow-wrap: anywhere;
+}

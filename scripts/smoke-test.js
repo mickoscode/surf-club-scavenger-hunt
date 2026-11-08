@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Checks a deployed site end to end: CloudFront routes /api/* to the right Lambda function, the functions start (their
 // dependencies are found), they can read DynamoDB, personal and admin responses are not cached, and the public game
-// response carries no answers. Read-only: it never changes any data. Run by deploy.yml after every deploy.
+// and results responses carry no answers. Read-only: it never changes any data. Run by deploy.yml after every deploy.
 //
 //   node scripts/smoke-test.js https://<site address>
 //
@@ -27,6 +27,16 @@ const CHECKS = [
   {
     name: 'API: the public game response contains no answers', path: '/api/game',
     check: (res, text) => (res.status !== 200 ? `status ${res.status}` : text.includes('"answer"') ? 'the response contains an "answer" field' : null),
+  },
+  { name: 'the results page exists', path: '/results/', check: (res) => (res.status === 200 ? null : `status ${res.status}`) },
+  {
+    name: 'API: results are never sent without a team, and are never cached', path: '/api/results',
+    check: (res, text) => {
+      const body = isJson(text);
+      if (res.status !== 200 || typeof body?.published !== 'boolean' || body?.team !== null) return `status ${res.status}: ${text.slice(0, 100)}`;
+      if (/yourAnswer|officialAnswers/.test(text)) return 'the response contains answers for a visitor with no team';
+      return (res.headers.get('cache-control') ?? '').includes('no-store') ? null : 'missing Cache-Control: no-store';
+    },
   },
   {
     name: 'API: a personal response is never cached', path: '/api/me', headers: { cookie: NO_SESSION },

@@ -11,7 +11,7 @@ const respond = (status, body, headers = {}) => ({ status, headers: { 'content-t
 // A stand-in for the live site: "/" is a page, /api/* is the real API, and `intercept` can break one response.
 async function withSite(intercept, fn) {
   const api = createApiHandler({ intercept });
-  const server = http.createServer((req, res) => (req.url === '/' ? res.writeHead(200).end('<html></html>') : api(req, res)));
+  const server = http.createServer((req, res) => (req.url.startsWith('/api/') ? api(req, res) : res.writeHead(200).end('<html></html>')));
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   try {
     return await fn(`http://127.0.0.1:${server.address().port}`);
@@ -32,6 +32,29 @@ test('a public game response that carries an answer fails', async () => {
     assert.equal(failures.length, 1);
     assert.match(failures[0], /no answers/);
   });
+});
+
+test('results sent to a visitor with no team, or cacheable, fail', async () => {
+  const leak = (req) => (req.path === '/api/results' ? respond(200, { published: true, team: null, results: { zones: [{ questions: [{ officialAnswers: ['x'] }] }] } }, { 'cache-control': 'no-store' }) : undefined);
+  await withSite(leak, async (url) => assert.equal((await smoke(url)).length, 1));
+  const cacheable = (req) => (req.path === '/api/results' ? respond(200, { published: false, team: null }, { 'cache-control': 'public, max-age=3' }) : undefined);
+  await withSite(cacheable, async (url) => {
+    const failures = await smoke(url);
+    assert.equal(failures.length, 1);
+    assert.match(failures[0], /Cache-Control/);
+  });
+});
+
+test('a missing results page fails', async () => {
+  const server = http.createServer((req, res) => (req.url.startsWith('/api/') ? createApiHandler()(req, res) : res.writeHead(req.url === '/results/' ? 404 : 200).end('x')));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const failures = await smoke(`http://127.0.0.1:${server.address().port}`);
+    assert.equal(failures.length, 1);
+    assert.match(failures[0], /results page/);
+  } finally {
+    server.close();
+  }
 });
 
 test('a personal or admin response that could be cached fails', async () => {

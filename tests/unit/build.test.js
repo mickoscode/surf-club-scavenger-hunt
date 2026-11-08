@@ -16,8 +16,8 @@ test.before(() => {
 
 const pages = () => fs.readdirSync(dist, { recursive: true }).filter((f) => f.endsWith('.html')); // including pages in folders
 
-test('the site has a home page, a scoreboard page, a play page and a 404 page', () => {
-  for (const page of ['index.html', 'view/index.html', 'play/index.html', '404.html']) assert.ok(pages().includes(page), page);
+test('the site has a home page, a scoreboard page, a play page, a results page and a 404 page', () => {
+  for (const page of ['index.html', 'view/index.html', 'play/index.html', 'results/index.html', '404.html']) assert.ok(pages().includes(page), page);
 });
 
 test('the play page carries the instructions, built in from the Markdown file (and the placeholder is gone)', () => {

@@ -43,6 +43,11 @@ function apiClient(url) {
     },
     removeTeam: (number) => call('DELETE', `/api/admin/teams/${number}`, undefined),
     scoreOf: async (number) => (await call('GET', '/api/scoreboard')).body.teams.find((t) => t.number === number)?.score,
+    publish: async () => {
+      const res = await call('POST', '/api/admin/results/publish', { confirm: true });
+      if (res.status !== 200) throw new Error(`publish failed: ${JSON.stringify(res.body)}`);
+    },
+    unpublish: () => call('POST', '/api/admin/results/unpublish', {}),
     config: async () => (await call('GET', '/api/admin/config')).body,
     apply: (teamNumber, zone, decision) => call('POST', '/api/admin/photos/apply', { teamNumber, zone, decision }),
     photosToScore: async () => (await call('GET', '/api/admin/photos')).body.photos,
