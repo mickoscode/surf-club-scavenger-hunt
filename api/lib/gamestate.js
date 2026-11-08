@@ -3,6 +3,8 @@
 // Pure functions: "now" is always passed in, so the server clock is the only clock that counts and tests can
 // put it anywhere. Rules: docs/requirements.md ("Game Configuration & Management", "Typical Timeline").
 
+const { normaliseWhatsappUrl } = require('./whatsapp');
+
 const DEFAULT_GAME_NAME = 'Sorrento Youth Scavenger Hunt';
 const DEFAULT_TIME_ZONE = 'Australia/Perth'; // AWST, UTC+8, no daylight saving
 const AU_TIME_ZONES = [
@@ -51,7 +53,7 @@ const isRealDate = (s) => {
 };
 const isTime = (s) => typeof s === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 
-// Config shape: { name, timeZone, day: 'yyyy-mm-dd', start: 'hh:mm', end: 'hh:mm' }. Returns a list of problems.
+// Config shape: { name, timeZone, day: 'yyyy-mm-dd', start: 'hh:mm', end: 'hh:mm', whatsappUrl? }. Returns a list of problems.
 function validateConfig(config) {
   if (config === null || typeof config !== 'object' || Array.isArray(config)) return ['config must be an object'];
   const problems = [];
@@ -61,6 +63,7 @@ function validateConfig(config) {
   if (!isTime(config.start)) problems.push('start');
   if (!isTime(config.end)) problems.push('end');
   if (isTime(config.start) && isTime(config.end) && config.end <= config.start) problems.push('end-before-start');
+  if (!normaliseWhatsappUrl(config.whatsappUrl).ok) problems.push('whatsappUrl'); // optional: absent is fine
   return problems;
 }
 

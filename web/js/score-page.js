@@ -4,6 +4,7 @@
 import { getJson, postJson } from './api.js';
 import { $, el, refreshInterval } from './dom.js';
 import { formatScore } from './format.js';
+import { applyWhatsAppLinks } from './whatsapp.js';
 
 const DECISIONS = ['full', 'half', 'zero'];
 const LABEL = { full: 'Full', half: 'Half', zero: 'Zero' };
@@ -11,6 +12,7 @@ const FRACTION = { full: 1, half: 0.5, zero: 0 };
 
 const rows = new Map(); // "team|zone" -> list item. Kept between refreshes so what the admin has chosen is never lost.
 let canScore = false;
+let groupLink; // the WhatsApp group link last applied to the help text
 
 const selected = (row) => row.querySelector('input[type="radio"]:checked')?.value ?? null;
 
@@ -83,6 +85,11 @@ async function refresh() {
   const [info, list] = await Promise.all([getJson('/api/admin/config'), getJson('/api/admin/photos')]);
   $('load-error').hidden = info.ok && list.ok;
   if (!info.ok || !list.ok) return;
+  const link = info.body.config?.whatsappUrl ?? null;
+  if (link !== groupLink) { // the help text mentions the WhatsApp group: link it when the admin has set one
+    groupLink = link;
+    applyWhatsAppLinks($('scoring-help'), link);
+  }
   const published = info.body.results.published;
   canScore = ['active', 'post'].includes(info.body.status) && !published; // locked while the final results are published
   const notice = $('scoring-notice');

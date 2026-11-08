@@ -40,7 +40,8 @@ Do the checklist in `rehearsal-checklist.md` with a few real phones, using the r
 
 1. Open `/game-config/`. If there is rehearsal data (teams), **download it, type `delete`, and delete it** (section "Player data"). Only possible before the game starts or after it ends.
 2. Set the **game name**, **time zone** (AWST for Perth), **game day**, **start** and **end** times, and press **Save**. The page confirms how many zones were loaded.
-3. Check the status reads "before the game" and the zone count is what you expect.
+3. **WhatsApp group link (optional).** In WhatsApp open the group, Group info, **Invite to group via link**, **Copy link**, and paste it into **WhatsApp group link**. Press **Test link** to check it opens the right group, then **Save**. Teams that have joined then get links to the group: **Open WhatsApp group** under each photo challenge, and the word "WhatsApp" in the photo challenges and the instructions. Leave it empty and everything stays plain text. Spectators never see the link (it only goes to teams that have joined), and it is saved with the rest of the configuration, so set it **before** the game starts: it is locked while the game is in progress. Anyone you share the group link with can join the group, so a link you pasted by mistake can be reset in WhatsApp (Group info, Invite via link, Reset link) and replaced here after the game.
+4. Check the status reads "before the game" and the zone count is what you expect.
 
 Things to know:
 - Saving **takes a copy of the questions as they are on the site at that moment**. If you change the questions or maps later (a new pull request), **press Save again** before the game starts, or the game keeps the old copy.
@@ -82,6 +83,7 @@ Things to know:
 | Nobody can join | Joining is only open before the end time. Check the status on `/game-config/`: "game finished" means it has ended; "no game set up yet" means save a configuration |
 | The countdown or times look wrong | Check the **time zone** and times on `/game-config/` (the page shows what is saved). The site's clock decides everything, and the countdown uses it too, so a phone with the wrong time makes no difference |
 | **Save** refuses, "game in progress" | The game has started: the configuration is locked until it ends |
+| **Save** says the WhatsApp link is wrong | Only the group's invite link is accepted, which starts with `https://chat.whatsapp.com/`. Copy it again from WhatsApp (not a link to a person's chat) or leave the field empty |
 | **Save** lists problems in the game file | Nothing was saved. The list says what to fix in `docs/game-questions.json`; fix it by pull request, merge, then Save again |
 | **Publish final results** is greyed out | The game has not ended yet (it is only possible after the end time), or the "I have applied all scores" box is not ticked |
 | The scoring page says scores are locked | The final results are published. Press **Return to provisional** on `/game-config/` to change a score, then publish again |

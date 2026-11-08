@@ -51,6 +51,14 @@
               <input class="form-control" id="config-end" name="end" type="time" data-testid="config-end">
             </div>
           </div>
+          <div class="mb-3">
+            <label class="form-label" for="config-whatsapp">WhatsApp group link (optional)</label>
+            <input class="form-control" id="config-whatsapp" name="whatsappUrl" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://chat.whatsapp.com/..." data-testid="config-whatsapp">
+            <div class="form-text">
+              The group's invite link. Teams that have joined get links to it; spectators never see it.
+              <a href="#" target="_blank" rel="noopener noreferrer" data-testid="whatsapp-test" hidden>Test link</a>
+            </div>
+          </div>
           <button class="btn btn-primary w-100" type="submit" data-testid="config-save">Save</button>
           <p class="text-muted small mt-2 mb-0">Saving also loads the zones and questions from the published game file.</p>
           <p class="text-danger mt-2 mb-0" role="alert" data-testid="config-error" hidden></p>

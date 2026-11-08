@@ -93,3 +93,22 @@ test('results wording: accepted answers, question outcome and the photo states',
   assert.deepEqual(describePhoto(photo({ scored: false, decision: null, percent: 0, earned: 0 })), { state: 'not-scored', text: 'Photo sent, but not scored: 0% - 0 of 30 points' });
   assert.deepEqual(describePhoto(photo({ submitted: false, scored: false, decision: null, percent: null, earned: 0 })), { state: 'not-submitted', text: 'No photo submitted' });
 });
+
+test('every mention of WhatsApp, in any capitalisation, is found in a text', async () => {
+  const { splitOnWhatsApp } = await load('whatsapp.js');
+  assert.deepEqual(splitOnWhatsApp('upload to WhatsApp or whatsapp.'), [
+    { text: 'upload to ', link: false }, { text: 'WhatsApp', link: true }, { text: ' or ', link: false }, { text: 'whatsapp', link: true }, { text: '.', link: false },
+  ]);
+  assert.deepEqual(splitOnWhatsApp('WhatsApp'), [{ text: 'WhatsApp', link: true }]);
+  assert.deepEqual(splitOnWhatsApp('no mention here'), [{ text: 'no mention here', link: false }]);
+  assert.deepEqual(splitOnWhatsApp(''), []);
+});
+
+test('pages only ever link to a WhatsApp group invite, whatever the server says', async () => {
+  const { safeWhatsAppUrl } = await load('whatsapp.js');
+  const good = 'https://chat.whatsapp.com/AbCdEfGhIjKlMnOpQrStUv';
+  assert.equal(safeWhatsAppUrl(good), good);
+  for (const bad of [null, undefined, '', 42, 'javascript:alert(1)', 'https://example.org/', 'http://chat.whatsapp.com/AbCdEfGhIjKl', 'https://chat.whatsapp.com.evil.example/x', `${good} extra`, 'data:text/html,x']) {
+    assert.equal(safeWhatsAppUrl(bad), null, String(bad));
+  }
+});
