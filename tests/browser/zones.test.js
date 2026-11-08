@@ -12,7 +12,18 @@ const tile = (zone) => `${$('zone-tile')}[data-zone="${zone}"]`;
 const panel = (zone) => `${$('zone-panel')}[data-zone="${zone}"]`;
 const question = (zone, id) => `${panel(zone)} ${$('question')}[data-question="${id}"]`;
 const overflow = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-const allImagesLoaded = (page, selector) => page.locator(selector).evaluateAll((imgs) => imgs.length > 0 && imgs.every((i) => i.complete && i.naturalWidth > 0));
+// Images are loaded lazily and a slow machine (CI) can take a moment, so wait for them; an image that never loads still fails.
+const allImagesLoaded = async (page, selector) => {
+  try {
+    await page.waitForFunction((sel) => {
+      const imgs = [...document.querySelectorAll(sel)];
+      return imgs.length > 0 && imgs.every((i) => i.complete && i.naturalWidth > 0);
+    }, selector, { timeout: 8000 });
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 // A team that has joined through the API, this browser signed in as it, and the play page open.
 async function play({ site, page, context }, { refresh = 500 } = {}) {
