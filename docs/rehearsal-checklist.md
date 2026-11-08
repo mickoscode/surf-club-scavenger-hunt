@@ -7,7 +7,7 @@ Allow about 30 minutes. Tick as you go; write down anything odd.
 ## Before you start
 - [ ] The real questions, photo challenges, maps and instructions are merged and **Deploy site** is green (`runbook.md`, section 1)
 - [ ] WhatsApp group exists with the helpers who will act as teams
-- [ ] On the laptop: `/game-config/` and `/game-score/` open (keep these addresses private)
+- [ ] On the laptop: `/game-config/` and `/game-score/` ask for the admin passcode; log in on each (a wrong passcode is refused, the right one lets you in), and check **Log out** brings the login box back
 
 ## Set up a short test game
 - [ ] `/game-config/`: day = today, start a few minutes from now, end 30 minutes later, correct time zone. **Save**

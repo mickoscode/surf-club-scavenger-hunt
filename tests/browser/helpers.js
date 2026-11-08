@@ -6,6 +6,7 @@ const { spawnSync } = require('node:child_process');
 const { chromium } = require('playwright');
 const { createSiteServer } = require('../../scripts/dev-server.js');
 const { createMemoryStore } = require('../../api/store/memory.js');
+const { hashPasscode } = require('../../api/lib/passcode.js');
 const { GAME, CONFIG, START, END } = require('../api/helpers.js');
 
 const root = path.join(__dirname, '..', '..');
@@ -28,29 +29,46 @@ async function launchBrowser() {
 }
 
 // What a "player" or the admin does to the API directly (to set the scene), with their own cookie.
-function apiClient(url) {
+function apiClient(url, passcode = null) {
   const call = async (method, p, body, cookie) => {
     const res = await fetch(url + p, {
       method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: body === undefined ? undefined : JSON.stringify(body),
     });
-    const set = res.headers.getSetCookie().find((c) => c.startsWith('hunt='));
-    return { status: res.status, body: await res.json(), cookie: set?.split(';')[0] };
+    const sets = res.headers.getSetCookie().map((c) => c.split(';')[0]);
+    return { status: res.status, body: await res.json(), cookie: sets.find((c) => c.startsWith('hunt=')), adminCookie: sets.find((c) => c.startsWith('hunt_admin=')) };
   };
+
+  // Admin calls: when the site has a passcode the client logs in first (once), as the admin would, and logs in again if its session ends.
+  let adminCookie = null;
+  const login = async () => {
+    const res = await call('POST', '/api/admin/login', { passcode });
+    if (res.status !== 200) throw new Error(`admin login failed: ${JSON.stringify(res.body)}`);
+    adminCookie = res.adminCookie;
+  };
+  const admin = async (method, p, body) => {
+    if (passcode && !adminCookie) await login();
+    let res = await call(method, p, body, adminCookie);
+    if (passcode && res.status === 401) { await login(); res = await call(method, p, body, adminCookie); }
+    return res;
+  };
+
   return {
     configure: async (over = {}) => {
-      const res = await call('PUT', '/api/admin/config', { ...CONFIG, ...over });
+      const res = await admin('PUT', '/api/admin/config', { ...CONFIG, ...over });
       if (res.status !== 200) throw new Error(`configure failed: ${JSON.stringify(res.body)}`);
     },
-    removeTeam: (number) => call('DELETE', `/api/admin/teams/${number}`, undefined),
+    removeTeam: (number) => admin('DELETE', `/api/admin/teams/${number}`, undefined),
     scoreOf: async (number) => (await call('GET', '/api/scoreboard')).body.teams.find((t) => t.number === number)?.score,
     publish: async () => {
-      const res = await call('POST', '/api/admin/results/publish', { confirm: true });
+      const res = await admin('POST', '/api/admin/results/publish', { confirm: true });
       if (res.status !== 200) throw new Error(`publish failed: ${JSON.stringify(res.body)}`);
     },
-    unpublish: () => call('POST', '/api/admin/results/unpublish', {}),
-    config: async () => (await call('GET', '/api/admin/config')).body,
-    apply: (teamNumber, zone, decision) => call('POST', '/api/admin/photos/apply', { teamNumber, zone, decision }),
-    photosToScore: async () => (await call('GET', '/api/admin/photos')).body.photos,
+    unpublish: () => admin('POST', '/api/admin/results/unpublish', {}),
+    config: async () => (await admin('GET', '/api/admin/config')).body,
+    apply: (teamNumber, zone, decision) => admin('POST', '/api/admin/photos/apply', { teamNumber, zone, decision }),
+    photosToScore: async () => (await admin('GET', '/api/admin/photos')).body.photos,
+    // Direct access for tests that look at the admin API's own answers (with the admin's session, if the site has a passcode).
+    admin,
     // Joins as a new team and returns what that team can then do.
     join: async (name) => {
       const res = await call('POST', '/api/join', { name });
@@ -66,13 +84,17 @@ function apiClient(url) {
   };
 }
 
-async function startSite({ now = START + 60_000, intercept, game = GAME } = {}) {
+const TEST_PASSCODE = 'k7m2q-xd93p-wn4tr-h8jcf';
+
+// passcode: true gives the site an admin passcode (TEST_PASSCODE, with a cheap hash so tests stay fast); the default is no passcode.
+async function startSite({ now = START + 60_000, intercept, game = GAME, passcode = false } = {}) {
   ensureBuilt();
   const clock = { now };
-  const server = createSiteServer({ store: createMemoryStore(), now: () => clock.now, loadGame: () => structuredClone(game), intercept });
+  const adminPasscodeHash = passcode ? await hashPasscode(TEST_PASSCODE, { cost: { N: 1024, r: 8, p: 1 } }) : '';
+  const server = createSiteServer({ store: createMemoryStore(), now: () => clock.now, loadGame: () => structuredClone(game), intercept, adminPasscodeHash });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}`;
-  return { url, clock, api: apiClient(url), close: () => new Promise((resolve) => server.close(resolve)) };
+  return { url, clock, passcode: passcode ? TEST_PASSCODE : null, api: apiClient(url, passcode ? TEST_PASSCODE : null), close: () => new Promise((resolve) => server.close(resolve)) };
 }
 
 // Makes this browser belong to a team that joined through the API, as if it had joined on the page.
@@ -99,6 +121,18 @@ function browserSuite() {
     }
   });
   return { withPage };
+}
+
+// Opens an admin page the way the admin does: if the site has a passcode and this browser is not logged in, the login box is
+// filled in and sent. Returns when the page's own content is showing.
+async function adminPage(page, site, path) {
+  await page.goto(`${site.url}${path}`);
+  await page.waitForSelector('[data-testid="login-panel"]:not([hidden]), [data-testid="admin-content"]:not([hidden])');
+  if (await page.locator('[data-testid="login-panel"]').isVisible()) {
+    await page.fill('[data-testid="passcode-input"]', site.passcode);
+    await page.click('[data-testid="login-button"]');
+    await page.waitForSelector('[data-testid="admin-content"]:not([hidden])');
+  }
 }
 
 // Polls until fn() is truthy (the page updates by itself, so tests wait for the result rather than for a fixed time).
@@ -134,4 +168,4 @@ async function openPage(browser, { viewport } = {}) {
   return { context, page, problems, cspViolations };
 }
 
-module.exports = { launchBrowser, startSite, openPage, browserSuite, signIn, until, GAME, CONFIG, START, END };
+module.exports = { launchBrowser, startSite, openPage, browserSuite, signIn, adminPage, until, TEST_PASSCODE, GAME, CONFIG, START, END };

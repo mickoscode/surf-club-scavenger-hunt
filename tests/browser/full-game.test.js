@@ -8,7 +8,7 @@
 // Q3 decimal 5 (2.5), photo 30; zone 2 "Bravo": Q1 text 10 (secret two), photo 25.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { browserSuite, openPage, until, START, END } = require('./helpers.js');
+const { browserSuite, openPage, adminPage, until, START, END } = require('./helpers.js');
 
 const { withPage } = browserSuite();
 
@@ -42,9 +42,11 @@ const openZone = async (page, zone) => {
   await page.waitForSelector(`${$('zone-panel')}[data-zone="${zone}"]:not([hidden])`);
 };
 
-withPage('a whole game: set up, join, play, photos, scoring, publishing, results, then clean up', { site: { now: START - 3_600_000 } }, async ({ site, browser, page: admin, problems }) => {
+// The same game twice: with the admin open (no passcode set yet) and with the admin behind the passcode, where the admin logs in
+// through the login box and everything else is unchanged.
+for (const passcode of [false, true]) withPage(`a whole game: set up, join, play, photos, scoring, publishing, results, then clean up (admin ${passcode ? 'behind the passcode' : 'open'})`, { site: { now: START - 3_600_000, passcode } }, async ({ site, browser, page: admin, problems }) => {
   // ---- The admin sets up the game on the config page, an hour before the start.
-  await admin.goto(`${site.url}/game-config/?refresh=500`);
+  await adminPage(admin, site, '/game-config/?refresh=500'); // (logs in first when there is a passcode)
   await admin.fill($('config-name'), 'Rehearsal game');
   await admin.fill($('config-day'), '2026-11-14');
   await admin.fill($('config-start'), '10:00');
@@ -100,7 +102,7 @@ withPage('a whole game: set up, join, play, photos, scoring, publishing, results
   await spectator.page.waitForSelector(`${$('status')}[data-phase="post"]`);
 
   // ---- The admin scores the three photos: Sea Dogs full (30), Sharks half for zone 2 (12.5) and nothing for zone 1.
-  await admin.goto(`${site.url}/game-score/?refresh=500`);
+  await adminPage(admin, site, '/game-score/?refresh=500');
   await until(async () => (await admin.locator($('photo-row')).count()) === 3);
   const scoreRow = async (team, zone, decision) => {
     const row = `${$('photo-row')}[data-team-number="${team}"][data-zone="${zone}"]`;
@@ -125,7 +127,7 @@ withPage('a whole game: set up, join, play, photos, scoring, publishing, results
   assert.equal(await dogs.page.locator($('play-link')).count(), 0);
 
   // ---- The admin confirms every score has been applied and publishes the final results.
-  await admin.goto(`${site.url}/game-config/?refresh=500`);
+  await adminPage(admin, site, '/game-config/?refresh=500');
   await admin.waitForSelector(`${$('game-status')}[data-status="post"]`);
   assert.equal(await admin.locator($('unscored-note')).isHidden(), true); // every photo has been scored
   await admin.check($('publish-confirm'));
@@ -154,7 +156,7 @@ withPage('a whole game: set up, join, play, photos, scoring, publishing, results
   assert.equal(await dogs.page.locator(`${$('result-zone')}[data-zone="zone 1"] ${$('result-question')}[data-question="Q3"]`).getAttribute('data-outcome'), 'wrong');
 
   // ---- Clean up: download the data, delete it, and the next game starts empty (and provisional again).
-  await admin.goto(`${site.url}/game-config/?refresh=500`);
+  await adminPage(admin, site, '/game-config/?refresh=500');
   await admin.waitForSelector(`${$('game-status')}[data-status="post"]`);
   const [download] = await Promise.all([admin.waitForEvent('download'), admin.click($('export-link'))]);
   const exported = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));

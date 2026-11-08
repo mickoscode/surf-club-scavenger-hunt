@@ -5,6 +5,7 @@ import { getJson, postJson } from './api.js';
 import { $, el, refreshInterval } from './dom.js';
 import { formatScore } from './format.js';
 import { applyWhatsAppLinks } from './whatsapp.js';
+import { guardAdminPage, isLocked } from './admin-auth.js';
 
 const DECISIONS = ['full', 'half', 'zero'];
 const LABEL = { full: 'Full', half: 'Half', zero: 'Zero' };
@@ -82,6 +83,7 @@ function updateRow(row, photo) {
 }
 
 async function refresh() {
+  if (isLocked()) return; // not logged in (yet, or any more)
   const [info, list] = await Promise.all([getJson('/api/admin/config'), getJson('/api/admin/photos')]);
   $('load-error').hidden = info.ok && list.ok;
   if (!info.ok || !list.ok) return;
@@ -110,6 +112,11 @@ async function refresh() {
   $('no-photos').hidden = photos.length > 0;
 }
 
-refresh();
-setInterval(refresh, refreshInterval());
-document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+guardAdminPage({
+  start: () => { // the admin is allowed in: load the page and keep it fresh
+    refresh();
+    setInterval(refresh, refreshInterval());
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+  },
+  refresh,
+});
