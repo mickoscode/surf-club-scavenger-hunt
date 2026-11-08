@@ -175,6 +175,25 @@ function runStoreContract(label, makeStore, options = {}) {
     assert.deepEqual((await store.getGame()).config, game.config);
   });
 
+  t('failed admin logins are counted per window, a new window starts at zero, and a success clears the count', async (store) => {
+    const WINDOW = 300_000;
+    assert.equal(await store.getLoginFailures(1_000, WINDOW), 0);
+    assert.equal(await store.registerLoginFailure(1_000, WINDOW), 1);
+    assert.equal(await store.registerLoginFailure(200_000, WINDOW), 2); // the same window
+    assert.equal(await store.getLoginFailures(299_999, WINDOW), 2);
+    assert.equal(await store.getLoginFailures(300_000, WINDOW), 0); // the next window
+    assert.equal(await store.registerLoginFailure(300_001, WINDOW), 1);
+    await store.clearLoginFailures(299_999, WINDOW);
+    assert.equal(await store.getLoginFailures(1_000, WINDOW), 0);
+    assert.equal(await store.getLoginFailures(300_001, WINDOW), 1); // other windows are untouched
+  });
+
+  t('simultaneous failed logins are all counted', async (store) => {
+    const counts = await Promise.all(Array.from({ length: 8 }, () => store.registerLoginFailure(5_000, 300_000)));
+    assert.deepEqual([...counts].sort((x, y) => x - y), [1, 2, 3, 4, 5, 6, 7, 8]);
+    assert.equal(await store.getLoginFailures(5_000, 300_000), 8);
+  });
+
   t('what the store returns is a copy: changing it does not change the store', async (store) => {
     await join(store, 1);
     const team = await store.getTeam('p1');

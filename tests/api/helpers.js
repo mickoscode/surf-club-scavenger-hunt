@@ -22,7 +22,7 @@ const GAME = {
   },
 };
 
-function setup({ now = START + 60_000, game = GAME } = {}) {
+function setup({ now = START + 60_000, game = GAME, adminPasscodeHash = '' } = {}) {
   const clock = { now };
   const store = createMemoryStore();
   let ids = 0;
@@ -31,21 +31,27 @@ function setup({ now = START + 60_000, game = GAME } = {}) {
     newId: () => (++ids).toString(16).padStart(32, '0'),
   };
   const publicApp = createApp({ ...shared, role: 'public' });
-  const adminApp = createApp({ ...shared, role: 'admin' });
+  const adminApp = createApp({ ...shared, role: 'admin', adminPasscodeHash });
 
   // A "browser": remembers the session cookie the way a real one does.
   const browser = (app) => {
-    let cookie = null;
+    const jar = new Map(); // cookie name -> value, like a real browser (a team's cookie, the admin's cookie)
     const call = async (method, path, body, { type = 'application/json', raw } = {}) => {
       const headers = {};
-      if (cookie) headers.cookie = cookie;
+      if (jar.size) headers.cookie = [...jar].map(([name, value]) => `${name}=${value}`).join('; ');
       if (body !== undefined || raw !== undefined) headers['content-type'] = type;
       const res = await app.handle({ method, path, headers, body: raw ?? (body === undefined ? null : JSON.stringify(body)) });
-      const set = res.cookies.find((c) => c.startsWith('hunt='));
-      if (set) cookie = set.split(';')[0];
+      for (const set of res.cookies) {
+        const [pair] = set.split(';');
+        const [name, value] = [pair.slice(0, pair.indexOf('=')), pair.slice(pair.indexOf('=') + 1)];
+        if (value === '' || /Max-Age=0\b/.test(set)) jar.delete(name); // an emptied cookie ends it
+        else jar.set(name, value);
+      }
       return res;
     };
-    return { call, get: (p) => call('GET', p), post: (p, b) => call('POST', p, b), put: (p, b) => call('PUT', p, b), del: (p) => call('DELETE', p) };
+    return {
+      call, jar, get: (p) => call('GET', p), post: (p, b) => call('POST', p, b), put: (p, b) => call('PUT', p, b), del: (p) => call('DELETE', p),
+    };
   };
   return { clock, store, player: () => browser(publicApp), admin: () => browser(adminApp) };
 }

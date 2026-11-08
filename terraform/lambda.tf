@@ -102,10 +102,12 @@ resource "aws_lambda_function" "api" {
   filename         = data.archive_file.placeholder[each.key].output_path
   source_code_hash = data.archive_file.placeholder[each.key].output_base64sha256
 
+  # Only the admin function is given the passcode hash (a one-way hash: it cannot be turned back into the passcode).
   environment {
-    variables = {
-      TABLE_NAME = aws_dynamodb_table.game.name
-    }
+    variables = merge(
+      { TABLE_NAME = aws_dynamodb_table.game.name },
+      each.key == "admin" ? tomap({ ADMIN_PASSCODE_HASH = var.admin_passcode_hash }) : tomap({}),
+    )
   }
 
   depends_on = [aws_cloudwatch_log_group.api]

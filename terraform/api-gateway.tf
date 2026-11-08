@@ -13,6 +13,9 @@ locals {
       "POST /api/photo",
     ]
     admin = [
+      "GET /api/admin/session",
+      "POST /api/admin/login",
+      "POST /api/admin/logout",
       "GET /api/admin/config",
       "PUT /api/admin/config",
       "GET /api/admin/teams",

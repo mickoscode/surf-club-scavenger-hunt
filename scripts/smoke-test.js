@@ -46,44 +46,70 @@ const CHECKS = [
     },
   },
   {
-    name: 'API: the admin function works and its responses are never cached', path: '/api/admin/config',
-    check: (res, text) => {
-      if (res.status !== 200 || typeof isJson(text)?.status !== 'string') return `status ${res.status}: ${text.slice(0, 100)}`;
-      return (res.headers.get('cache-control') ?? '').includes('no-store') ? null : 'missing Cache-Control: no-store';
+    // The admin function runs, and the passcode does what it should. With a passcode set, the admin API must refuse a visitor
+    // with no session; with none set (the rollout stage) the admin is open, and this says so as a warning.
+    name: 'API: the admin function works and the passcode protects it',
+    custom: async (baseUrl, warn) => {
+      const get = async (path) => {
+        const res = await fetch(new URL(path, baseUrl), { redirect: 'manual', signal: AbortSignal.timeout(15000) });
+        const text = await res.text();
+        return { res, text, body: isJson(text) };
+      };
+      const session = await get('/api/admin/session');
+      if (session.res.status !== 200 || typeof session.body?.required !== 'boolean') return `session check: status ${session.res.status}: ${session.text.slice(0, 100)}`;
+      const config = await get('/api/admin/config');
+      if (!(config.res.headers.get('cache-control') ?? '').includes('no-store')) return 'the admin config response is missing Cache-Control: no-store';
+      if (session.body.required) {
+        return config.res.status === 401 && config.body?.error === 'not-authenticated' ? null : `a passcode is set but the admin API answered a visitor with no session: status ${config.res.status}`;
+      }
+      warn('The admin passcode is NOT set: the admin pages and API are open to anyone who knows their addresses (set the admin_passcode_hash variable).');
+      return config.res.status === 200 && typeof config.body?.status === 'string' ? null : `status ${config.res.status}: ${config.text.slice(0, 100)}`;
     },
   },
 ];
 
 async function runOnce(baseUrl) {
   const failures = [];
-  for (const { name, path, headers, check } of CHECKS) {
+  const warnings = new Set();
+  for (const { name, path, headers, check, custom } of CHECKS) {
     try {
-      const res = await fetch(new URL(path, baseUrl), { headers, redirect: 'manual', signal: AbortSignal.timeout(15000) });
-      const problem = check(res, await res.text());
+      let problem;
+      if (custom) {
+        problem = await custom(baseUrl, (message) => warnings.add(message));
+      } else {
+        const res = await fetch(new URL(path, baseUrl), { headers, redirect: 'manual', signal: AbortSignal.timeout(15000) });
+        problem = check(res, await res.text());
+      }
       if (problem) failures.push(`${name}: ${problem}`);
     } catch (e) {
       failures.push(`${name}: ${e.message}`);
     }
   }
-  return failures;
+  return { failures, warnings: [...warnings] };
 }
 
-async function runSmoke(baseUrl, { attempts = 12, delayMs = 5000 } = {}) {
-  let failures = [];
+// -> { failures, warnings }. Warnings (like "the admin passcode is not set") do not fail the run.
+async function runSmokeDetailed(baseUrl, { attempts = 12, delayMs = 5000 } = {}) {
+  let result = { failures: [], warnings: [] };
   for (let attempt = 1; attempt <= attempts; attempt++) {
-    failures = await runOnce(baseUrl);
-    if (failures.length === 0) return [];
+    result = await runOnce(baseUrl);
+    if (result.failures.length === 0) return result;
     if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
-  return failures;
+  return result;
 }
 
-module.exports = { runSmoke };
+async function runSmoke(baseUrl, options) {
+  return (await runSmokeDetailed(baseUrl, options)).failures;
+}
+
+module.exports = { runSmoke, runSmokeDetailed };
 
 if (require.main === module) {
   const url = process.argv[2];
   if (!url) { console.error('usage: node scripts/smoke-test.js https://<site address>'); process.exit(2); }
-  runSmoke(url, { attempts: Number(process.env.SMOKE_ATTEMPTS) || 12 }).then((failures) => {
+  runSmokeDetailed(url, { attempts: Number(process.env.SMOKE_ATTEMPTS) || 12 }).then(({ failures, warnings }) => {
+    warnings.forEach((w) => console.log(`::warning::${w}`));
     if (failures.length) {
       failures.forEach((f) => console.error(`::error::${f}`));
       process.exit(1);

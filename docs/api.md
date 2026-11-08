@@ -32,8 +32,16 @@ Requests with a body must be JSON sent as `Content-Type: application/json` and u
 
 ## Admin routes
 
+**Authentication.** Once an admin passcode is set (the `ADMIN_PASSCODE_HASH` setting of the admin function, from the HCP variable `admin_passcode_hash`), every admin route except the three below answers a caller with no valid session with `401 { "error": "not-authenticated" }` (never 403/404, see above). With no passcode set the admin stays open (rollout only; the smoke test warns). A setting that is not a valid hash locks everything instead: a mistake can never open the admin.
+
+- A session is a 12-hour signed token in the cookie `hunt_admin` (HttpOnly, Secure, SameSite=Strict, `Path=/api/admin`, so only the admin API receives it). It is signed with a key made from the stored hash, so changing the passcode ends every session.
+- `POST /api/admin/login` `{ passcode }`: the passcode is compared with the hash (scrypt, constant time; case, spaces and dashes are ignored). `401 wrong-passcode` for a wrong one. **At most 10 failures in any 5-minute window, counted across everybody**: after that `409 too-many-attempts` (with `retryAfterSeconds`) even for the right passcode, until the window passes. A success clears the count.
+
 | Route | Purpose |
 |---|---|
+| `GET /api/admin/session` | Always 200 `{ required, authenticated }`: whether a passcode is set and whether this browser has a valid session (so a page can show the login box without an error in the console) |
+| `POST /api/admin/login` `{ passcode }` | Starts a session (sets the cookie). Returns `{ required: true, authenticated: true }`; `{ required: false, authenticated: true }` when no passcode is set |
+| `POST /api/admin/logout` | Ends the session (clears the cookie) |
 | `GET /api/admin/config` | `{ config, configuredAt, status, zoneCount, teamCount, unscoredPhotos, results: { published, publishedAt }, timeZones, defaults }`: `unscoredPhotos` is how many sent photos have no decision yet |
 | `PUT /api/admin/config` `{ name, timeZone, day, start, end, whatsappUrl? }` | Saves the config **and loads the zones and questions from the game file as deployed** (see below). `game-active` (409) while the game is active; `invalid-config` (400, with `fields`; `whatsappUrl` is named there when the link is not a `https://chat.whatsapp.com/...` invite, and the saved link has any tracking query removed; an empty link means none); `invalid-game-data` (422, with `problems`) |
 | `GET /api/admin/teams` | `{ teams: [{ number, name, score }] }` |
