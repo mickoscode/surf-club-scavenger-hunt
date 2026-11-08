@@ -34,6 +34,7 @@ function renderPhase() {
   message.hidden = !PHASE_MESSAGE[phase];
   message.textContent = PHASE_MESSAGE[phase] ?? '';
   $('zones').hidden = phase !== 'active';
+  $('results-link').hidden = !clock.published(); // the final results are out: the same Results button as on the scoreboard page
 }
 
 async function refresh() {

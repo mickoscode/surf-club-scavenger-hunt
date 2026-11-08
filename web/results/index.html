@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Results - Sorrento SLS Youth Scavenger Hunt</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0b5394">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/site.css">
+  <script type="module" src="/js/results-page.js"></script>
+</head>
+<body class="d-flex flex-column min-vh-100">
+  <main class="container py-4">
+    <div class="mx-auto narrow">
+      <!-- The one thing everybody sees, including a viewer who is not a player. -->
+      <p class="mb-3"><a href="/view/" data-testid="scoreboard-link">View scoreboard</a></p>
+
+      <!-- Everything below is filled in only for a player, once the final results are published. -->
+      <p class="alert alert-info" data-testid="results-not-ready" hidden>The final results are not ready yet. Check back after the game.</p>
+
+      <div data-testid="results-body" hidden>
+        <h1 class="display-6 fw-bold text-center mb-1" data-testid="place-heading"></h1>
+        <p class="text-center fs-5 mb-4" data-testid="total"></p>
+        <div data-testid="result-zones"></div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

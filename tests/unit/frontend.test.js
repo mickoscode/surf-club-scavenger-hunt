@@ -61,3 +61,35 @@ test('number fields keep only digits, and decimal fields one decimal point', asy
   assert.equal(sanitizeAnswer('decimal', '-3,5'), '35');
   assert.equal(sanitizeAnswer('string', 'Any text: 1.2!'), 'Any text: 1.2!'); // text questions are not touched
 });
+
+test('places are written as 1st, 2nd, 3rd, 4th, including the teens and the twenties', async () => {
+  const { ordinal, placeHeading } = await load('results-format.js');
+  const cases = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th', 10: '10th', 11: '11th', 12: '12th', 13: '13th', 21: '21st', 22: '22nd', 23: '23rd', 101: '101st', 111: '111th', 112: '112th' };
+  for (const [n, expected] of Object.entries(cases)) assert.equal(ordinal(Number(n)), expected, n);
+  assert.equal(placeHeading(3, 12), 'You finished 3rd of 12');
+});
+
+test('1st, 2nd and 3rd get a gold, silver or bronze medal and nobody else does', async () => {
+  const { medalFor } = await load('results-format.js');
+  assert.deepEqual([1, 2, 3].map((p) => medalFor(p).symbol), ['🥇', '🥈', '🥉']);
+  assert.deepEqual([1, 2, 3].map((p) => medalFor(p).label), ['Gold medal', 'Silver medal', 'Bronze medal']);
+  assert.equal(medalFor(4), null);
+  assert.equal(medalFor(0), null);
+});
+
+test('results wording: accepted answers, question outcome and the photo states', async () => {
+  const { joinAnswers, outcomeOf, describePhoto } = await load('results-format.js');
+  assert.equal(joinAnswers(['bike', 'bicycle']), 'bike or bicycle');
+  assert.equal(joinAnswers(['paris']), 'paris');
+  assert.equal(outcomeOf({ answered: false, correct: null }), 'unanswered');
+  assert.equal(outcomeOf({ answered: true, correct: true }), 'correct');
+  assert.equal(outcomeOf({ answered: true, correct: false }), 'wrong');
+
+  const photo = (over) => ({ points: 30, submitted: true, scored: true, decision: 'half', percent: 50, earned: 15, ...over });
+  assert.deepEqual(describePhoto(photo({})), { state: 'scored', text: 'Half: 50% - 15 of 30 points' });
+  assert.equal(describePhoto(photo({ decision: 'full', percent: 100, earned: 30 })).text, 'Full: 100% - 30 of 30 points');
+  assert.equal(describePhoto(photo({ decision: 'zero', percent: 0, earned: 0 })).text, 'Zero: 0% - 0 of 30 points');
+  assert.equal(describePhoto(photo({ points: 25, decision: 'half', earned: 12.5 })).text, 'Half: 50% - 12.5 of 25 points'); // halves are not rounded
+  assert.deepEqual(describePhoto(photo({ scored: false, decision: null, percent: 0, earned: 0 })), { state: 'not-scored', text: 'Photo sent, but not scored: 0% - 0 of 30 points' });
+  assert.deepEqual(describePhoto(photo({ submitted: false, scored: false, decision: null, percent: null, earned: 0 })), { state: 'not-submitted', text: 'No photo submitted' });
+});

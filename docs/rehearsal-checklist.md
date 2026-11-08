@@ -41,8 +41,13 @@ Allow about 30 minutes. Tick as you go; write down anything odd.
 ## After the end
 - [ ] Teams' pages say "Game over" and refuse answers; the final scoreboard stays
 - [ ] You can still score photos
+- [ ] `/game-config/`, Final results: it counts the photos not scored yet; the publish button stays disabled until "I have applied all scores" is ticked
+- [ ] Publish. The scoreboard heading changes from "provisional results:" to "final results:" on every phone; each team's **Play** button becomes **Results**
+- [ ] Each team's results page: the place ("You finished 2nd of 3", a medal for 1st to 3rd), its total, every question with its own answer, right or wrong, and the official answer, and the photo percentages (try one team that sent no photo and one whose photo you never scored)
+- [ ] Someone who is not a team (a spectator's phone) opening the results address sees only the link back to the scoreboard
+- [ ] The scoring page is locked while published; **Return to provisional** unlocks it and the scoreboard says "provisional results:" again
 - [ ] `/game-config/`: **Download the player data** (open the file: teams, answers and scores are in it), type `delete`, delete
-- [ ] The scoreboard is empty; the next team to join is **Team 1**
+- [ ] The scoreboard is empty and says nothing about final results; the next team to join is **Team 1**
 
 ## Then the real game
 - [ ] Set up the real game (`runbook.md`, section 3). Remember: if you changed questions after the rehearsal's Save, **Save again**

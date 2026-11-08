@@ -83,10 +83,12 @@ async function refresh() {
   const [info, list] = await Promise.all([getJson('/api/admin/config'), getJson('/api/admin/photos')]);
   $('load-error').hidden = info.ok && list.ok;
   if (!info.ok || !list.ok) return;
-  canScore = ['active', 'post'].includes(info.body.status);
+  const published = info.body.results.published;
+  canScore = ['active', 'post'].includes(info.body.status) && !published; // locked while the final results are published
   const notice = $('scoring-notice');
-  notice.hidden = canScore;
+  notice.hidden = ['active', 'post'].includes(info.body.status);
   notice.dataset.status = info.body.status;
+  $('published-notice').hidden = !published;
 
   const photos = list.body.photos;
   const keys = new Set(photos.map((p) => `${p.teamNumber}|${p.zone}`));

@@ -66,6 +66,22 @@
       </section>
 
       <section class="card card-body mb-4">
+        <h2 class="h5">Final results</h2>
+        <p class="mb-1">Results: <span class="badge text-bg-secondary" data-testid="results-state" data-published="false">provisional</span></p>
+        <p class="small text-muted" data-testid="results-notice">&nbsp;</p>
+        <form data-testid="publish-form" novalidate>
+          <p class="mb-2" data-testid="unscored-note" hidden></p>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="publish-confirm" data-testid="publish-confirm">
+            <label class="form-check-label" for="publish-confirm">I have applied all scores</label>
+          </div>
+          <button class="btn btn-success w-100" type="submit" data-testid="publish-button" disabled>Publish final results</button>
+          <button class="btn btn-outline-secondary w-100 mt-2" type="button" data-testid="unpublish-button" hidden>Return to provisional</button>
+          <p class="text-danger mt-2 mb-0" role="alert" data-testid="publish-error" hidden></p>
+        </form>
+      </section>
+
+      <section class="card card-body mb-4">
         <h2 class="h5">Player data</h2>
         <p class="small text-muted">Delete all teams, answers and scores from a finished game, so the next game starts clean. Download the data first: that is how you keep it.</p>
         <p><a class="btn btn-outline-primary w-100" href="/api/admin/export" download data-testid="export-link">1. Download the player data</a></p>

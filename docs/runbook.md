@@ -8,7 +8,8 @@ For the person running the game (the admin). What the site does is in `requireme
 |---|---|---|
 | `/` (goes to `/view/`) | everyone | the scoreboard, and joining. This is the address and QR code you give out |
 | `/play/` | teams | the game (teams reach it from the scoreboard page) |
-| `/game-config/` | you | set up the game, remove teams, download and delete the data |
+| `/results/` | teams | each team's final results (only once you have published them) |
+| `/game-config/` | you | set up the game, remove teams, publish the final results, download and delete the data |
 | `/game-score/` | you | score the photos |
 
 The two admin pages have **no login**: do not share their addresses (they are only protected by not being known; the page names are in this public repo, which is a risk you have accepted).
@@ -61,9 +62,15 @@ Things to know:
 ## 6. After the game
 
 - The game ends by itself at the end time; teams' pages say "Game over" and answers are refused. **You can keep scoring afterwards** and the scoreboard stays up.
-- Score the remaining photos, announce the result from the scoreboard.
+- **Score the remaining photos** on `/game-score/`.
+- **Publish the final results** (only possible once the game has ended): `/game-config/`, section **Final results**. It tells you how many photos have not been scored yet (they will count as 0%). Tick **I have applied all scores** and press **Publish final results**. Then:
+  - the scoreboard heading changes from "provisional results:" to "final results:";
+  - every team's **Play** button becomes a **Results** button (and its play page gets a link too);
+  - each team's results page shows how it finished ("You finished 3rd of 12", with a gold, silver or bronze medal for the top three; teams on the same score share a place), its total, and for every question what it answered, whether that was right, the points, and the **official answer**, plus the percentage it was awarded for each photo challenge.
+- **A mistake after publishing?** Press **Return to provisional**, fix the score on `/game-score/`, and publish again. While results are published, scores are locked (the scoring page says so).
+- Announce the result from the scoreboard.
 - **Keep the results:** `/game-config/`, Player data, **Download the player data**. The file has every team, its answers and its score (keep it private: it also contains each team's secret session id).
-- **Clean up** (before the next game or rehearsal): type `delete` and delete. The next game then starts with no teams and team numbers back at 1.
+- **Clean up** (before the next game or rehearsal): type `delete` and delete. The next game then starts with no teams, team numbers back at 1, and results provisional again (saving a new game configuration also returns the results to provisional).
 
 ---
 
@@ -76,6 +83,9 @@ Things to know:
 | The countdown or times look wrong | Check the **time zone** and times on `/game-config/` (the page shows what is saved). The site's clock decides everything, and the countdown uses it too, so a phone with the wrong time makes no difference |
 | **Save** refuses, "game in progress" | The game has started: the configuration is locked until it ends |
 | **Save** lists problems in the game file | Nothing was saved. The list says what to fix in `docs/game-questions.json`; fix it by pull request, merge, then Save again |
+| **Publish final results** is greyed out | The game has not ended yet (it is only possible after the end time), or the "I have applied all scores" box is not ticked |
+| The scoring page says scores are locked | The final results are published. Press **Return to provisional** on `/game-config/` to change a score, then publish again |
+| A team says its Results page only shows a link | Results are not published yet (the page says so), or that phone has no team: it was removed, or the browser data was cleared. A phone without a team never sees results |
 | A team says its answer was refused as invalid | A number question was left empty or has a non-digit; it can try again (the question is not used up) |
 | A team lost its place (cleared the browser, changed phone) | Sessions live in the phone's browser and cannot be recovered (a known, parked limit). They join again under a new name; remove the old team on `/game-config/` if you wish. Their earlier answers stay with the old team |
 | A team pressed "Photo sent to WhatsApp" but nothing is in WhatsApp | Score it Zero. A team that sent a photo but never pressed the button does not appear on the scoring page and gets no points (the rule in the instructions) |
@@ -86,7 +96,7 @@ Things to know:
 ## Limits and behaviour worth knowing
 
 - **One phone per team.** Joining gives a team its number and a private session in that browser (kept 30 days). There is no login and no second device.
-- **Answers are final.** Each question and photo can be submitted once. After submitting, the page shows only "Done": never what was typed, never whether it was right (only the score tells).
+- **Answers are final.** Each question and photo can be submitted once. After submitting, the page shows only "Done": never what was typed, never whether it was right (only the score tells) until you publish the final results, when each team sees its own answers and the official ones.
 - **Capacity.** Built for fewer than 50 teams plus spectators. The API allows 50 requests a second in total (burst 100); the scoreboard and game state are shared between viewers for a few seconds, and a visitor who has not joined does not poll for their team. If a big crowd ever shows "Could not refresh", raise `api_throttle_rate_limit` / `api_throttle_burst_limit` in `terraform/tfvars/prod.tfvars` (a Terraform apply).
 - **Cost.** On-demand pricing everywhere: a game like this costs cents. There is no budget alarm in this repo.
 - **Not built (parked):** restoring an old game from its download, recovering a lost session, an admin password.

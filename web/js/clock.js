@@ -18,6 +18,7 @@ export function createClock() {
       skewMs = summary.serverNowMs - Date.now();
     },
     phase,
+    published: () => game?.published === true, // the admin has published the final results
     // Fills the status line, the game name and the countdown (data-testid "status", "game-name", "countdown").
     render() {
       const current = phase();

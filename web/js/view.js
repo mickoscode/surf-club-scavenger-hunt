@@ -15,7 +15,7 @@ const meArea = createMeArea({ container: $('me-area'), onJoined: () => refresh(t
 const canJoin = () => ['pre', 'active'].includes(clock.phase());
 
 function renderMeArea() {
-  if (started) meArea.render({ team: me, canJoin: canJoin() });
+  if (started) meArea.render({ team: me, canJoin: canJoin(), published: clock.published() });
 }
 
 function renderScoreboard(teams) {
@@ -43,6 +43,10 @@ function renderScoreboard(teams) {
     return row;
   });
   $('scoreboard-body').replaceChildren(...rows);
+  const heading = $('scoreboard-heading'); // "provisional results:" until the admin publishes, then "final results:"
+  heading.dataset.published = String(clock.published());
+  heading.textContent = `${clock.published() ? 'final' : 'provisional'} results:`;
+  heading.hidden = teams.length === 0;
   $('scoreboard').hidden = teams.length === 0;
   $('no-teams').hidden = teams.length > 0;
 }
