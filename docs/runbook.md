@@ -61,11 +61,11 @@ Things to know:
 
 ## 6. After the game
 
-- The game ends by itself at the end time; teams' pages say "Game over" and answers are refused. **You can keep scoring afterwards** and the scoreboard stays up.
+- The game ends by itself at the end time; teams' play pages say "The game is over. Final results will be published soon!", answers are refused, and the **Play** button on the scoreboard page becomes a **Results** button straight away (before you publish, it leads to a page saying the results are not ready). **You can keep scoring afterwards** and the scoreboard stays up.
 - **Score the remaining photos** on `/game-score/`.
 - **Publish the final results** (only possible once the game has ended): `/game-config/`, section **Final results**. It tells you how many photos have not been scored yet (they will count as 0%). Tick **I have applied all scores** and press **Publish final results**. Then:
   - the scoreboard heading changes from "provisional results:" to "final results:";
-  - every team's **Play** button becomes a **Results** button (and its play page gets a link too);
+  - the play page's message changes from "Final results will be published soon!" to "The final results are in!", and it gets a Results link;
   - each team's results page shows how it finished ("You finished 3rd of 12", with a gold, silver or bronze medal for the top three; teams on the same score share a place), its total, and for every question what it answered, whether that was right, the points, and the **official answer**, plus the percentage it was awarded for each photo challenge.
 - **A mistake after publishing?** Press **Return to provisional**, fix the score on `/game-score/`, and publish again. While results are published, scores are locked (the scoring page says so).
 - Announce the result from the scoreboard.
