@@ -1,8 +1,8 @@
 {
     "zone 1" : {
-        "zone-name" : "Southside",
+        "zone-name" : "SO Southside",
         "zone-map" : "docs/game-zones/hunt-zone-1.png",
-        "photo-challenge" : "Take a team photo in front of the Sorrento Surf Life Saving Club building - everyone's faces must be visible - upload to whatsapp",
+        "photo-challenge" : "DEMO: Pretend to.... Take a team photo in front of the Sorrento Surf Life Saving Club building - everyone's faces must be visible - upload to whatsapp",
         "photo-score" : 30,
         "questions" : [
             {
@@ -38,9 +38,9 @@
         ]
     },
     "zone 2" : {
-        "zone-name" : "Beach Park",
+        "zone-name" : "Sorrento Beach Park",
         "zone-map" : "docs/game-zones/hunt-zone-2.png",
-        "photo-challenge" : "Take a team photo with everyone doing a star jump on the Sorrento Beach Promenade path - faces must be visible - upload to whatsapp",
+        "photo-challenge" : "DEMO: Pretend to.... Take a team photo on the Sorrento Beach Promenade path - faces must be visible - upload to whatsapp",
         "photo-score" : 30,
         "questions" : [
             {
@@ -78,7 +78,7 @@
     "zone 3" : {
         "zone-name" : "AQWA",
         "zone-map" : "docs/game-zones/hunt-zone-3.png",
-        "photo-challenge" : "Take a team photo with a boat or the rock wall behind you - faces must be visible - upload to whatsapp",
+        "photo-challenge" : "DEMO: Pretend to.... Take a team photo with a boat behind you - faces must be visible - upload to whatsapp",
         "photo-score" : 30,
         "questions" : [
             {
@@ -114,9 +114,9 @@
         ]
     },
     "zone 4" : {
-        "zone-name" : "Marina Walkways",
+        "zone-name" : "Marina HQ",
         "zone-map" : "docs/game-zones/hunt-zone-4.png",
-        "photo-challenge" : "Take a team photo on the boardwalk with boats visible behind you - faces must be visible - upload to whatsapp",
+        "photo-challenge" : "DEMO: Pretend to.... Take a team photo on the boardwalk - faces must be visible - upload to whatsapp",
         "photo-score" : 30,
         "questions" : [
             {
@@ -152,9 +152,9 @@
         ]
     },
     "zone 5" : {
-        "zone-name" : "Marina Beach & Park",
+        "zone-name" : "Marina Beach Park",
         "zone-map" : "docs/game-zones/hunt-zone-5.png",
-        "photo-challenge" : "Take a team photo standing on the round paved compass area in the park - faces must be visible - upload to whatsapp",
+        "photo-challenge" : "DEMO: Pretend to.... Take a team photo standing on the round paved compass area in the park - faces must be visible - upload to whatsapp",
         "photo-score" : 30,
         "questions" : [
             {
