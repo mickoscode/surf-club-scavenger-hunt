@@ -3,6 +3,7 @@
 import { getJson, putJson, postJson, deleteJson } from './api.js';
 import { $, el, refreshInterval } from './dom.js';
 import { formatScore } from './format.js';
+import { safeWhatsAppUrl } from './whatsapp.js';
 
 const STATUS_TEXT = { loading: 'loading', unconfigured: 'no game set up yet', pre: 'before the game', active: 'game in progress', post: 'game finished' };
 const FIELD_PROBLEM = {
@@ -12,6 +13,7 @@ const FIELD_PROBLEM = {
   start: 'Enter a start time.',
   end: 'Enter an end time.',
   'end-before-start': 'The end must be after the start.',
+  whatsappUrl: 'Use the group\'s invite link, which starts with https://chat.whatsapp.com/ (or leave it empty).',
 };
 
 let status = 'loading';
@@ -21,7 +23,7 @@ let formLoaded = false;
 let shownTeams = null;
 
 const form = $('config-form');
-const fields = { name: $('config-name'), timeZone: $('config-timezone'), day: $('config-day'), start: $('config-start'), end: $('config-end') };
+const fields = { name: $('config-name'), timeZone: $('config-timezone'), day: $('config-day'), start: $('config-start'), end: $('config-end'), whatsappUrl: $('config-whatsapp') };
 
 function fillForm({ config, defaults, timeZones }) {
   fields.timeZone.replaceChildren(...timeZones.map((z) => el('option', { value: z.id }, z.label)));
@@ -30,7 +32,18 @@ function fillForm({ config, defaults, timeZones }) {
   fields.day.value = config?.day ?? '';
   fields.start.value = config?.start ?? '';
   fields.end.value = config?.end ?? '';
+  fields.whatsappUrl.value = config?.whatsappUrl ?? '';
+  updateTestLink();
 }
+
+// "Test link" opens what is typed in the field (when it looks like a group link) so the admin can check it before saving.
+function updateTestLink() {
+  const link = safeWhatsAppUrl(fields.whatsappUrl.value.trim());
+  const test = $('whatsapp-test');
+  test.hidden = !link;
+  if (link) test.href = link;
+}
+fields.whatsappUrl.addEventListener('input', updateTestLink);
 
 function renderStatus(info, teamCount) {
   status = info.status;

@@ -12,6 +12,7 @@ Allow about 30 minutes. Tick as you go; write down anything odd.
 ## Set up a short test game
 - [ ] `/game-config/`: day = today, start a few minutes from now, end 30 minutes later, correct time zone. **Save**
 - [ ] The page reports the right number of zones; status "before the game"
+- [ ] Paste the WhatsApp group link, press **Test link** (it opens the right group on the laptop), **Save**
 - [ ] On a phone: open the site address (scan the QR code if you have one). It shows the scoreboard, a countdown to the start and a **Join** button
 
 ## Joining (before the start)
@@ -24,6 +25,7 @@ Allow about 30 minutes. Tick as you go; write down anything odd.
 ## Playing (after the start)
 - [ ] On the play page the team number (large, blue) and the team name sit on one line; "Time left" and the countdown share one line on every page that shows them
 - [ ] When the countdown reaches zero the zone tiles appear on the play page within about 10 seconds (no reload needed)
+- [ ] At a photo challenge, **Open WhatsApp group** opens the group in WhatsApp on the phone, and the word "WhatsApp" in the challenge and in the instructions does too; a spectator's phone (not joined) shows no WhatsApp links anywhere
 - [ ] Every zone's map thumbnail loads on mobile data; tapping a map shows it full size and **Close** returns to the questions
 - [ ] The instructions are hidden until the heading is tapped
 - [ ] Answer a text question (try a small typo and a capital letter), a whole-number question (the number keypad appears; letters are not accepted) and a decimal question

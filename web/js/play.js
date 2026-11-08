@@ -4,11 +4,13 @@ import { getJson } from './api.js';
 import { $, refreshInterval } from './dom.js';
 import { createClock } from './clock.js';
 import { createZones } from './zones.js';
+import { applyWhatsAppLinks, safeWhatsAppUrl } from './whatsapp.js';
 
 const clock = createClock();
 const zones = createZones({ container: $('zones'), onSubmitted: refresh });
 let started = false;
 let shownTeam = null;
+let whatsappUrl; // undefined until known, so the first answer always applies
 
 const PHASE_MESSAGE = {
   unconfigured: 'No game is set up yet.',
@@ -50,6 +52,14 @@ async function refresh() {
     if (game.body.zones.length > 0) zones.render(game.body.zones);
   }
   if (me.ok && me.body.done) zones.applyDone(me.body.done);
+  if (me.ok) { // the WhatsApp group link, if the admin set one: only a team with a session is given it
+    const link = safeWhatsAppUrl(me.body.whatsappUrl);
+    if (link !== whatsappUrl) {
+      whatsappUrl = link;
+      applyWhatsAppLinks($('instructions'), link);
+      zones.setWhatsApp(link);
+    }
+  }
 }
 
 refresh();

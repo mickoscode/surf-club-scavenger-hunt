@@ -12,6 +12,7 @@ const { checkAnswer } = require('../lib/answers');
 const { questionPoints, isDecision } = require('../lib/scoring');
 const { validateTeamName, sortScoreboard } = require('../lib/teams');
 const { buildResults } = require('../lib/results');
+const { normaliseWhatsappUrl } = require('../lib/whatsapp');
 const { validateGameData, mapId } = require('../lib/gamedata');
 
 const PLAYER_ID = /^[0-9a-f]{32}$/;
@@ -86,9 +87,13 @@ function createApp({
     'GET /api/me': async (request) => {
       const team = await sessionTeam(request);
       if (!team) return respond(200, { team: null });
+      const saved = await store.getGame();
       return respond(200, {
         team: summary(team),
         done: { answers: Object.keys(team.subs), photos: Object.keys(team.photos) },
+        // The WhatsApp group's invite link works like a key to the group, so only a team with a session is given it: it is
+        // never in the public game or scoreboard responses.
+        whatsappUrl: saved?.config?.whatsappUrl ?? null,
       });
     },
 
@@ -173,13 +178,17 @@ function createApp({
       const body = readJson(request);
       const { status } = await snapshot();
       if (!can(status, 'configure')) throw new HttpError(409, 'game-active');
+      // The WhatsApp link is optional: left out of the saved configuration when empty, and stored in its plain form.
+      const link = body.whatsappUrl === undefined || body.whatsappUrl === null ? '' : String(body.whatsappUrl).trim();
       const config = {
         name: typeof body.name === 'string' && body.name.trim() ? body.name.trim() : DEFAULT_GAME_NAME,
         timeZone: body.timeZone ?? DEFAULT_TIME_ZONE,
         day: body.day, start: body.start, end: body.end,
+        ...(link ? { whatsappUrl: link } : {}),
       };
       const fields = validateConfig(config);
       if (fields.length) throw new HttpError(400, 'invalid-config', { fields });
+      if (config.whatsappUrl) config.whatsappUrl = normaliseWhatsappUrl(config.whatsappUrl).url;
       const game = loadGameData();
       const problems = validateGameData(game, { checkMaps: false });
       if (problems.length) throw new HttpError(422, 'invalid-game-data', { problems });

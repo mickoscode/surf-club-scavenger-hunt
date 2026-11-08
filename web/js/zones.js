@@ -6,6 +6,7 @@
 import { postJson } from './api.js';
 import { el } from './dom.js';
 import { sanitizeAnswer } from './answer-input.js';
+import { applyWhatsAppLinks, safeWhatsAppUrl } from './whatsapp.js';
 
 const MESSAGES = {
   'invalid-answer': 'Please enter an answer in the right format.',
@@ -22,6 +23,7 @@ export function createZones({ container, onSubmitted }) {
   const tiles = new Map(); // zone key -> tile element
   const panels = new Map(); // zone key -> panel element
   const done = { answers: new Set(), photos: new Set() };
+  let whatsappUrl = null; // the group's invite link, once the server has given it to this team
 
   // ------------------------------------------------------------------ full-size map
   const overlay = el('div', { class: 'map-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Zone map', 'data-testid': 'map-overlay' });
@@ -147,10 +149,14 @@ export function createZones({ container, onSubmitted }) {
     error.hidden = true;
     const actions = el('div', { class: 'd-flex align-items-center gap-2' });
     actions.append(submitButton, badge);
+    // Shown only when the admin has set a WhatsApp group link (see setWhatsApp). The submit button below is unchanged: it records
+    // the submission, and is not a link.
+    const openGroup = el('a', { class: 'btn btn-outline-success btn-sm mb-2 align-self-start', target: '_blank', rel: 'noopener noreferrer', 'data-testid': 'whatsapp-open' }, 'Open WhatsApp group');
+    openGroup.hidden = true;
     form.append(
       el('div', { class: 'fw-semibold' }, `Photo challenge (${zone.photoScore} pts)`),
       el('p', { class: 'my-2', 'data-testid': 'photo-challenge' }, zone.photoChallenge),
-      actions, error,
+      openGroup, actions, error,
     );
     form.addEventListener('submit', (event) => {
       event.preventDefault();
@@ -203,7 +209,20 @@ export function createZones({ container, onSubmitted }) {
   const tilesView = el('div', { class: 'row row-cols-2 g-3', 'data-testid': 'zone-tiles' });
   window.addEventListener('hashchange', showFromHash);
 
+  // The group link (or null): shows the Open WhatsApp group buttons and links the mentions of WhatsApp in the photo challenges.
+  function setWhatsApp(url) {
+    whatsappUrl = safeWhatsAppUrl(url);
+    for (const panel of panels.values()) {
+      const open = panel.querySelector('[data-testid="whatsapp-open"]');
+      open.hidden = !whatsappUrl;
+      if (whatsappUrl) open.href = whatsappUrl;
+      else open.removeAttribute('href');
+      applyWhatsAppLinks(panel.querySelector('[data-testid="photo-challenge"]'), whatsappUrl);
+    }
+  }
+
   return {
+    setWhatsApp,
     // Builds the zones when they change (and only then, so typing is never wiped by a refresh).
     render(next) {
       const key = JSON.stringify(next);
@@ -227,6 +246,7 @@ export function createZones({ container, onSubmitted }) {
       container.replaceChildren(tilesView, ...panelNodes, overlay);
       for (const zone of zones) updateProgress(zone);
       applyDone({ answers: [...done.answers], photos: [...done.photos] });
+      setWhatsApp(whatsappUrl); // the zones were just rebuilt: put the link back
       showFromHash();
     },
     applyDone,
