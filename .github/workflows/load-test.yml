@@ -1,0 +1,102 @@
+name: Load test
+
+# Run by hand (Actions > Load test > Run workflow), from main. Sends simulated teams and spectators to the live site and produces a
+# report: a summary on this page and a downloadable report.html with charts. See docs/runbook.md ("Load test") before running it.
+# Needs a demo game that is joinable and in progress (full mode), and no real teams on the site; it refuses to run otherwise.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "full = teams play (the game must be in progress); spectators-only = scoreboard viewers, any time"
+        type: choice
+        options: [full, spectators-only]
+        default: full
+      teams:
+        description: "Simulated teams (max 300; ignored in spectators-only)"
+        default: "50"
+      spectators:
+        description: "Simulated spectators watching the scoreboard (max 1500)"
+        default: "100"
+      duration_seconds:
+        description: "How long to run, in seconds (max 900)"
+        default: "300"
+      ramp_seconds:
+        description: "Users arrive evenly over this many seconds (not more than the duration)"
+        default: "60"
+      answers_per_team_per_minute:
+        description: "How often each team answers a question (0 to 12)"
+        default: "2"
+
+# Never alongside a deploy.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  id-token: write # request the OIDC token to assume the AWS role (read-only CloudWatch, for the server-side numbers)
+  contents: read
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    env:
+      AWS_REGION: ap-southeast-2
+      SITE_URL: ${{ vars.SITE_URL }}
+      ADMIN_PASSCODE: ${{ secrets.ADMIN_PASSCODE }} # only used to remove the test teams afterwards
+
+    steps:
+      - name: Check configuration
+        run: |
+          if [ -z "$SITE_URL" ]; then
+            echo "::error::Repository variable SITE_URL must be set (see docs/setup.md)."
+            exit 1
+          fi
+
+      - name: Checkout repository code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      # Optional: without it (or when run from a branch other than main) the report just has no server-side numbers.
+      - name: Configure AWS credentials
+        id: aws
+        continue-on-error: true
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::722937635825:role/scavenger-hunt-deploy-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run load test
+        env:
+          MODE: ${{ inputs.mode }}
+          TEAMS: ${{ inputs.teams }}
+          SPECTATORS: ${{ inputs.spectators }}
+          DURATION: ${{ inputs.duration_seconds }}
+          RAMP: ${{ inputs.ramp_seconds }}
+          ANSWERS: ${{ inputs.answers_per_team_per_minute }}
+          AWS_OK: ${{ steps.aws.outcome }}
+        run: |
+          cloudwatch=""
+          if [ "$AWS_OK" = "success" ]; then cloudwatch="--cloudwatch"; fi
+          node scripts/load-test.js --mode "$MODE" --teams "$TEAMS" --spectators "$SPECTATORS" --duration "$DURATION" --ramp "$RAMP" --answers-per-minute "$ANSWERS" $cloudwatch --out load-test-report
+
+      - name: Show the summary on this page
+        if: always()
+        run: |
+          if [ -f load-test-report/summary.md ]; then cat load-test-report/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: load-test-report
+          path: load-test-report/
+          if-no-files-found: ignore
+          retention-days: 30

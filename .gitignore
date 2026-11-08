@@ -29,3 +29,4 @@ terraform/.placeholder-*.zip
 
 # Assembled backend (Lambda package contents), see scripts/package-backend.sh
 build/
+load-test-report/

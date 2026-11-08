@@ -300,6 +300,8 @@ A GitHub Actions workflow, started by hand from the Actions tab (never on a sche
 - **Clean up**: it removes its own test teams using the admin passcode, which the admin stores as the GitHub secret `ADMIN_PASSCODE` (the only place the plaintext passcode is kept besides the admin's password manager).
 - **Reading CloudWatch** needs a small read-only permission added to the deploy role.
 
+As built: `.github/workflows/load-test.yml` runs `scripts/load-test.js` (code in `scripts/loadtest/`: `generator.js` the simulated users, `stats.js` the numbers, `verdict.js` the plain verdict, `cost.js`, `cloudwatch.js`, `report.js` the HTML and Markdown, `cli.js` the guards and clean-up). It refuses to start (exit 1, nothing sent) when the scoreboard is unreachable, the admin passcode is needed but missing or wrong, any non-`loadtest-` team exists, or (full mode) the game is not in progress; it removes leftover and its own `loadtest-` teams, concurrency 10, verifying afterwards (exit 3 if any remain). CloudWatch is read through the deploy role, which only works from `main`; otherwise the report has no server-side section. The deploy role gained `cloudwatch:GetMetricData`, `lambda:GetAccountSettings` and read-only `apigateway:GET` on this API. The load test's own tests run in `npm test` (about a minute: short real runs against the local site).
+
 ## Parked for later (not in the first version)
 
 - Restoring an old game: uploading the downloaded json file back into the website.

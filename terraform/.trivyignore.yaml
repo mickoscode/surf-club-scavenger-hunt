@@ -13,3 +13,8 @@ misconfigurations:
   - id: AWS-0013
     paths: [cloudfront.tf]
     statement: Default CloudFront certificate cannot set a TLS minimum; a custom domain (domain_name) enforces TLSv1.2_2021.
+  # CloudWatch metric reads and Lambda account settings do not support resource-level permissions, so Resource must be "*".
+  # Both actions are read-only, used by the manually run load test report.
+  - id: AWS-0057
+    paths: [iam.tf]
+    statement: Read-only CloudWatch/Lambda account actions that do not support resource-level permissions (load test report).

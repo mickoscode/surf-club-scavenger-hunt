@@ -97,10 +97,20 @@ Things to know:
 | Old content after you merged a change | The deploy refreshes the site's cache, which takes a minute or two. Reload; if it persists check the **Deploy site** run |
 | The **Deploy site** run failed | Open the run in GitHub Actions. If only the final smoke test failed, the new version is already live: look at what it reports (it names the page or API call), fix forward, or revert the pull request and run **Deploy site** again from `main` |
 
+## Load test
+
+Shows how the site copes with a crowd, and where its limits are. Do it now and then (for example after changing the limits), never during a real game.
+1. In the admin pages, set up a **demo game that has started** (full mode needs it in progress; **spectators-only** works any time). There must be **no real teams** on the site: the test refuses to run otherwise, and removes only its own teams (named `loadtest-001` and so on) afterwards.
+2. GitHub > **Actions** > **Load test** > **Run workflow**, choosing **main**. Defaults (50 teams, 100 spectators, 5 minutes) are a sensible first run; the limits are 300 teams, 1,500 spectators and 15 minutes. Start small and work up.
+3. When it finishes, the run page shows the summary, and the **load-test-report** artifact holds `report.html` (open it in a browser: charts, tables, a plain verdict), `report.json` and the raw `records.json`.
+4. Read the verdict first: **Handled it**, **A limit was reached** (it says when, and at what rate), **Problems found**, or **Inconclusive** (the GitHub machine itself was overloaded: run again smaller).
+
+Cost: the report shows an estimate. A run of a few minutes costs a few cents; a maximum run is still well under a dollar. The account budget alert (in the sign-in repository) is the real safety net. If a run is cancelled part way, test teams may remain: run it again (it clears leftovers first) or remove teams named `loadtest-...` on the Config page.
+
 ## Limits and behaviour worth knowing
 
 - **One phone per team.** Joining gives a team its number and a private session in that browser (kept 30 days). There is no login and no second device.
 - **Answers are final.** Each question and photo can be submitted once. After submitting, the page shows only "Done": never what was typed, never whether it was right (only the score tells) until you publish the final results, when each team sees its own answers and the official ones.
-- **Capacity.** Built for fewer than 50 teams plus spectators. The API allows 50 requests a second in total (burst 100); the scoreboard and game state are shared between viewers for a few seconds, and a visitor who has not joined does not poll for their team. If a big crowd ever shows "Could not refresh", raise `api_throttle_rate_limit` / `api_throttle_burst_limit` in `terraform/tfvars/prod.tfvars` (a Terraform apply).
+- **Capacity.** Built for fewer than 50 teams plus spectators. The API allows 50 requests a second in total (burst 200); the scoreboard and game state are shared between viewers for a few seconds, and a visitor who has not joined does not poll for their team. If a big crowd ever shows "Could not refresh", raise `api_throttle_rate_limit` / `api_throttle_burst_limit` in `terraform/tfvars/prod.tfvars` (a Terraform apply).
 - **Cost.** On-demand pricing everywhere: a game like this costs cents. There is no budget alarm in this repo.
-- **Not built (parked):** restoring an old game from its download, recovering a lost session, an admin password.
+- **Not built (parked):** restoring an old game from its download, recovering a lost session.
