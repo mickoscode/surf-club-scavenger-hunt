@@ -15,13 +15,14 @@ Allow about 30 minutes. Tick as you go; write down anything odd.
 - [ ] On a phone: open the site address (scan the QR code if you have one). It shows the scoreboard, a countdown to the start and a **Join** button
 
 ## Joining (before the start)
-- [ ] Each phone joins with a different team name; the team name and **Play** link replace the Join button
+- [ ] Each phone joins with a different team name; the **Play** button replaces the Join button and the team's own row in the scoreboard is highlighted
 - [ ] A name already taken is refused with a clear message; an empty name too
 - [ ] Close the browser completely and reopen the site: still joined
 - [ ] The scoreboard on every phone shows all teams, updating within about 5 seconds
 - [ ] `/game-config/` lists the teams; remove one, confirm it disappears everywhere, and that the phone goes back to being able to join
 
 ## Playing (after the start)
+- [ ] On the play page the team number (large, blue) and the team name sit on one line; "Time left" and the countdown share one line on every page that shows them
 - [ ] When the countdown reaches zero the zone tiles appear on the play page within about 10 seconds (no reload needed)
 - [ ] Every zone's map thumbnail loads on mobile data; tapping a map shows it full size and **Close** returns to the questions
 - [ ] The instructions are hidden until the heading is tapped

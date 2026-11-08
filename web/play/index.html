@@ -14,11 +14,15 @@
 <body class="d-flex flex-column min-vh-100">
   <header class="container text-center pt-4 pb-2">
     <h1 class="h6 text-muted mb-1" data-testid="game-name">Sorrento Youth Scavenger Hunt</h1>
-    <p class="display-4 fw-bold mb-0" data-testid="team-number" data-team-number="">&nbsp;</p>
-    <p class="h5 mb-2 team-name" data-testid="team-name"></p>
+    <div class="d-flex flex-wrap justify-content-center align-items-baseline column-gap-3 mb-2" data-testid="team-line">
+      <span class="display-4 fw-bold text-primary" data-testid="team-number" data-team-number="">&nbsp;</span>
+      <span class="h5 mb-0 team-name play-team-name" data-testid="team-name"></span>
+    </div>
     <p class="mb-3"><a href="/view/" data-testid="scoreboard-link">View scoreboard</a></p>
-    <p class="lead mb-0" data-testid="status" data-phase="loading">&nbsp;</p>
-    <p class="display-6 fw-bold mb-0" data-testid="countdown" data-phase="loading" hidden></p>
+    <div class="d-flex flex-wrap justify-content-center align-items-baseline column-gap-2" data-testid="status-line">
+      <p class="lead mb-0" data-testid="status" data-phase="loading">&nbsp;</p>
+      <p class="display-6 fw-bold mb-0" data-testid="countdown" data-phase="loading" hidden></p>
+    </div>
   </header>
 
   <main class="container flex-grow-1 py-3">

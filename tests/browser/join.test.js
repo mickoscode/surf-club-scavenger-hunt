@@ -13,6 +13,8 @@ async function joinOnPage(page, name) {
   await page.fill($('team-name-input'), name);
   await page.click($('join-submit'));
 }
+// The team's own row in the scoreboard: the only place its name appears on the view page.
+const mine = (page) => page.locator(`${$('scoreboard-row')}[data-mine="true"] .team-name`);
 const joinError = async (page) => {
   await page.waitForSelector(`${$('join-error')}:not([hidden])`);
   return page.locator($('join-error')).getAttribute('data-error');
@@ -32,17 +34,19 @@ withPage('a visitor can join, then sees Play and their team name instead of Join
   await page.click($('join-submit'));
   await page.waitForSelector($('play-link'));
   assert.equal(await page.locator($('join-button')).count(), 0);
-  assert.equal(await page.locator($('my-team')).textContent(), 'Sea Dogs');
-  const mine = page.locator(`${$('scoreboard-row')}[data-mine="true"]`);
-  await until(async () => (await mine.count()) === 1);
-  assert.equal(await mine.getAttribute('data-team-number'), '1');
+  assert.equal(await page.locator($('my-team')).count(), 0); // the name is not repeated outside the scoreboard
+  const row = page.locator(`${$('scoreboard-row')}[data-mine="true"]`);
+  await until(async () => (await row.count()) === 1);
+  assert.equal(await row.getAttribute('data-team-number'), '1');
+  assert.equal(await mine(page).textContent(), 'Sea Dogs');
   assert.ok((await overflow(page)) <= 0);
 
   // Closing the browser tab and coming back later: the session is kept.
   const later = await context.newPage();
   await later.goto(`${site.url}/view/`);
   await later.waitForSelector($('play-link'));
-  assert.equal(await later.locator($('my-team')).textContent(), 'Sea Dogs');
+  await later.waitForSelector(`${$('scoreboard-row')}[data-mine="true"]`);
+  assert.equal(await mine(later).textContent(), 'Sea Dogs');
   assert.equal(await later.locator($('join-button')).count(), 0);
 });
 
@@ -65,7 +69,8 @@ withPage('a refused team name says why, and the form can be used again', {}, asy
   await page.fill($('team-name-input'), 'Sharks'); // after three refusals, a good name still works
   await page.click($('join-submit'));
   await page.waitForSelector($('play-link'));
-  assert.equal(await page.locator($('my-team')).textContent(), 'Sharks');
+  await page.waitForSelector(`${$('scoreboard-row')}[data-mine="true"]`);
+  assert.equal(await mine(page).textContent(), 'Sharks');
 });
 
 withPage('the team name field stops at 30 characters', {}, async ({ site, page }) => {
@@ -124,7 +129,8 @@ withPage('joining works without console errors or Content-Security-Policy violat
   await page.goto(`${site.url}/view/`);
   await joinOnPage(page, '<script>alert(1)</script>');
   await page.waitForSelector($('play-link'));
-  const name = await page.locator($('my-team')).evaluate((e) => ({ text: e.textContent, children: e.children.length }));
+  await page.waitForSelector(`${$('scoreboard-row')}[data-mine="true"]`);
+  const name = await mine(page).evaluate((e) => ({ text: e.textContent, children: e.children.length }));
   assert.deepEqual(name, { text: '<script>alert(1)</script>', children: 0 }); // shown as text
   assert.deepEqual(problems, []);
   assert.deepEqual(await cspViolations(), []);

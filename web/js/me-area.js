@@ -1,5 +1,5 @@
 // The area above the scoreboard on /view/: a Join button (with the one-field form) for someone who has not joined, or
-// the Play link with the team's name for someone who has. It is only rebuilt when what it shows changes, so a refresh
+// the Play button for someone who has. It is only rebuilt when what it shows changes, so a refresh
 // never wipes a team name that is half typed.
 import { postJson } from './api.js';
 import { el } from './dom.js';
@@ -56,19 +56,18 @@ export function createMeArea({ container, onJoined }) {
     return [button, form];
   }
 
-  function buildTeam(team) {
+  function buildPlay() {
     const play = el('a', { href: '/play/', class: 'btn btn-primary btn-lg w-100', 'data-testid': 'play-link' }, 'Play');
-    const name = el('p', { class: 'text-center fw-semibold mt-2 mb-0 team-name', 'data-testid': 'my-team' }, team.name);
-    return [play, name];
+    return [play]; // the team's own name is not repeated here: its row in the scoreboard is highlighted
   }
 
   return {
     // team: { number, name } or null; canJoin: whether joining is open right now.
     render({ team, canJoin }) {
-      const next = team ? `team:${team.number}:${team.name}` : canJoin ? 'join' : 'none';
+      const next = team ? 'play' : canJoin ? 'join' : 'none';
       if (next === shown) return;
       shown = next;
-      container.replaceChildren(...(team ? buildTeam(team) : canJoin ? buildJoin() : []));
+      container.replaceChildren(...(team ? buildPlay() : canJoin ? buildJoin() : []));
     },
   };
 }
