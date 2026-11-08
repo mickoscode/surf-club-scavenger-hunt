@@ -39,10 +39,10 @@ Allow about 30 minutes. Tick as you go; write down anything odd.
 - [ ] During the game the configuration page is locked; after the end it unlocks
 
 ## After the end
-- [ ] Teams' pages say "Game over" and refuse answers; the final scoreboard stays
+- [ ] Teams' play pages say "The game is over. Final results will be published soon!" and refuse answers; the **Play** button on the scoreboard page has turned into **Results** (without reloading), and a team that taps it is told the results are not ready; the scoreboard stays
 - [ ] You can still score photos
 - [ ] `/game-config/`, Final results: it counts the photos not scored yet; the publish button stays disabled until "I have applied all scores" is ticked
-- [ ] Publish. The scoreboard heading changes from "provisional results:" to "final results:" on every phone; each team's **Play** button becomes **Results**
+- [ ] Publish. The scoreboard heading changes from "provisional results:" to "final results:" on every phone, the play page says the final results are in, and each team's **Results** button now shows its results
 - [ ] Each team's results page: the place ("You finished 2nd of 3", a medal for 1st to 3rd), its total, every question with its own answer, right or wrong, and the official answer, and the photo percentages (try one team that sent no photo and one whose photo you never scored)
 - [ ] Someone who is not a team (a spectator's phone) opening the results address sees only the link back to the scoreboard
 - [ ] The scoring page is locked while published; **Return to provisional** unlocks it and the scoreboard says "provisional results:" again

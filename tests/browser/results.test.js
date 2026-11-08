@@ -171,29 +171,39 @@ withPage('the scoreboard says "provisional results:" above the table, then "fina
   await page.waitForFunction(() => document.querySelector('[data-testid="scoreboard-heading"]').textContent === 'provisional results:');
 });
 
-withPage('once published the Play button becomes a Results button, and the play page links to the results too', {}, async ({ site, page, context }) => {
-  const { alpha } = await finishedGame(site, { publish: false });
+withPage('from the moment the game is over the Play button is a Results button, published or not', {}, async ({ site, page, context }) => {
+  await site.api.configure();
+  const alpha = await site.api.join('Alpha');
   await signIn(context, site.url, alpha);
   await page.goto(`${site.url}/view/?refresh=500`);
-  await page.waitForSelector($('play-link'));
+  await page.waitForSelector($('play-link')); // the game is on
   assert.equal(await page.locator($('results-link')).count(), 0);
 
-  const play = await context.newPage();
-  await play.goto(`${site.url}/play/?refresh=500`);
-  await play.waitForSelector(`${$('team-number')}[data-team-number="1"]`);
-  assert.equal(await play.locator($('results-link')).isHidden(), true); // not published: no link
-
-  await site.api.publish();
+  site.clock.now = END + 1; // the game ends while the page is open: no reload, no publishing
   await page.waitForSelector($('results-link'));
   assert.equal(await page.locator($('play-link')).count(), 0);
-  await play.waitForSelector(`${$('results-link')}:not([hidden])`);
 
+  await page.click($('results-link')); // the results are not published yet, and the page says so
+  await page.waitForURL('**/results/');
+  await page.waitForSelector(`${$('results-not-ready')}:not([hidden])`);
+  assert.equal(await page.locator($('results-body')).isHidden(), true);
+});
+
+withPage('the play page links to the results once they are published', {}, async ({ site, page, context }) => {
+  const { alpha } = await finishedGame(site, { publish: false });
+  await signIn(context, site.url, alpha);
+  await page.goto(`${site.url}/play/?refresh=500`);
+  await page.waitForSelector(`${$('team-number')}[data-team-number="1"]`);
+  assert.equal(await page.locator($('results-link')).isHidden(), true); // not published: no link yet
+
+  await site.api.publish();
+  await page.waitForSelector(`${$('results-link')}:not([hidden])`);
   await page.click($('results-link'));
   await page.waitForURL('**/results/');
   await page.waitForSelector(`${$('place-heading')}[data-place="1"]`);
   await page.click($('scoreboard-link'));
   await page.waitForURL('**/view/');
-  await page.waitForSelector($('results-link')); // and back on the scoreboard, still a Results button
+  await page.waitForSelector($('results-link')); // and on the scoreboard page it is a Results button
 });
 
 // ------------------------------------------------------------------------------------------ the admin form

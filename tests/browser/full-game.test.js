@@ -118,10 +118,11 @@ withPage('a whole game: set up, join, play, photos, scoring, publishing, results
   const shown = await spectator.page.locator(`${$('scoreboard-row')} td:last-child`).allTextContents();
   assert.deepEqual(shown, ['60', '22.5']);
 
-  // ---- Until the admin publishes, the scoreboard is provisional and players only have a Play button.
+  // ---- Until the admin publishes, the scoreboard is provisional; but the game is over, so Play is already a Results button.
   assert.equal(await spectator.page.locator($('scoreboard-heading')).textContent(), 'provisional results:');
   await dogs.page.goto(`${site.url}/view/?refresh=500`);
-  await dogs.page.waitForSelector($('play-link'));
+  await dogs.page.waitForSelector($('results-link'));
+  assert.equal(await dogs.page.locator($('play-link')).count(), 0);
 
   // ---- The admin confirms every score has been applied and publishes the final results.
   await admin.goto(`${site.url}/game-config/?refresh=500`);
@@ -131,7 +132,7 @@ withPage('a whole game: set up, join, play, photos, scoring, publishing, results
   await admin.click($('publish-button'));
   await admin.waitForSelector(`${$('results-state')}[data-published="true"]`);
 
-  // ---- The scoreboard turns final; each team's Play button becomes Results and shows how it finished.
+  // ---- The scoreboard turns final, and each team's Results button now shows how it finished.
   await spectator.page.waitForFunction(() => document.querySelector('[data-testid="scoreboard-heading"]').textContent === 'final results:');
   const results = async (team, place, medal, total, photoStates) => {
     await team.page.goto(`${site.url}/view/?refresh=500`);

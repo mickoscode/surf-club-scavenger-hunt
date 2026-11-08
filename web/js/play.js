@@ -13,7 +13,7 @@ let shownTeam = null;
 const PHASE_MESSAGE = {
   unconfigured: 'No game is set up yet.',
   pre: 'The game has not started yet. The zones appear here when it does.',
-  post: 'The game is over. Thanks for playing!',
+  post: 'The game is over. Final results will be published soon!',
 };
 
 function renderTeam(team) {
@@ -32,7 +32,8 @@ function renderPhase() {
   const message = $('play-message');
   message.dataset.phase = phase;
   message.hidden = !PHASE_MESSAGE[phase];
-  message.textContent = PHASE_MESSAGE[phase] ?? '';
+  // once the admin has published, "will be published soon" would be wrong
+  message.textContent = phase === 'post' && clock.published() ? 'The game is over. The final results are in!' : PHASE_MESSAGE[phase] ?? '';
   $('zones').hidden = phase !== 'active';
   $('results-link').hidden = !clock.published(); // the final results are out: the same Results button as on the scoreboard page
 }

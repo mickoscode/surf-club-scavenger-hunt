@@ -79,10 +79,10 @@ POST-GAME
 - now > game-end
 - Players CANNOT join
 - Players CANNOT play. A submission that arrives after game-end is rejected, even by a second (no grace period).
-- The view page shows "Game over" and the scoreboard (headed "provisional results:" until the admin publishes the final results). The play page shows "Game over" with a link to the scoreboard. Both remain available until the admin deletes the data.
+- The view page shows "Game over" and the scoreboard (headed "provisional results:" until the admin publishes the final results). The play page shows "The game is over. Final results will be published soon!" (once the results are published it says the final results are in) with a link to the scoreboard. Both remain available until the admin deletes the data.
 - Admin can score (so the scoreboard can still change after the game ends), until the final results are published
 - Admin can publish the final results, only once now > game-end, and can return them to provisional (see "Publishing the final results")
-- Once the final results are published, the 'play' button on the view page becomes a 'results' button, and players can see their results
+- As soon as the game is over (now > game-end) the 'play' button on the view page becomes a 'results' button, whether or not the final results have been published yet (the results page says they are not ready until they are). Once they are published, players can see their results
 - Admin can delete all player data (names, answers, scores). This also returns the results to provisional.
 - Admin can configure/edit game. Saving the configuration also returns the results to provisional.
 
@@ -116,7 +116,7 @@ As there is no login or authentication, a simple web session mechanism must be u
 
 Once a player has joined:
 - the 'join' button should no longer be displayed on the view page.
-- the 'play' link should be displayed instead of the join button. The play link links to the play page. Once the final results are published, the 'play' button becomes a 'results' button that links to the results page.
+- the 'play' link should be displayed instead of the join button. The play link links to the play page. As soon as the game is over (now > game-end) the 'play' button becomes a 'results' button that links to the results page, even before the final results are published: until then the results page tells the player the results are not ready yet.
 - the view page does not display the player's team name (their own row in the scoreboard is highlighted instead).
 
 ### Scoreboard
@@ -195,8 +195,8 @@ Admins should also be able to delete all player data from a previous game. This 
 A separate form on this page (not part of the configuration form) lets the admin confirm that every score has been applied and publish the final results.
 - It is not possible to publish until now > game-end (the server refuses; the form is disabled with a note while the game is not over).
 - The form shows how many photo submissions have not been scored yet. The admin must tick "I have applied all scores" to publish. Any photo that was submitted but never scored counts as 0% (and the form says so).
-- Publishing: the scoreboard's heading changes from "provisional results:" to "final results:", the 'play' button becomes a 'results' button for players with a team, and the results page shows each team its results.
-- A "Return to provisional" button reverses it (for a mistake or a late correction): the scoreboard goes back to "provisional results:", the results page goes back to "not ready yet", and the 'results' button goes back to 'play' (after the game it leads to the "Game over" page).
+- Publishing: the scoreboard's heading changes from "provisional results:" to "final results:", the play page's message changes, and the results page shows each team its results (the 'results' button is already there from the end of the game).
+- A "Return to provisional" button reverses it (for a mistake or a late correction): the scoreboard goes back to "provisional results:", the results page goes back to "not ready yet", and the play page's message goes back to "Final results will be published soon" (the 'results' button stays, because the game is still over).
 - While the results are published, scores can not be changed: the scoring page says so and Apply is disabled. To correct a score, return to provisional first. Removing a team is still possible (and changes the places).
 - Deleting all player data, or saving the game configuration, returns the results to provisional.
 
@@ -281,6 +281,7 @@ Where the finished site is more specific than the text above (details settled wh
 - **API status codes** avoid 403 and 404 for the API's own errors (CloudFront replaces those with the site's 404 page): wrong state is 409, unknown references 400.
 - **Zone and question counts** are whatever `game-questions.json` holds when the admin saves the configuration (the zones are copied at that moment).
 - **Maps** are converted at build time to small thumbnails and full-size WebP files.
+- **After the game ends**: the Play button on `/view/` becomes Results at once (the local countdown notices the end, no reload needed); the play page says "The game is over. Final results will be published soon!" until the results are published, then "The game is over. The final results are in!"; the results page tells a team before publication that the results are not ready and will be published soon. The play page's own Results link appears only once published.
 - **Final results**: the admin form is on `/game-config/` ("Final results"): the publish button is disabled until the game is over and "I have applied all scores" is ticked, and shows how many photos are unscored; "Return to provisional" undoes it. While published, `/game-score/` is read-only. The scoreboard heading (`provisional results:` / `final results:`) sits directly above the table and is hidden while there are no teams. `/results/` shows a viewer, a removed team, or an unpublished game only the link back to the scoreboard (plus a note to a team before publication); nothing about answers is sent to the browser in those cases. Medals: 🥇 🥈 🥉 with an accessible label; teams that tie share a place and its medal. Official answers with alternatives are joined with "or".
 - **Not built (parked)**: restoring an old game from its download, recovering a lost session, an admin passcode. See also "Accepted risk" above.
 

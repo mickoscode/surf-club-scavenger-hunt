@@ -1,7 +1,7 @@
 // The /play/ page shell in a real browser: who you are, the countdown, the instructions, the game phase.
 // (The zones and forms are tested with the next PR.) Elements by data-testid, state from data-* attributes.
 const assert = require('node:assert/strict');
-const { browserSuite, signIn, START, END } = require('./helpers.js');
+const { browserSuite, signIn, until, START, END } = require('./helpers.js');
 
 const { withPage } = browserSuite();
 
@@ -121,3 +121,19 @@ withPage('on a phone the play page fits, even with the longest team name and the
   await page.locator($('instructions-heading')).click();
   assert.ok((await overflow(page)) <= 0, 'the page is wider than the screen');
 });
+
+withPage('after the game the play page says the final results will be published soon, and when they are published it says they are in', {}, async ({ site, page, context }) => {
+  await site.api.configure();
+  const team = await site.api.join('Sea Dogs');
+  await signIn(context, site.url, team);
+  site.clock.now = END + 1;
+  await page.goto(`${site.url}/play/?refresh=500`);
+  const message = page.locator($('play-message'));
+  await page.waitForSelector(`${$('play-message')}[data-phase="post"]:not([hidden])`);
+  assert.equal(await message.textContent(), 'The game is over. Final results will be published soon!'); // the wording the requirements fix
+
+  await site.api.publish();
+  await until(async () => (await message.textContent()) !== 'The game is over. Final results will be published soon!');
+  assert.equal(await page.locator($('results-link')).isVisible(), true);
+});
+

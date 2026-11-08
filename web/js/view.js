@@ -15,7 +15,9 @@ const meArea = createMeArea({ container: $('me-area'), onJoined: () => refresh(t
 const canJoin = () => ['pre', 'active'].includes(clock.phase());
 
 function renderMeArea() {
-  if (started) meArea.render({ team: me, canJoin: canJoin(), published: clock.published() });
+  // From the moment the game is over the Play button is a Results button, even before the results are published (the results
+  // page then says they are not ready yet).
+  if (started) meArea.render({ team: me, canJoin: canJoin(), gameOver: clock.phase() === 'post' || clock.published() });
 }
 
 function renderScoreboard(teams) {

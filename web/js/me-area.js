@@ -1,5 +1,5 @@
 // The area above the scoreboard on /view/: a Join button (with the one-field form) for someone who has not joined, or
-// the Play button for someone who has (a Results button once the final results are published). It is only rebuilt when what it shows changes, so a refresh
+// the Play button for someone who has (a Results button from the moment the game is over, published or not). It is only rebuilt when what it shows changes, so a refresh
 // never wipes a team name that is half typed.
 import { postJson } from './api.js';
 import { el } from './dom.js';
@@ -56,8 +56,8 @@ export function createMeArea({ container, onJoined }) {
     return [button, form];
   }
 
-  function buildLink(published) {
-    const link = published
+  function buildLink(gameOver) {
+    const link = gameOver
       ? el('a', { href: '/results/', class: 'btn btn-primary btn-lg w-100', 'data-testid': 'results-link' }, 'Results')
       : el('a', { href: '/play/', class: 'btn btn-primary btn-lg w-100', 'data-testid': 'play-link' }, 'Play');
     return [link]; // the team's own name is not repeated here: its row in the scoreboard is highlighted
@@ -65,11 +65,11 @@ export function createMeArea({ container, onJoined }) {
 
   return {
     // team: { number, name } or null; canJoin: whether joining is open right now.
-    render({ team, canJoin, published = false }) {
-      const next = team ? (published ? 'results' : 'play') : canJoin ? 'join' : 'none';
+    render({ team, canJoin, gameOver = false }) {
+      const next = team ? (gameOver ? 'results' : 'play') : canJoin ? 'join' : 'none';
       if (next === shown) return;
       shown = next;
-      container.replaceChildren(...(team ? buildLink(published) : canJoin ? buildJoin() : []));
+      container.replaceChildren(...(team ? buildLink(gameOver) : canJoin ? buildJoin() : []));
     },
   };
 }
