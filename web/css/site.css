@@ -67,3 +67,8 @@ summary {
   top: 0.75rem;
   right: 0.75rem;
 }
+
+/* On the play page the team name sits beside the (large, blue) team number: smaller and dark grey, so the two are easy to tell apart. */
+.play-team-name {
+  color: #343a40;
+}

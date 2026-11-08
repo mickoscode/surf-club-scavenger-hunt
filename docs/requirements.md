@@ -273,7 +273,8 @@ page: <cloudfront_url>/view/
 Where the finished site is more specific than the text above (details settled while building; the code and `docs/api.md` are the reference):
 
 - **Scoreboard**: three columns (team number, team name, score); the player's own row is highlighted; scores show as whole numbers or with one decimal place only when needed.
-- **Countdown**: "N min" until the last 5 minutes, then "m:ss"; before the start it counts to the start. It uses the server's clock.
+- **Countdown**: "N min" until the last 5 minutes, then "m:ss"; before the start it counts to the start. It uses the server's clock. The status text and the countdown share one line on `/view/` and `/play/`.
+- **Team line on `/play/`**: "Team 7" (large, bold, blue) and the name (smaller, dark grey) on one baseline; a name too long for the line wraps below the number. The view page shows no separate team name: the team's own row in the scoreboard is highlighted.
 - **Statuses**: the game is `unconfigured`, `pre`, `active` or `post`; the end is inclusive and exact (no grace period).
 - **Questions appear only while the game is active** (the API does not send them earlier or later).
 - **Admin pages**: team removal asks for confirmation; deleting player data needs the download link used and the word "delete" typed, and is refused while the game is active. The scoring page identifies a team by hidden form fields (team number and zone); Apply is enabled only when scoring is open and the choice differs from what is recorded.
