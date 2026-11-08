@@ -22,6 +22,7 @@ page: <cloudfront_url>/
 Redirects to /view/
 page: <cloudfront_url>/game-config/
 Used by Admin to edit the game config (5 fields), remove teams, and download/delete player data. Zones, questions and maps are NOT edited here: they are managed in the code repository (see Game Play).
+Used by Admin to confirm all scores have been applied, by publishing final results. This is a separate form, and it effectively enables the results page to display a player's final results and the answers to all questions.
 page: <cloudfront_url>/game-score/
 Used by Admin to set scores for photo questions (submitted via separate whatsapp group). 
 page: <cloudfront_url>/view/
@@ -29,6 +30,9 @@ Used by players to join
 Used by players & viewers to view the live scoreboard
 page: <cloudfront_url>/play/
 Used by players to read instructions, select zone and answer questions
+page: <cloudfront_url>/results/
+Used by players POST-GAME to view all answers as part of a detailed breakdown of their score, showing which answers were correct, and which were wrong. The top of the page should include a link back to the view/scoreboard page, identical to the play page. The results page should also confirm what percentage they were awarded for any photo challenges (if no photo was submitted, then this should be indicated clearly).
+This page is not relevant to viewers. If a viewer visits this page (i.e. no active player session), they should see only the link back to the view/scoreboard page.
 
 The admin pages are not linked from anywhere and are marked noindex.
 
@@ -115,7 +119,7 @@ Once a player has joined:
 
 ### Scoreboard
 
-Under the join button / team name, the scoreboard should be displayed.
+Under the join/play button, the scoreboard should be displayed. Immediately above the scoreboard, the exact text "provisional results:" should be displayed, until the final results are confirmed and published. Once the results are confirmed, "provisional" should be changed to "final".
 The scoreboard should auto-refresh every 5 seconds, to include latest score totals and latest list of teams.
 The scoreboard must be sorted by score (descending order), then team name (alphabetically).
 The scoreboard is a simple table with 3 columns (team number, team name, score), optimised for mobile display.
@@ -125,7 +129,7 @@ Scores are shown as whole numbers, and with 1 decimal place only when a total ne
 ### Play page
 
 The play page works as follows:
-- team name is displayed at the top, with the team number displayed large and clear (e.g. "Team 7"), because players need it for whatsapp photos
+- team name is displayed at the top, with the team number displayed large and clear (e.g. "Team 7"), because players need it for whatsapp photos. Team number and Team name should be displayed on a single line (wrapping as needed). Different text sizing and colouring should be used to make the distinction between name and number.
 - a 'view scoreboard' link is displayed below team name, which links back to the view page.
 
 Under the 'view scoreboard' link, display small tiles using the zone names and zone map images. Each tile shows the player's progress in that zone, e.g. "3/6 done" (questions plus the photo challenge).
@@ -157,6 +161,12 @@ Zones are keyed "zone 1", "zone 2", ... Each zone has: zone-name, zone-map (path
 
 ## General Requirements
 The site must be open to the public, so anyone can; view the live scoreboard, join the game and play the game. No authentication or account creation is required. 
+
+### UX Modifications
+
+Currently, play & view pages display "Time left" and <count down> on seperate lines. These should be combined into a single line, without any other style changes.
+
+Currently, the view page includes the team name above the scoreboard 
 
 ## Admin Requirements
 
