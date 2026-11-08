@@ -9,6 +9,7 @@ const copy = (v) => (v === undefined ? v : structuredClone(v));
 function createMemoryStore() {
   let game = null;
   let lastNumber = 0;
+  let publishedAt = null; // when the final results were published, or null while they are provisional
   const teams = new Map(); // playerId -> team
   const names = new Map(); // key -> playerId
 
@@ -64,12 +65,21 @@ function createMemoryStore() {
       return { ok: true, delta, score: team.score };
     },
 
+    // Final results: published once (the first time wins, so publishing twice changes nothing) and undone with unpublishResults.
+    async getPublishedAt() { return publishedAt; },
+    async publishResults(at = Date.now()) {
+      publishedAt ??= at;
+      return publishedAt;
+    },
+    async unpublishResults() { publishedAt = null; },
+
     async exportAll() { return { game: copy(game), teams: [...teams.values()].map(copy) }; },
-    // Removes teams, their names and the team numbering; the configured game stays.
+    // Removes teams, their names and the team numbering, and returns the results to provisional; the configured game stays.
     async deleteAllPlayerData() {
       teams.clear();
       names.clear();
       lastNumber = 0;
+      publishedAt = null;
     },
   };
 }

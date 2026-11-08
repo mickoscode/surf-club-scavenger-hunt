@@ -11,6 +11,7 @@ const { gameStatus, describeGame, can, validateConfig, AU_TIME_ZONES, DEFAULT_GA
 const { checkAnswer } = require('../lib/answers');
 const { questionPoints, isDecision } = require('../lib/scoring');
 const { validateTeamName, sortScoreboard } = require('../lib/teams');
+const { buildResults } = require('../lib/results');
 const { validateGameData, mapId } = require('../lib/gamedata');
 
 const PLAYER_ID = /^[0-9a-f]{32}$/;
@@ -47,6 +48,11 @@ function createApp({
     const t = now();
     return { saved, config, t, status: gameStatus(config, t), info: describeGame(config, t) };
   }
+  // What the pages need to know about the game, including whether the final results are published (so the scoreboard
+  // heading and the Results button can follow). The same for everyone, so CloudFront may share it briefly.
+  async function gameSummary(saved, info) {
+    return { name: saved?.config?.name ?? DEFAULT_GAME_NAME, ...info, published: (await store.getPublishedAt()) !== null };
+  }
   async function sessionTeam(request) {
     const id = parseCookies(request.headers.cookie)[COOKIE_NAME];
     return id && PLAYER_ID.test(id) ? store.getTeam(id) : null;
@@ -67,13 +73,13 @@ function createApp({
       const { saved, info, status } = await snapshot();
       // Questions are only sent while the game is active, so nobody can read them before the start.
       const zones = status === 'active' ? publicZones(saved.game) : [];
-      return respond(200, { game: { name: saved?.config?.name ?? DEFAULT_GAME_NAME, ...info }, zones }, CACHEABLE);
+      return respond(200, { game: await gameSummary(saved, info), zones }, CACHEABLE);
     },
 
     'GET /api/scoreboard': async () => {
       const { saved, info } = await snapshot();
       const teams = sortScoreboard((await store.listTeams()).map(summary));
-      return respond(200, { game: { name: saved?.config?.name ?? DEFAULT_GAME_NAME, ...info }, teams }, CACHEABLE);
+      return respond(200, { game: await gameSummary(saved, info), teams }, CACHEABLE);
     },
 
     // The caller's own team and which forms they have already submitted (never what they submitted).
@@ -84,6 +90,19 @@ function createApp({
         team: summary(team),
         done: { answers: Object.keys(team.subs), photos: Object.keys(team.photos) },
       });
+    },
+
+    // A team's own final results. Nothing about answers is sent unless the final results are published AND the caller has a
+    // team session: otherwise only whether they are published (and who the caller is), so a page can say "not ready yet".
+    'GET /api/results': async (request) => {
+      const published = (await store.getPublishedAt()) !== null;
+      const team = await sessionTeam(request);
+      if (!team) return respond(200, { published, team: null });
+      const who = { number: team.number, name: team.name };
+      if (!published) return respond(200, { published: false, team: who });
+      const { saved } = await snapshot();
+      const results = buildResults({ team, teams: await store.listTeams(), game: saved.game });
+      return respond(200, { published: true, team: who, results });
     },
 
     'POST /api/join': async (request) => {
@@ -133,12 +152,17 @@ function createApp({
   const adminRoutes = {
     'GET /api/admin/config': async () => {
       const { saved, status } = await snapshot();
+      const teams = await store.listTeams();
+      const publishedAt = await store.getPublishedAt();
       return respond(200, {
         config: saved?.config ?? null,
         configuredAt: saved?.configuredAt ?? null,
         status,
         zoneCount: saved ? Object.keys(saved.game).length : 0,
-        teamCount: (await store.listTeams()).length,
+        teamCount: teams.length,
+        // Photos teams say they sent that have not been scored yet (they would count as 0% if the results were published).
+        unscoredPhotos: teams.reduce((n, team) => n + Object.values(team.photos).filter((photo) => !photo.decision).length, 0),
+        results: { published: publishedAt !== null, publishedAt },
         timeZones: AU_TIME_ZONES,
         defaults: { name: DEFAULT_GAME_NAME, timeZone: DEFAULT_TIME_ZONE },
       });
@@ -161,6 +185,7 @@ function createApp({
       if (problems.length) throw new HttpError(422, 'invalid-game-data', { problems });
       const t = now();
       await store.saveGame({ config, game, configuredAt: t });
+      await store.unpublishResults(); // a new configuration starts a new game: the results are provisional again
       return respond(200, { config, zoneCount: Object.keys(game).length, status: gameStatus(config, t) });
     },
 
@@ -199,6 +224,7 @@ function createApp({
       const body = readJson(request);
       const { saved, status, t } = await snapshot();
       if (!can(status, 'score')) throw new HttpError(409, 'not-scoring');
+      if ((await store.getPublishedAt()) !== null) throw new HttpError(409, 'results-published'); // return to provisional to correct a score
       if (!isDecision(body.decision)) throw new HttpError(400, 'invalid-decision');
       const zone = findZone(saved?.game, body.zone);
       if (!zone) throw new HttpError(400, 'unknown-zone');
@@ -207,6 +233,23 @@ function createApp({
       const applied = await store.applyPhotoDecision(team.playerId, body.zone, { decision: body.decision, photoScore: zone['photo-score'], at: t });
       if (!applied.ok) throw new HttpError(400, applied.error);
       return respond(200, { delta: applied.delta, score: applied.score });
+    },
+
+    // Confirms every score has been applied and publishes the final results: only once the game is over. Photos still
+    // unscored count as 0%. Publishing again changes nothing.
+    'POST /api/admin/results/publish': async (request) => {
+      const body = readJson(request);
+      const { status, t } = await snapshot();
+      if (!can(status, 'publish')) throw new HttpError(409, 'game-not-over');
+      if (body.confirm !== true) throw new HttpError(400, 'confirmation-required');
+      const publishedAt = await store.publishResults(t);
+      return respond(200, { published: true, publishedAt });
+    },
+
+    // Back to provisional (a mistake, or a late correction): scoring opens again and the results page closes.
+    'POST /api/admin/results/unpublish': async () => {
+      await store.unpublishResults();
+      return respond(200, { published: false });
     },
 
     'GET /api/admin/export': async () => {

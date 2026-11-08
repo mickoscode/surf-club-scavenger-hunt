@@ -90,10 +90,10 @@ function describeGame(config, nowMs) {
 
 // Who may do what in each status (docs/requirements.md, "Typical Timeline").
 const PERMISSIONS = {
-  unconfigured: { join: false, play: false, score: false, configure: true, deleteData: true, removeTeam: true },
-  pre: { join: true, play: false, score: false, configure: true, deleteData: true, removeTeam: true },
-  active: { join: true, play: true, score: true, configure: false, deleteData: false, removeTeam: true },
-  post: { join: false, play: false, score: true, configure: true, deleteData: true, removeTeam: true },
+  unconfigured: { join: false, play: false, score: false, configure: true, deleteData: true, removeTeam: true, publish: false },
+  pre: { join: true, play: false, score: false, configure: true, deleteData: true, removeTeam: true, publish: false },
+  active: { join: true, play: true, score: true, configure: false, deleteData: false, removeTeam: true, publish: false },
+  post: { join: false, play: false, score: true, configure: true, deleteData: true, removeTeam: true, publish: true },
 };
 const can = (status, action) => PERMISSIONS[status]?.[action] === true;
 
