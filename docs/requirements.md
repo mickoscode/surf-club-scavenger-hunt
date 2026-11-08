@@ -12,7 +12,7 @@ Expected size: fewer than 50 teams. No cap on the number of teams is required.
 - All validation happens on the server: answer checking, scoring, one-submission-only, and game timing. The server clock is the only clock that counts; the browser clock is used only to display the countdown.
 - The official answers never leave the server, and neither does the answer a team submitted, with one exception: once the admin has published the final results, a team's own results page receives its answers, which were right, and the official answers (see "Answer rules" and "Results page"). Before that nothing is sent, and a browser without a team session never receives any of it.
 - Accepted risk: this repository is public, so anyone who looks can read the official answers in docs/game-questions.json on GitHub. The server only prevents them being sent to the players' browsers. (Decision 2026-11-07: accepted. Options considered: keep the real questions out of the repo, or make the repo private, which would lose rulesets and required reviewers on GitHub Free.)
-- The admin pages and their API calls have no authentication (accepted risk, see Admin Requirements).
+- The admin pages and their API calls are protected by an admin passcode (see "Admin passcode"). The API is limited to 50 requests a second sustained, with a burst of 200 (see "Request limits and cost").
 
 ## Website Pages
 
@@ -34,7 +34,7 @@ page: <cloudfront_url>/results/
 Used by players, once the admin has published the final results, to see how they finished and a detailed breakdown of their score: all the answers, which were correct and which were wrong, and the official answers (see "Results page"). The top of the page includes a link back to the view/scoreboard page, identical to the one on the play page.
 This page is not relevant to viewers. If a viewer visits this page (i.e. there is no active player session), they see only the link back to the view/scoreboard page.
 
-The admin pages are not linked from anywhere and are marked noindex.
+The admin pages are protected by the admin passcode, are not linked from anywhere and are marked noindex.
 
 ## Game Configuration & Management
 
@@ -144,6 +144,15 @@ The Photo challenge form should display the description, along with a button nam
 Each question and photo challenge can be submitted only once, so the form should be disabled (and visibly marked as done) when submitted.
 A form is marked done only after the server has confirmed the submission. If the network fails the player can try again; if the same form is somehow sent twice, the first one received counts.
 
+### WhatsApp group link
+
+When the admin has set a WhatsApp group link in the game configuration, the places that mention WhatsApp link straight to the group (opening in a new tab). When no link is set they stay plain text, exactly as before.
+- **On the play page, for each photo challenge**: the word "WhatsApp" in the challenge description is a link, and an **Open WhatsApp group** button sits under the description. The existing **Photo sent to WhatsApp** button is unchanged: it records the submission and is not a link.
+- **In the instructions** (the Instructions panel on the play page): the word "WhatsApp" in the text is a link. (Every occurrence of the word "WhatsApp", in any capitalisation, in the photo challenge descriptions and the instructions is turned into a link: nothing needs to be marked up in `game-questions.json` or `player-instructions.md`.)
+- **On the scoring page** (admin): the mention of the WhatsApp group in the help text is a link.
+- **Who sees it**: a group invite link works like a key, so it is only given to a browser with a team session (and to the admin). It is not in the public game or scoreboard information, and a spectator never receives it.
+- The link is part of the game configuration, so it is saved with it and covered by the same rules (not editable while the game is active).
+
 ### Answer rules
 
 Every question has a type (see "game-questions.json format"): string, whole-number or decimal.
@@ -173,8 +182,18 @@ The view page no longer shows the player's team name above the scoreboard (see "
 
 ## Admin Requirements
 
-The admin pages will not be protected by authentication. Urls for these pages should not be shared. 
-Accepted risk: anyone who finds the admin pages or the API calls behind them could change the config, apply scores or delete data. Mitigations are limited to: the pages are not linked, they are marked noindex, and the API is rate limited.
+### Admin passcode
+
+There is one admin and no accounts. The admin pages and every admin API call (`/api/admin/*`: configuration, teams, scoring, publishing, export, delete) require the admin passcode. The pages themselves stay ordinary public files that contain nothing secret; they show a login form first.
+- **The passcode** is random, generated on the admin's own computer by a script that also prints its one-way hash. Only the hash is stored: as a sensitive HCP Terraform variable (`admin_passcode_hash`) handed to the admin function. The passcode itself is never in the repo, in AWS or in GitHub, except where the admin chooses to store it as the GitHub secret the load test needs (see "Load test").
+- **Logging in** asks for the passcode once and starts a session of 12 hours, kept in a cookie that page scripts cannot read (HttpOnly, Secure, SameSite=Strict, only sent to the admin API). The session is signed with the stored hash, so changing the passcode ends every session. There is a log out button, and an expired session asks for the passcode again.
+- **Without a valid session** every admin call is refused with 401 `not-authenticated`, whatever it is (including the data export).
+- **Guessing is limited**: at most 10 failed logins in any 5 minutes, counted across everybody. After that logins are refused until the window has passed. (Someone could therefore block the admin for a few minutes, but not guess the passcode.)
+- **Rollout**: until the hash variable is set, the admin pages and API stay open exactly as before, and the deploy's smoke test prints a warning saying so. Setting the variable and applying Terraform switches the passcode on.
+- **Changing or recovering it**: generate a new passcode and hash, update the variable, apply.
+- The admin pages are still not linked from anywhere and are marked noindex.
+
+Remaining accepted risk: the repository is public, so the questions, answers and the names of the admin pages are readable by anyone; the passcode protects what the admin pages can do, not what is in the repo.
 
 page: <cloudfront_url>/game-config/
 
@@ -184,7 +203,8 @@ game-timezone (timezone): Australian time zone dropdown; default = AWST Australi
 game-day (date): yyyy-mm-dd
 game-start (datetime): <game-day> hh:mm:00
 game-end (datetime): <game-day> hh:mm:00   (must be > game-start)
-Saving the config also loads the zones and questions from game-questions.json (see above). It is not possible while the game is active.
+whatsapp-link (optional): the invite link of the WhatsApp group the teams send photos to, e.g. https://chat.whatsapp.com/AbCdEf123. Only links of that form are accepted. Leave it empty and everything simply says "WhatsApp" as plain text, as before. The page has a "Test link" next to the field.
+Saving the config also loads the zones and questions from game-questions.json (see above). It is not possible while the game is active, so the WhatsApp link is also set and tested before the game starts.
 
 The page also lists the teams, with a 'remove' button for each (with confirmation), for moderating team names. Removing a team deletes its data. This is allowed at any time, including while the game is active.
 
@@ -262,11 +282,28 @@ Viewers should only ever see the main landing page (unless they click join, to b
 
 page: <cloudfront_url>/view/
 
+## Operations
+
+### Request limits and cost
+
+The API accepts 50 requests a second sustained with a burst of 200 (API Gateway stage throttling, `api_throttle_rate_limit` / `api_throttle_burst_limit`). The scoreboard and game state are served from CloudFront's cache and do not count against the limit; a real game peaks at roughly 15 to 25 requests a second reaching the API.
+- **Budget**: the owner runs at most two real games a month, so at most about 5 hours of play a month, and accepts a month of that costing less than $2. Counting API Gateway, Lambda, DynamoDB and CloudFront, a request costs roughly $2 to $3 per million before the free tiers, so 5 hours flat out at 50 a second (about 0.9 million requests) is about the $2 line, and a higher sustained limit would break it. The sustained limit therefore stays at 50; only the burst is raised, because a burst absorbs the moment everyone loads the game at the start without raising the worst-case hourly cost.
+- **Cost alarm**: there is deliberately none in this repository. The account-wide monthly budget in the `surf-club-signin` repository (no cost filter, so it covers this site; alerts at 80% actual, 80% forecast and 100% actual of its monthly budget) is the alarm.
+
+### Load test
+
+A GitHub Actions workflow, started by hand from the Actions tab (never on a schedule), that simulates a crowd against the live site and produces a detailed report, so the owner can see where the limits are.
+- **Inputs**: number of teams, number of spectators, duration, ramp-up time, how often a team answers, and a mode ("full", which needs the game to be joinable or in progress, or "spectators only", which works any time).
+- **What it simulates**: teams join, refresh the way the real pages do, answer questions and send photos; spectators refresh the scoreboard. It goes through the site's public address only; it needs no AWS credentials for the load itself.
+- **Report** (a summary in the job log, plus an HTML report with charts and the raw JSON as downloadable artifacts): per endpoint the requests, the status codes (429 means throttled, 5xx a failure) and the latency (typical, 95th and 99th percentile, worst); throughput over time; when errors began and at what request rate; CloudFront cache hit rate; whether the machine generating the load was itself the bottleneck; server-side numbers from CloudWatch (API Gateway, Lambda throttles and concurrency, DynamoDB throttling); an estimated cost for the run; and a plain verdict.
+- **Guardrails**: it refuses to run if any real team exists (test teams are named `loadtest-001` and so on), and refuses sizes above 300 teams, 1,500 spectators or 15 minutes. It never changes the game configuration: the admin sets up a joinable demo game first. It does not run at the same time as a deploy.
+- **Clean up**: it removes its own test teams using the admin passcode, which the admin stores as the GitHub secret `ADMIN_PASSCODE` (the only place the plaintext passcode is kept besides the admin's password manager).
+- **Reading CloudWatch** needs a small read-only permission added to the deploy role.
+
 ## Parked for later (not in the first version)
 
 - Restoring an old game: uploading the downloaded json file back into the website.
 - Recovering a team's session after a cleared browser or a different phone (e.g. rejoin with team number and name).
-- Admin passcode for the admin pages.
 
 ## As built
 
