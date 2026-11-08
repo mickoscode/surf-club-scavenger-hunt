@@ -148,6 +148,33 @@ function runStoreContract(label, makeStore, options = {}) {
     assert.equal(all.teams.length, 2);
   });
 
+  t('the final results start unpublished; publishing records the time once and unpublishing clears it', async (store) => {
+    assert.equal(await store.getPublishedAt(), null);
+    assert.equal(await store.publishResults(100), 100);
+    assert.equal(await store.getPublishedAt(), 100);
+    assert.equal(await store.publishResults(200), 100); // publishing again changes nothing
+    assert.equal(await store.getPublishedAt(), 100);
+    await store.unpublishResults();
+    assert.equal(await store.getPublishedAt(), null);
+    await store.unpublishResults(); // and undoing twice is fine
+    assert.equal(await store.publishResults(300), 300);
+  });
+
+  t('publishing at once records a single time', async (store) => {
+    const times = await Promise.all([1, 2, 3, 4, 5].map((n) => store.publishResults(n * 100)));
+    assert.equal(new Set(times).size, 1);
+    assert.equal(await store.getPublishedAt(), times[0]);
+  });
+
+  t('deleting all player data returns the results to provisional and keeps the game', async (store) => {
+    await store.saveGame(game);
+    await join(store, 1);
+    await store.publishResults(100);
+    await store.deleteAllPlayerData();
+    assert.equal(await store.getPublishedAt(), null);
+    assert.deepEqual((await store.getGame()).config, game.config);
+  });
+
   t('what the store returns is a copy: changing it does not change the store', async (store) => {
     await join(store, 1);
     const team = await store.getTeam('p1');

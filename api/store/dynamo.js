@@ -4,6 +4,7 @@
 //   pk      sk              item
 //   META    GAME            { config, game, configuredAt }   the configured game and its zones/questions copy
 //   META    COUNTER         { last }                         last team number handed out
+//   META    RESULTS         { publishedAt }                  exists only while the final results are published
 //   NAME    <name key>      { playerId }                     reserves a team name (the key ignores case)
 //   TEAM    <playerId>      { number, name, key, score, joinedAt,
 //                             subs:   { "<zone>#<Qn>": { answerGiven, correct, points, at } },
@@ -170,6 +171,27 @@ function createDynamoStore({ client, tableName }) {
       throw new Error('could not apply the decision: too many concurrent changes');
     },
 
+    async getPublishedAt() {
+      const { Item } = await send(new GetCommand({ TableName: T, Key: { pk: 'META', sk: 'RESULTS' }, ConsistentRead: true }));
+      return Item ? Item.publishedAt : null;
+    },
+    // The first publish wins: publishing again (or at the same time) returns the time it was first published.
+    async publishResults(at = Date.now()) {
+      try {
+        await send(new PutCommand({
+          TableName: T, Item: { pk: 'META', sk: 'RESULTS', publishedAt: at },
+          ConditionExpression: 'attribute_not_exists(#pk)', ExpressionAttributeNames: PK,
+        }));
+        return at;
+      } catch (e) {
+        if (!isConditionFailure(e)) throw e;
+        return this.getPublishedAt();
+      }
+    },
+    async unpublishResults() {
+      await send(new DeleteCommand({ TableName: T, Key: { pk: 'META', sk: 'RESULTS' } }));
+    },
+
     async exportAll() {
       return { game: await this.getGame(), teams: await this.listTeams() };
     },
@@ -178,6 +200,7 @@ function createDynamoStore({ client, tableName }) {
         ...(await queryAll('TEAM')).map((i) => ({ pk: i.pk, sk: i.sk })),
         ...(await queryAll('NAME')).map((i) => ({ pk: i.pk, sk: i.sk })),
         { pk: 'META', sk: 'COUNTER' },
+        { pk: 'META', sk: 'RESULTS' }, // back to provisional
       ];
       for (let i = 0; i < keys.length; i += 25) {
         let requests = keys.slice(i, i + 25).map((Key) => ({ DeleteRequest: { Key } }));

@@ -7,6 +7,7 @@ locals {
       "GET /api/game",
       "GET /api/scoreboard",
       "GET /api/me",
+      "GET /api/results",
       "POST /api/join",
       "POST /api/answer",
       "POST /api/photo",
@@ -18,6 +19,8 @@ locals {
       "DELETE /api/admin/teams/{number}",
       "GET /api/admin/photos",
       "POST /api/admin/photos/apply",
+      "POST /api/admin/results/publish",
+      "POST /api/admin/results/unpublish",
       "GET /api/admin/export",
       "POST /api/admin/delete-all",
     ]

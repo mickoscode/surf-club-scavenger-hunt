@@ -60,13 +60,13 @@ test('config validation rejects bad values and accepts good ones', () => {
 
 test('who may do what in each status', () => {
   const expected = {
-    //                join   play   score  config deleteData removeTeam
-    unconfigured: [false, false, false, true, true, true],
-    pre: [true, false, false, true, true, true],
-    active: [true, true, true, false, false, true],
-    post: [false, false, true, true, true, true],
+    //                join   play   score  config deleteData removeTeam publish
+    unconfigured: [false, false, false, true, true, true, false],
+    pre: [true, false, false, true, true, true, false],
+    active: [true, true, true, false, false, true, false],
+    post: [false, false, true, true, true, true, true],
   };
-  const actions = ['join', 'play', 'score', 'configure', 'deleteData', 'removeTeam'];
+  const actions = ['join', 'play', 'score', 'configure', 'deleteData', 'removeTeam', 'publish'];
   for (const [status, row] of Object.entries(expected)) {
     actions.forEach((a, i) => assert.equal(can(status, a), row[i], `${status}: ${a}`));
   }

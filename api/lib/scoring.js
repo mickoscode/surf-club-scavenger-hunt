@@ -27,6 +27,9 @@ function decisionDelta(photoScore, previous, next) {
   return roundScore(photoPoints(photoScore, next) - before);
 }
 
+// 100, 50 or 0: what share of a photo's points a decision awards.
+const decisionPercent = (decision) => FRACTION[decision] * 100;
+
 const questionPoints = (question, correct) => (correct ? question.score : 0);
 
-module.exports = { roundScore, formatScore, isDecision, photoPoints, decisionDelta, questionPoints };
+module.exports = { roundScore, formatScore, isDecision, photoPoints, decisionPercent, decisionDelta, questionPoints };
