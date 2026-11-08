@@ -13,6 +13,21 @@
 <body class="d-flex flex-column min-vh-100">
   <main class="container py-4">
     <div class="mx-auto narrow">
+      <!-- Shown instead of the page until the admin passcode has been entered (see js/admin-auth.js). -->
+      <section class="card card-body" data-testid="login-panel" hidden>
+        <h1 class="h4">Admin login</h1>
+        <form data-testid="login-form" novalidate>
+          <!-- for password managers: the login is one account -->
+          <input type="text" name="username" value="admin" autocomplete="username" class="visually-hidden" tabindex="-1" aria-hidden="true" readonly>
+          <label class="form-label" for="passcode">Admin passcode</label>
+          <input class="form-control form-control-lg mb-3" id="passcode" name="password" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" data-testid="passcode-input">
+          <button class="btn btn-primary w-100" type="submit" data-testid="login-button">Log in</button>
+          <p class="text-danger mt-2 mb-0" role="alert" data-testid="login-error" hidden></p>
+        </form>
+      </section>
+
+      <div data-testid="admin-content" hidden>
+      <p class="text-end mb-2"><button class="btn btn-outline-secondary btn-sm" type="button" data-testid="logout-button" hidden>Log out</button></p>
       <div class="d-flex justify-content-between align-items-center mb-2">
         <h1 class="h3 mb-0">Score photos</h1>
         <a href="/game-config/" data-testid="config-page-link">Game configuration</a>
@@ -26,6 +41,7 @@
 
       <p class="text-center text-muted" data-testid="no-photos" hidden>No photos have been sent yet.</p>
       <ul class="list-group" data-testid="photo-list"></ul>
+      </div>
     </div>
   </main>
 </body>

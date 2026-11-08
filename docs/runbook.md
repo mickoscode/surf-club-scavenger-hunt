@@ -12,7 +12,7 @@ For the person running the game (the admin). What the site does is in `requireme
 | `/game-config/` | you | set up the game, remove teams, publish the final results, download and delete the data |
 | `/game-score/` | you | score the photos |
 
-The two admin pages have **no login**: do not share their addresses (they are only protected by not being known; the page names are in this public repo, which is a risk you have accepted).
+The two admin pages are protected by your **admin passcode**. Open either address and a login box appears; type the passcode (capitals, spaces and dashes don't matter) and you are in for **12 hours**, on that browser. **Log out** (top right) ends it sooner, and when 12 hours pass the box comes back by itself. After **10 wrong tries in 5 minutes** (counted across everybody) logging in is refused until those 5 minutes have passed, even for the right passcode, so if you are locked out just wait. Until the passcode has been set up the pages open without a login. Keep the passcode in your password manager; the page names are in this public repo, so the passcode is what protects the pages.
 
 ---
 
@@ -83,6 +83,8 @@ Things to know:
 | Nobody can join | Joining is only open before the end time. Check the status on `/game-config/`: "game finished" means it has ended; "no game set up yet" means save a configuration |
 | The countdown or times look wrong | Check the **time zone** and times on `/game-config/` (the page shows what is saved). The site's clock decides everything, and the countdown uses it too, so a phone with the wrong time makes no difference |
 | **Save** refuses, "game in progress" | The game has started: the configuration is locked until it ends |
+| I cannot log in to an admin page | "That passcode is not right": check you are using the passcode for this site (case, spaces and dashes don't matter). "Too many wrong tries": wait the 5 minutes it says. Lost the passcode: on your computer run `node scripts/admin-passcode.js`, put the new hash in the HCP Terraform variable `admin_passcode_hash` (replacing the old one), approve the Terraform apply, and log in with the new passcode (this also ends every old session) |
+| An admin page suddenly shows the login box again | Your 12-hour session ended (or you logged out on another tab). Log in again: the page carries on where it was |
 | **Save** says the WhatsApp link is wrong | Only the group's invite link is accepted, which starts with `https://chat.whatsapp.com/`. Copy it again from WhatsApp (not a link to a person's chat) or leave the field empty |
 | **Save** lists problems in the game file | Nothing was saved. The list says what to fix in `docs/game-questions.json`; fix it by pull request, merge, then Save again |
 | **Publish final results** is greyed out | The game has not ended yet (it is only possible after the end time), or the "I have applied all scores" box is not ticked |

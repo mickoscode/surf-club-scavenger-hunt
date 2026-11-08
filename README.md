@@ -15,6 +15,7 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 | `tests/api/` | The store contract tests (the same tests run against the in-memory store always, and against DynamoDB Local in CI) and the API behaviour tests (`app-*.test.js`: in-memory store, controllable clock) |
 | `scripts/build-maps.js` | Build step: turns each zone's map PNG (about 1 MB each) into a small thumbnail and a full-size WebP in `dist/maps` (about 100 KB each), named with the zone's `mapId` |
 | `scripts/render-instructions.js` | Build step: renders `docs/player-instructions.md` into the play page (raw HTML in it is shown as text) |
+| `scripts/admin-passcode.js` | Run on your own computer: makes the admin passcode and its hash (only the hash is stored, as the HCP variable `admin_passcode_hash`) |
 | `scripts/package-backend.sh`, `scripts/smoke-test.js`, `scripts/dev-server.js` | Package the backend for Lambda; smoke-test a deployed site (`npm run smoke -- <url>`); serve the site and API locally with the in-memory store (`npm run dev`) |
 | `tests/browser/` | The pages in real Chromium (Playwright) served with the real Content-Security-Policy (`npm run test:browser`), including `full-game.test.js`: a whole game from set-up to clean-up with an admin, two teams and a spectator |
 | `scripts/validate-game-data.js` | Checks the structure of `docs/game-questions.json` (`npm run validate:data`) |

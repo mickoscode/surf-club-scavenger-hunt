@@ -4,6 +4,7 @@ import { getJson, putJson, postJson, deleteJson } from './api.js';
 import { $, el, refreshInterval } from './dom.js';
 import { formatScore } from './format.js';
 import { safeWhatsAppUrl } from './whatsapp.js';
+import { guardAdminPage, isLocked } from './admin-auth.js';
 
 const STATUS_TEXT = { loading: 'loading', unconfigured: 'no game set up yet', pre: 'before the game', active: 'game in progress', post: 'game finished' };
 const FIELD_PROBLEM = {
@@ -119,6 +120,7 @@ function renderTeams(teams) {
 }
 
 async function refresh() {
+  if (isLocked()) return; // not logged in (yet, or any more)
   const [info, teams] = await Promise.all([getJson('/api/admin/config'), getJson('/api/admin/teams')]);
   $('load-error').hidden = info.ok && teams.ok;
   if (!info.ok || !teams.ok) return;
@@ -193,6 +195,11 @@ $('delete-button').addEventListener('click', async () => {
   renderDeleteSection();
 });
 
-refresh();
-setInterval(refresh, refreshInterval());
-document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+guardAdminPage({
+  start: () => { // the admin is allowed in: load the page and keep it fresh
+    refresh();
+    setInterval(refresh, refreshInterval());
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+  },
+  refresh,
+});
