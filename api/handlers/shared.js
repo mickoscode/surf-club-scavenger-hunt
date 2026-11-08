@@ -17,6 +17,7 @@ function createHandler(role) {
         tableName: process.env.TABLE_NAME,
       }),
       loadGameData,
+      adminPasscodeHash: process.env.ADMIN_PASSCODE_HASH ?? '', // only the admin function is given it (terraform/lambda.tf)
     });
     return toLambdaResponse(await app.handle(fromLambdaEvent(event)));
   };

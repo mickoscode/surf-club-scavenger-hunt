@@ -5,6 +5,7 @@
 //   META    GAME            { config, game, configuredAt }   the configured game and its zones/questions copy
 //   META    COUNTER         { last }                         last team number handed out
 //   META    RESULTS         { publishedAt }                  exists only while the final results are published
+//   META    LOGINFAIL#<n>   { failures }                     failed admin logins in the n-th fixed window (a handful of tiny items)
 //   NAME    <name key>      { playerId }                     reserves a team name (the key ignores case)
 //   TEAM    <playerId>      { number, name, key, score, joinedAt,
 //                             subs:   { "<zone>#<Qn>": { answerGiven, correct, points, at } },
@@ -190,6 +191,22 @@ function createDynamoStore({ client, tableName }) {
     },
     async unpublishResults() {
       await send(new DeleteCommand({ TableName: T, Key: { pk: 'META', sk: 'RESULTS' } }));
+    },
+
+    // Failed admin logins, counted in fixed windows with an atomic counter (so simultaneous guesses are all counted).
+    async getLoginFailures(now, windowMs) {
+      const { Item } = await send(new GetCommand({ TableName: T, Key: { pk: 'META', sk: `LOGINFAIL#${Math.floor(now / windowMs)}` }, ConsistentRead: true }));
+      return Item?.failures ?? 0;
+    },
+    async registerLoginFailure(now, windowMs) {
+      const r = await send(new UpdateCommand({
+        TableName: T, Key: { pk: 'META', sk: `LOGINFAIL#${Math.floor(now / windowMs)}` }, UpdateExpression: 'ADD #failures :one',
+        ExpressionAttributeNames: { '#failures': 'failures' }, ExpressionAttributeValues: { ':one': 1 }, ReturnValues: 'UPDATED_NEW',
+      }));
+      return r.Attributes.failures;
+    },
+    async clearLoginFailures(now, windowMs) {
+      await send(new DeleteCommand({ TableName: T, Key: { pk: 'META', sk: `LOGINFAIL#${Math.floor(now / windowMs)}` } }));
     },
 
     async exportAll() {

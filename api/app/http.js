@@ -3,6 +3,7 @@
 
 const MAX_BODY_BYTES = 4096;
 const COOKIE_NAME = 'hunt';
+const ADMIN_COOKIE_NAME = 'hunt_admin';
 const COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 class HttpError extends Error {
@@ -36,6 +37,12 @@ function sessionCookie(value, { secure = true } = {}) {
   return `${COOKIE_NAME}=${value}; Path=/api; HttpOnly; SameSite=Strict; Max-Age=${COOKIE_MAX_AGE_SECONDS}${secure ? '; Secure' : ''}`;
 }
 
+// The admin's session: the same protections, but only sent to the admin API (Path=/api/admin) and lasting maxAgeSeconds.
+// Max-Age=0 (an empty value) ends it.
+function adminCookie(value, { secure = true, maxAgeSeconds } = {}) {
+  return `${ADMIN_COOKIE_NAME}=${value}; Path=/api/admin; HttpOnly; SameSite=Strict; Max-Age=${maxAgeSeconds}${secure ? '; Secure' : ''}`;
+}
+
 // POST bodies must be JSON sent as application/json, which a plain HTML form on another site cannot send.
 function readJson(request) {
   const type = String(request.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
@@ -48,4 +55,4 @@ function readJson(request) {
   return parsed;
 }
 
-module.exports = { HttpError, respond, parseCookies, sessionCookie, readJson, COOKIE_NAME, MAX_BODY_BYTES };
+module.exports = { HttpError, respond, parseCookies, sessionCookie, adminCookie, readJson, COOKIE_NAME, ADMIN_COOKIE_NAME, MAX_BODY_BYTES };

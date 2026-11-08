@@ -46,11 +46,22 @@ variable "api_throttle_rate_limit" {
 }
 
 variable "api_throttle_burst_limit" {
-  description = "Maximum burst of requests allowed across the whole API"
+  description = "Maximum burst of requests allowed across the whole API (a burst absorbs everyone loading the game at the start; the sustained rate above is what limits the cost)"
   type        = number
-  default     = 100
+  default     = 200
   validation {
     condition     = var.api_throttle_burst_limit >= 1
     error_message = "Burst limit must be at least 1."
+  }
+}
+
+variable "admin_passcode_hash" {
+  description = "One-way hash of the admin passcode, made on the admin's computer with scripts/admin-passcode.js. Set it as a sensitive HCP Terraform workspace variable, never in tfvars. Empty means no passcode is set yet and the admin pages stay open (rollout only)."
+  type        = string
+  sensitive   = true
+  default     = ""
+  validation {
+    condition     = var.admin_passcode_hash == "" || can(regex("^scrypt\\$[0-9]+\\$[0-9]+\\$[0-9]+\\$[A-Za-z0-9_-]+\\$[A-Za-z0-9_-]+$", var.admin_passcode_hash))
+    error_message = "The admin passcode hash must be empty or look like the output of scripts/admin-passcode.js (it starts with scrypt and has five $ separated parts)."
   }
 }

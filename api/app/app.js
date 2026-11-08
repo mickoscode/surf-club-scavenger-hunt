@@ -6,17 +6,21 @@
 // Everything is decided here on the server: timing, answer checking, scoring. The browser never receives an
 // official answer, and never receives what a team submitted. Rules: docs/requirements.md.
 const crypto = require('node:crypto');
-const { HttpError, respond, parseCookies, sessionCookie, readJson, COOKIE_NAME } = require('./http');
+const { HttpError, respond, parseCookies, sessionCookie, adminCookie, readJson, COOKIE_NAME, ADMIN_COOKIE_NAME } = require('./http');
 const { gameStatus, describeGame, can, validateConfig, AU_TIME_ZONES, DEFAULT_GAME_NAME, DEFAULT_TIME_ZONE } = require('../lib/gamestate');
 const { checkAnswer } = require('../lib/answers');
 const { questionPoints, isDecision } = require('../lib/scoring');
 const { validateTeamName, sortScoreboard } = require('../lib/teams');
 const { buildResults } = require('../lib/results');
 const { normaliseWhatsappUrl } = require('../lib/whatsapp');
+const { verifyPasscode, createSession, verifySession, SESSION_MS } = require('../lib/passcode');
 const { validateGameData, mapId } = require('../lib/gamedata');
 
 const PLAYER_ID = /^[0-9a-f]{32}$/;
 const QUESTION_ID = /^Q\d+$/;
+// Failed admin logins allowed in any 5 minutes (counted across everybody): after that, logins are refused until the window passes.
+const LOGIN_WINDOW_MS = 5 * 60 * 1000;
+const MAX_FAILED_LOGINS = 10;
 const CACHEABLE = { 'cache-control': 'public, max-age=3' }; // the same for everyone, so CloudFront may share it briefly
 
 const questionId = (q) => Object.keys(q).find((k) => QUESTION_ID.test(k));
@@ -40,8 +44,10 @@ function createApp({
   loadGameData,
   role,
   cookieSecure = true,
+  adminPasscodeHash = '', // the hash of the admin passcode; empty = no passcode set yet, the admin stays open (rollout only)
 }) {
   if (role !== 'public' && role !== 'admin') throw new Error('role must be "public" or "admin"');
+  const passcodeRequired = typeof adminPasscodeHash === 'string' && adminPasscodeHash !== '';
 
   async function snapshot() {
     const saved = await store.getGame();
@@ -154,7 +160,34 @@ function createApp({
   };
 
   // ---------------------------------------------------------------- admin routes
+  // Login, logout and the session check are the only admin routes that work without a session.
+  const OPEN_ADMIN_ROUTES = new Set(['POST /api/admin/login', 'POST /api/admin/logout', 'GET /api/admin/session']);
+  const hasAdminSession = (request) => verifySession(parseCookies(request.headers.cookie)[ADMIN_COOKIE_NAME], adminPasscodeHash, now());
+
   const adminRoutes = {
+    // Always answers 200, so a page can ask whether to show the login box without an error in the console.
+    'GET /api/admin/session': async (request) => respond(200, { required: passcodeRequired, authenticated: !passcodeRequired || hasAdminSession(request) }),
+
+    'POST /api/admin/login': async (request) => {
+      const body = readJson(request);
+      if (!passcodeRequired) return respond(200, { required: false, authenticated: true }); // nothing to log in to
+      const t = now();
+      if ((await store.getLoginFailures(t, LOGIN_WINDOW_MS)) >= MAX_FAILED_LOGINS) {
+        const retryAfterSeconds = Math.ceil(((Math.floor(t / LOGIN_WINDOW_MS) + 1) * LOGIN_WINDOW_MS - t) / 1000);
+        throw new HttpError(409, 'too-many-attempts', { retryAfterSeconds });
+      }
+      const ok = typeof body.passcode === 'string' && body.passcode.length <= 200 && (await verifyPasscode(body.passcode, adminPasscodeHash));
+      if (!ok) {
+        await store.registerLoginFailure(t, LOGIN_WINDOW_MS);
+        throw new HttpError(401, 'wrong-passcode');
+      }
+      await store.clearLoginFailures(t, LOGIN_WINDOW_MS);
+      const cookie = adminCookie(createSession(adminPasscodeHash, t), { secure: cookieSecure, maxAgeSeconds: SESSION_MS / 1000 });
+      return respond(200, { required: true, authenticated: true }, {}, [cookie]);
+    },
+
+    'POST /api/admin/logout': async () => respond(200, { authenticated: false }, {}, [adminCookie('', { secure: cookieSecure, maxAgeSeconds: 0 })]),
+
     'GET /api/admin/config': async () => {
       const { saved, status } = await snapshot();
       const teams = await store.listTeams();
@@ -282,14 +315,18 @@ function createApp({
     const [method, pattern] = key.split(' ');
     const names = [];
     const regex = new RegExp(`^${pattern.replace(/:(\w+)/g, (_, n) => { names.push(n); return '([^/]+)'; })}/?$`);
-    return { method, regex, names, run };
+    return { method, regex, names, run, open: OPEN_ADMIN_ROUTES.has(key) };
   });
 
   async function handle(request) {
     try {
       for (const route of table) {
         const match = route.method === request.method && route.regex.exec(request.path);
-        if (match) return await route.run(request, Object.fromEntries(route.names.map((n, i) => [n, decodeURIComponent(match[i + 1])])));
+        if (match) {
+          // Once a passcode is set, every admin call needs a valid session: nothing else is checked first.
+          if (role === 'admin' && passcodeRequired && !route.open && !hasAdminSession(request)) throw new HttpError(401, 'not-authenticated');
+          return await route.run(request, Object.fromEntries(route.names.map((n, i) => [n, decodeURIComponent(match[i + 1])])));
+        }
       }
       return respond(404, { error: 'not-found' });
     } catch (e) {

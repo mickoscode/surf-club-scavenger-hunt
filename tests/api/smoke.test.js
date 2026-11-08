@@ -4,13 +4,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const { createApiHandler } = require('../../scripts/dev-server.js');
-const { runSmoke } = require('../../scripts/smoke-test.js');
+const { runSmoke, runSmokeDetailed } = require('../../scripts/smoke-test.js');
+const { hashPasscode } = require('../../api/lib/passcode.js');
 
 const respond = (status, body, headers = {}) => ({ status, headers: { 'content-type': 'application/json', ...headers }, cookies: [], body });
 
 // A stand-in for the live site: "/" is a page, /api/* is the real API, and `intercept` can break one response.
-async function withSite(intercept, fn) {
-  const api = createApiHandler({ intercept });
+async function withSite(intercept, fn, options = {}) {
+  const api = createApiHandler({ intercept, ...options });
   const server = http.createServer((req, res) => (req.url.startsWith('/api/') ? api(req, res) : res.writeHead(200).end('<html></html>')));
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   try {
@@ -91,3 +92,31 @@ test('failures are retried and a later success passes (a deploy takes a moment t
   const intercept = (req) => (req.path === '/api/health' && ++calls < 3 ? respond(503, { error: 'not-deployed' }) : undefined);
   await withSite(intercept, async (url) => assert.deepEqual(await runSmoke(url, { attempts: 4, delayMs: 1 }), []));
 });
+
+test('with the admin passcode set the smoke test passes and does not warn', async () => {
+  const hash = await hashPasscode('k7m2q-xd93p-wn4tr-h8jcf', { cost: { N: 1024, r: 8, p: 1 } });
+  await withSite(undefined, async (url) => {
+    const { failures, warnings } = await runSmokeDetailed(url, { attempts: 1 });
+    assert.deepEqual([failures, warnings], [[], []]);
+  }, { adminPasscodeHash: hash });
+});
+
+test('with no admin passcode set the smoke test passes but warns that the admin is open', async () => {
+  await withSite(undefined, async (url) => {
+    const { failures, warnings } = await runSmokeDetailed(url, { attempts: 1 });
+    assert.deepEqual(failures, []);
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /passcode is NOT set/);
+  });
+});
+
+test('a passcode that is set but does not protect the admin API fails', async () => {
+  const hash = await hashPasscode('k7m2q-xd93p-wn4tr-h8jcf', { cost: { N: 1024, r: 8, p: 1 } });
+  const open = (req) => (req.path === '/api/admin/config' ? respond(200, { status: 'pre' }, { 'cache-control': 'no-store' }) : undefined); // the gate has failed
+  await withSite(open, async (url) => {
+    const failures = await smoke(url);
+    assert.equal(failures.length, 1);
+    assert.match(failures[0], /passcode is set but the admin API answered/);
+  }, { adminPasscodeHash: hash });
+});
+

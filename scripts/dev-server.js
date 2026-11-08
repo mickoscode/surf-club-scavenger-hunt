@@ -21,10 +21,10 @@ const MIME = {
   '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.json': 'application/json',
 };
 
-function createApiHandler({ store = createMemoryStore(), now = Date.now, loadGame = loadGameData, cookieSecure = false, intercept } = {}) {
+function createApiHandler({ store = createMemoryStore(), now = Date.now, loadGame = loadGameData, cookieSecure = false, intercept, adminPasscodeHash = process.env.ADMIN_PASSCODE_HASH ?? '' } = {}) {
   const shared = { store, now, loadGameData: loadGame, cookieSecure };
   const publicApp = createApp({ ...shared, role: 'public' });
-  const adminApp = createApp({ ...shared, role: 'admin' });
+  const adminApp = createApp({ ...shared, role: 'admin', adminPasscodeHash });
 
   return async (req, res) => {
     const chunks = [];
