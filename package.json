@@ -4,10 +4,11 @@
   "description": "Static website and game for the Sorrento SLS Youth Scavenger Hunt. npm is used for build-time and test tooling; nothing from node_modules is deployed except the Bootstrap CSS copied by scripts/build.sh.",
   "scripts": {
     "build": "bash scripts/build.sh",
-    "test": "node --test \"tests/unit/*.test.js\" \"tests/api/*.test.js\"",
+    "test": "node --test \"tests/unit/*.test.js\" \"tests/api/*.test.js\" \"tests/loadtest/*.test.js\"",
     "validate:data": "node scripts/validate-game-data.js",
     "test:api": "node --test \"tests/api/*.test.js\"",
     "package:backend": "bash scripts/package-backend.sh",
+    "loadtest": "node scripts/load-test.js",
     "smoke": "node scripts/smoke-test.js",
     "dev": "npm run build && node scripts/dev-server.js",
     "test:browser": "node --test --test-concurrency=1 \"tests/browser/*.test.js\""

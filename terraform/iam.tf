@@ -53,6 +53,20 @@ resource "aws_iam_policy" "github_deploy" {
         Resource = [for f in aws_lambda_function.api : f.arn]
       },
       {
+        # Read-only, for the manually run load test report (.github/workflows/load-test.yml): the API's configured limits and
+        # what the servers saw. These actions do not support resource-level permissions (metrics and account settings).
+        Sid      = "ReadMetricsForLoadTest"
+        Effect   = "Allow"
+        Action   = ["cloudwatch:GetMetricData", "lambda:GetAccountSettings"]
+        Resource = "*"
+      },
+      {
+        Sid      = "ReadApiLimitsForLoadTest"
+        Effect   = "Allow"
+        Action   = ["apigateway:GET"]
+        Resource = ["arn:aws:apigateway:ap-southeast-2::/apis", "arn:aws:apigateway:ap-southeast-2::/apis/*"]
+      },
+      {
         Sid      = "InvalidateCache"
         Effect   = "Allow"
         Action   = ["cloudfront:CreateInvalidation"]

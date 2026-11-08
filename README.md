@@ -18,6 +18,7 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 | `scripts/admin-passcode.js` | Run on your own computer: makes the admin passcode and its hash (only the hash is stored, as the HCP variable `admin_passcode_hash`) |
 | `scripts/package-backend.sh`, `scripts/smoke-test.js`, `scripts/dev-server.js` | Package the backend for Lambda; smoke-test a deployed site (`npm run smoke -- <url>`); serve the site and API locally with the in-memory store (`npm run dev`) |
 | `tests/browser/` | The pages in real Chromium (Playwright) served with the real Content-Security-Policy (`npm run test:browser`), including `full-game.test.js`: a whole game from set-up to clean-up with an admin, two teams and a spectator |
+| `scripts/load-test.js`, `scripts/loadtest/` | The load test (run from the **Load test** workflow, see `docs/runbook.md`): simulated teams and spectators, a report with charts and a verdict |
 | `scripts/validate-game-data.js` | Checks the structure of `docs/game-questions.json` (`npm run validate:data`) |
 | `docs/` | Game design (`requirements.md`, `api.md`), game content (`game-questions.json`, `game-zones/`, `player-instructions.md`), **how to run a game (`runbook.md`, `rehearsal-checklist.md`)** and one-time setup (`setup.md`) |
 | `terraform/` | S3 bucket, CloudFront (HTTPS, security headers, page rewrites, `/api/*` to the API, optional custom domain), DynamoDB table, two Lambda functions behind an API Gateway HTTP API, and the GitHub deploy role |
@@ -58,6 +59,7 @@ Mobile first: write styles for phones in `web/css/site.css` and add `@media (min
 | `web-pr.yml` | PR touching `docs/game-questions.json` or the maps | Structure check of the game file. Required check: `Game data` |
 | `terraform-pr.yml` | PR touching `terraform/` | fmt, validate, tflint, Trivy security scan, speculative plan posted as a PR comment |
 | `terraform-apply.yml` | push to `main` touching `terraform/` | checks, plan, then an apply that waits for manual approval in the `terraform-production` environment |
+| `load-test.yml` | manual only | sends a simulated crowd to the live site and publishes a report (summary and downloadable HTML); refuses to run if real teams exist |
 | `deploy.yml` | push to `main` touching the frontend, the backend (`api/`) or the questions, or manual | builds and tests, deploys the Lambda code, syncs `dist/` to S3, invalidates CloudFront, then smoke-tests the live site |
 | `terraform-drift.yml` | weekly | plan only; fails if live AWS differs from `main` |
 | `delete-merged-branch.yml` | PR merged | deletes the PR's branch |
