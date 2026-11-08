@@ -115,6 +115,8 @@ jobs:
           scan-ref: terraform
           severity: HIGH,CRITICAL
           trivyignores: terraform/.trivyignore.yaml
+          # The action's default (v0.70.0) fails to install; pin a current release. Bump deliberately.
+          version: v0.76.2
           exit-code: "1"
           format: table
 
