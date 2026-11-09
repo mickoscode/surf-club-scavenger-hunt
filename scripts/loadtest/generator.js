@@ -74,7 +74,8 @@ function watchGenerator(startedAt) {
 }
 
 // params: { teams, spectators, durationSeconds, rampSeconds, answersPerMinute, mode }
-async function runLoad({ baseUrl, params, fetchImpl = fetch, random = Math.random, pollMs = POLL_MS }) {
+// joinCode: the code to join with, when the admin set one (kept out of `params`, which the report prints).
+async function runLoad({ baseUrl, params, joinCode = '', fetchImpl = fetch, random = Math.random, pollMs = POLL_MS }) {
   const startedAt = performance.now();
   const records = [];
   const userEvents = [];
@@ -113,7 +114,7 @@ async function runLoad({ baseUrl, params, fetchImpl = fetch, random = Math.rando
     try {
       await pageLoad(STATIC.view);
       const name = `${TEAM_PREFIX}${String(index + 1).padStart(3, '0')}`;
-      const join = await http('POST /api/join', 'POST', '/api/join', { body: { name } });
+      const join = await http('POST /api/join', 'POST', '/api/join', { body: { name, code: joinCode } });
       if (join.status !== 200) return;
       joined.push(name);
       const cookie = join.cookie;

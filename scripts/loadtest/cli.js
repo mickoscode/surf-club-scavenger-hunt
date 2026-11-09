@@ -148,7 +148,10 @@ async function preflight({ client, params, passcode, log }) {
   if (params.mode === 'full' && board.json.game.teamNames === false) throw new Abort('Full mode needs team names to be on (the test tells its own teams apart by name). Turn them on in the game configuration, or use spectators-only mode. Nothing was run.');
   const status = board.json.game.status;
   if (params.mode === 'full' && status !== 'active') throw new Abort(`Full mode needs the game to be in progress (it is "${status}"). Set up a demo game that has started, or use spectators-only mode. Nothing was run.`);
-  return { status };
+  // The join code, if one is set: read through the admin session so the test can join its teams. It is passed on to the load
+  // generator only (never into the report).
+  const config = await client.call('GET', '/api/admin/config');
+  return { status, joinCode: config.status === 200 ? config.json?.config?.joinCode ?? '' : '' };
 }
 
 // ------------------------------------------------------------------------------------------------ the whole run
@@ -161,7 +164,8 @@ async function main({ argv = process.argv.slice(2), env = process.env, fetchImpl
   const startedAt = new Date();
   log(`Load test of ${site}: ${params.mode}, ${params.teams} teams, ${params.spectators} spectators, ${params.durationSeconds} s (ramp ${params.rampSeconds} s).`);
 
-  try { await preflight({ client, params, passcode, log }); } catch (e) {
+  let joinCode = '';
+  try { ({ joinCode } = await preflight({ client, params, passcode, log })); } catch (e) {
     if (e instanceof Abort) { log(e.message); return 1; }
     throw e;
   }
@@ -170,7 +174,7 @@ async function main({ argv = process.argv.slice(2), env = process.env, fetchImpl
   let cleanup;
   try {
     log('Sending load...');
-    load = await generate({ baseUrl: site, params, fetchImpl });
+    load = await generate({ baseUrl: site, params, joinCode, fetchImpl });
   } finally {
     // Whatever happened, take the test teams away.
     try { cleanup = await removeTestTeams(client); } catch (e) { cleanup = { removed: 0, failed: 0, remaining: -1, error: e.message }; }

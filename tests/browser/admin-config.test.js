@@ -171,3 +171,25 @@ withPage('the "teams have names" setting is on by default, can be turned off and
   await until(async () => (await status(page)) === 'active');
   assert.equal(await page.locator($('config-team-names')).isDisabled(), true);
 });
+
+withPage('the join code is set on the page, shown back to the admin tidy, refused when invalid, and removable', { site: { now: START - 3_600_000 } }, async ({ site, page }) => {
+  await open(page, site);
+  await fill(page);
+  await page.fill($('config-join-code'), 'ab');
+  await page.click($('config-save'));
+  await page.waitForSelector($('config-error'));
+  assert.equal(await page.locator($('config-error')).getAttribute('data-fields'), 'joinCode');
+
+  await page.fill($('config-join-code'), ' surf-24 ');
+  await page.click($('config-save'));
+  await page.waitForSelector($('config-success'));
+  assert.equal((await site.api.config()).config.joinCode, 'SURF24');
+  await page.reload();
+  await page.waitForSelector(`${$('game-status')}:not([data-status="loading"])`);
+  assert.equal(await page.inputValue($('config-join-code')), 'SURF24'); // shown back, so it can be read out
+
+  await page.fill($('config-join-code'), '');
+  await page.click($('config-save'));
+  await page.waitForSelector($('config-success'));
+  assert.equal((await site.api.config()).config.joinCode, undefined);
+});
