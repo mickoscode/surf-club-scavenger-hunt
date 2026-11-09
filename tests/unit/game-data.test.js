@@ -12,12 +12,11 @@ fs.writeFileSync(path.join(rootDir, 'map.png'), '');
 test.after(() => fs.rmSync(rootDir, { recursive: true, force: true }));
 
 const question = (n, over = {}) => ({ [`Q${n}`]: 'a question', type: 'string', answer: 'yes', score: 10, ...over });
+const photo = (n, over = {}) => ({ [`Q${n}`]: 'a photo challenge', type: 'photo', score: 30, ...over });
 const zone = (name, over = {}) => ({
   'zone-name': name,
   'zone-map': 'map.png',
-  'photo-challenge': 'a photo',
-  'photo-score': 30,
-  questions: [question(1)],
+  questions: [question(1), photo(2)],
   ...over,
 });
 const valid = () => ({ 'zone 1': zone('One'), 'zone 2': zone('Two') });
@@ -47,7 +46,12 @@ test('structural mistakes are reported', () => {
     'duplicate zone name': (d) => { d['zone 2']['zone-name'] = ' ONE '; },
     'missing zone map file': (d) => { d['zone 1']['zone-map'] = 'nope.png'; },
     'map is not an image': (d) => { d['zone 1']['zone-map'] = 'map.gif'; },
-    'photo score not a number': (d) => { d['zone 1']['photo-score'] = '30'; },
+    'photo score not a number': (d) => { d['zone 1'].questions[1].score = '30'; },
+    'photo with an answer': (d) => { d['zone 1'].questions[1].answer = 'x'; },
+    'photo with no description': (d) => { d['zone 1'].questions[1] = { type: 'photo', score: 30 }; },
+    'photo id used twice': (d) => { d['zone 1'].questions.push(photo(2)); },
+    'the old single photo fields': (d) => { d['zone 1']['photo-challenge'] = 'x'; d['zone 1']['photo-score'] = 5; },
+    'the separate photos list': (d) => { d['zone 1'].photos = [{ P1: 'x', score: 5 }]; },
     'negative score': (d) => { d['zone 1'].questions[0].score = -1; },
     'no questions': (d) => { d['zone 1'].questions = []; },
     'duplicate question id': (d) => { d['zone 1'].questions.push(question(1)); },
@@ -76,4 +80,15 @@ test('an empty file or a non-object is rejected', () => {
   assert.ok(validateGameData({}, { rootDir }).length > 0);
   assert.ok(validateGameData([], { rootDir }).length > 0);
   assert.ok(validateGameData(null, { rootDir }).length > 0);
+});
+
+test('a zone may have no photo challenge, one, or several (a photo challenge is a question of type photo)', () => {
+  for (const photos of [[], [photo(2)], [photo(2), photo(3, { score: 0 })]]) {
+    const data = valid();
+    data['zone 1'].questions = [question(1), ...photos];
+    assert.deepEqual(validateGameData(data, { rootDir }), [], `${photos.length} photo challenges`);
+  }
+  const onlyPhotos = valid();
+  onlyPhotos['zone 1'].questions = [photo(1)];
+  assert.deepEqual(validateGameData(onlyPhotos, { rootDir }), []); // a zone of only photo challenges is fine
 });

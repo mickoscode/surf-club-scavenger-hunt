@@ -9,16 +9,15 @@ const END = Date.UTC(2026, 10, 14, 4, 0); // 12:00 AWST
 
 const GAME = {
   'zone 1': {
-    'zone-name': 'Alpha', 'zone-map': 'a.png', 'photo-challenge': 'photo one', 'photo-score': 30,
-    questions: [
+    'zone-name': 'Alpha', 'zone-map': 'a.png', questions: [
       { Q1: 'first?', type: 'string', answer: ['secret one', 'alt one'], score: 10 },
       { Q2: 'number?', type: 'whole-number', answer: '42', score: 20 },
       { Q3: 'decimal?', type: 'decimal', answer: '2.5', score: 5 },
+      { Q4: 'photo one', type: 'photo', score: 30 },
     ],
   },
   'zone 2': {
-    'zone-name': 'Bravo', 'zone-map': 'b.png', 'photo-challenge': 'photo two', 'photo-score': 25,
-    questions: [{ Q1: 'second?', type: 'string', answer: 'secret two', score: 10 }],
+    'zone-name': 'Bravo', 'zone-map': 'b.png', questions: [{ Q1: 'second?', type: 'string', answer: 'secret two', score: 10 }, { Q2: 'photo two', type: 'photo', score: 25 }],
   },
 };
 

@@ -82,7 +82,7 @@ test('the link is part of the configuration: it cannot be changed while the game
 
 test('an existing configuration saved before this setting existed still works', async () => {
   const env = setup();
-  await env.store.saveGame({ config: { ...CONFIG }, game: { 'zone 1': { 'zone-name': 'A', 'photo-score': 1, 'photo-challenge': 'x', 'zone-map': 'a.png', questions: [] } }, configuredAt: 1 });
+  await env.store.saveGame({ config: { ...CONFIG }, game: { 'zone 1': { 'zone-name': 'A', 'zone-map': 'a.png', questions: [{ Q1: 'x', type: 'photo', score: 1 }] } }, configuredAt: 1 });
   assert.equal((await env.admin().get('/api/admin/config')).body.status, 'active'); // valid without the key
   const p = env.player();
   await p.post('/api/join', { name: 'Sea Dogs' });

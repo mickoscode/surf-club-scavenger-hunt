@@ -1,5 +1,5 @@
 // The zones on /play/: tiles (map thumbnail, name, progress), a panel per zone with its map, one form per question and
-// the photo challenge, and a full-size map view. Everything a player types or sees is text set with textContent.
+// the photo challenges (questions of type photo: none, one or several), and a full-size map view. Everything a player types or sees is text set with textContent.
 //
 // Each question and photo can be submitted ONCE. A form is marked done only when the server has confirmed it, and from
 // then on it shows "Done" and nothing else: never what was submitted, and never whether it was right.
@@ -15,7 +15,7 @@ const MESSAGES = {
 };
 const GENERIC_ERROR = 'Something went wrong. Please try again.';
 
-const answerKey = (zone, question) => `${zone.key}#${question.id}`;
+const answerKey = (zone, question) => `${zone.key}#${question.id}`; // a question's (or photo challenge's) key in /api/me's done lists
 
 export function createZones({ container, onSubmitted }) {
   let zones = [];
@@ -48,8 +48,11 @@ export function createZones({ container, onSubmitted }) {
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !overlay.hidden) closeMap(); });
 
   // ------------------------------------------------------------------ progress and done markers
-  const totalFor = (zone) => zone.questions.length + 1; // the questions plus the photo challenge
-  const doneFor = (zone) => zone.questions.filter((q) => done.answers.has(answerKey(zone, q))).length + (done.photos.has(zone.key) ? 1 : 0);
+  // Photo challenges are questions of type "photo" (a zone may have none, one or several), so they are counted with the rest.
+  const isPhoto = (q) => q.type === 'photo';
+  const isDone = (zone, q) => (isPhoto(q) ? done.photos : done.answers).has(answerKey(zone, q));
+  const totalFor = (zone) => zone.questions.length;
+  const doneFor = (zone) => zone.questions.filter((q) => isDone(zone, q)).length;
 
   function updateProgress(zone) {
     const [n, total] = [doneFor(zone), totalFor(zone)];
@@ -77,9 +80,8 @@ export function createZones({ container, onSubmitted }) {
     for (const zone of zones) {
       const panel = panels.get(zone.key);
       for (const q of zone.questions) {
-        if (done.answers.has(answerKey(zone, q))) markDone(panel.querySelector(`[data-testid="question"][data-question="${q.id}"]`), zone);
+        if (isDone(zone, q)) markDone(panel.querySelector(`[data-testid="${isPhoto(q) ? 'photo' : 'question'}"][data-question="${q.id}"]`), zone);
       }
-      if (done.photos.has(zone.key)) markDone(panel.querySelector('[data-testid="photo"]'), zone);
       updateProgress(zone);
     }
   }
@@ -140,8 +142,8 @@ export function createZones({ container, onSubmitted }) {
     return form;
   }
 
-  function buildPhoto(zone) {
-    const form = el('form', { class: 'card card-body mb-3 border-primary', novalidate: '', 'data-testid': 'photo', 'data-state': 'open' });
+  function buildPhoto(zone, photo, index) {
+    const form = el('form', { class: 'card card-body mb-3 border-primary', novalidate: '', 'data-testid': 'photo', 'data-question': photo.id, 'data-state': 'open' });
     const submitButton = el('button', { type: 'submit', class: 'btn btn-primary', 'data-testid': 'photo-submit' }, 'Photo sent to WhatsApp');
     const badge = el('span', { class: 'badge text-bg-success fs-6', 'data-testid': 'done-badge' }, 'Done');
     badge.hidden = true;
@@ -154,13 +156,13 @@ export function createZones({ container, onSubmitted }) {
     const openGroup = el('a', { class: 'btn btn-outline-success btn-sm mb-2 align-self-start', target: '_blank', rel: 'noopener noreferrer', 'data-testid': 'whatsapp-open' }, 'Open WhatsApp group');
     openGroup.hidden = true;
     form.append(
-      el('div', { class: 'fw-semibold' }, `Photo challenge (${zone.photoScore} pts)`),
-      el('p', { class: 'my-2', 'data-testid': 'photo-challenge' }, zone.photoChallenge),
+      el('div', { class: 'fw-semibold' }, `Photo challenge${zone.questions.filter(isPhoto).length > 1 ? ` ${index + 1}` : ''} (${photo.score} pts)`),
+      el('p', { class: 'my-2', 'data-testid': 'photo-challenge' }, photo.text),
       openGroup, actions, error,
     );
     form.addEventListener('submit', (event) => {
       event.preventDefault();
-      submit({ form, zone, path: '/api/photo', kind: 'photos', key: zone.key, data: { zone: zone.key } });
+      submit({ form, zone, path: '/api/photo', kind: 'photos', key: answerKey(zone, photo), data: { zone: zone.key, question: photo.id } });
     });
     return form;
   }
@@ -192,8 +194,7 @@ export function createZones({ container, onSubmitted }) {
       el('h2', { class: 'h4 team-name', 'data-testid': 'panel-name' }, zone.name),
       mapButton,
       el('p', { class: 'small text-muted mt-1 mb-3' }, 'Tap the map to enlarge it.'),
-      ...zone.questions.map((q) => buildQuestion(zone, q)),
-      buildPhoto(zone),
+      ...zone.questions.map((q) => (isPhoto(q) ? buildPhoto(zone, q, zone.questions.filter(isPhoto).indexOf(q)) : buildQuestion(zone, q))),
     );
     return panel;
   }
@@ -213,11 +214,12 @@ export function createZones({ container, onSubmitted }) {
   function setWhatsApp(url) {
     whatsappUrl = safeWhatsAppUrl(url);
     for (const panel of panels.values()) {
-      const open = panel.querySelector('[data-testid="whatsapp-open"]');
-      open.hidden = !whatsappUrl;
-      if (whatsappUrl) open.href = whatsappUrl;
-      else open.removeAttribute('href');
-      applyWhatsAppLinks(panel.querySelector('[data-testid="photo-challenge"]'), whatsappUrl);
+      for (const open of panel.querySelectorAll('[data-testid="whatsapp-open"]')) {
+        open.hidden = !whatsappUrl;
+        if (whatsappUrl) open.href = whatsappUrl;
+        else open.removeAttribute('href');
+      }
+      for (const challenge of panel.querySelectorAll('[data-testid="photo-challenge"]')) applyWhatsAppLinks(challenge, whatsappUrl);
     }
   }
 

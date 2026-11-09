@@ -9,7 +9,7 @@
 //   NAME    <name key>      { playerId }                     reserves a team name (the key ignores case)
 //   TEAM    <playerId>      { number, name, key, score, joinedAt,
 //                             subs:   { "<zone>#<Qn>": { answerGiven, correct, points, at } },
-//                             photos: { "<zone>": { sentAt, decision?, points?, appliedAt? } } }
+//                             photos: { "<zone>#<photo id>": { sentAt, decision?, points?, appliedAt? } } }
 //
 // A team's whole state is ONE item, so "submit once" and "add to the score" are a single atomic conditional
 // update (no transactions needed there). Joining uses a transaction so a name is never reserved without a team.

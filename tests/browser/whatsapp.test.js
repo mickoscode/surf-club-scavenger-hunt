@@ -10,7 +10,7 @@ const $ = (testId) => `[data-testid="${testId}"]`;
 const overflow = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 
 const game = structuredClone(GAME);
-game['zone 1']['photo-challenge'] = 'Take a team photo and upload it to WhatsApp, not by email';
+game['zone 1'].questions.find((q) => q.type === 'photo').Q4 = 'Take a team photo and upload it to WhatsApp, not by email';
 const withGame = { site: { game } };
 
 // A team that has joined, this browser signed in as it, the play page open on a zone.

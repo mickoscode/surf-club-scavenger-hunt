@@ -20,10 +20,10 @@ The two admin pages are protected by your **admin passcode**. Open either addres
 
 The game is two files in this repo, changed by pull request like everything else.
 
-1. **Questions and photo challenges: `docs/game-questions.json`.** The file in the repo may be **sample content**: replace it with your real game. Each zone has a name, a map image, a photo challenge with its points, and any number of questions (there is no fixed 5). Per question:
-   - `type`: `"string"` (text), `"whole-number"` or `"decimal"`
-   - `answer`: for text, one answer or a list of accepted answers (`["bike", "bicycle"]`), in **lower case**; for numbers, the value as text (`"42"`, `"2.5"`). Typos are accepted in text answers (none under 4 letters, one for 4 to 7, two for 8 or more); numbers must be exact.
-   - `score`: points for a correct answer
+1. **Questions and photo challenges: `docs/game-questions.json`.** The file in the repo may be **sample content**: replace it with your real game. Each zone has a name, a map image and any number of questions (there is no fixed 5). Photo challenges are questions too: a zone can have none, one or several. Per question:
+   - `type`: `"string"` (text), `"whole-number"`, `"decimal"` or `"photo"` (a photo challenge: the text says what to photograph, it has a `score` and no `answer`)
+   - `answer` (not for photos): for text, one answer or a list of accepted answers (`["bike", "bicycle"]`), in **lower case**; for numbers, the value as text (`"42"`, `"2.5"`). Typos are accepted in text answers (none under 4 letters, one for 4 to 7, two for 8 or more); numbers must be exact.
+   - `score`: points for a correct answer (for a photo challenge, its points when scored Full)
    
    Run `npm run validate:data` to check it; the `Game data` check does the same on the pull request and tells you exactly what is wrong. The format is in `requirements.md` ("game-questions.json format").
 2. **Maps: `docs/game-zones/`.** Replace or add PNG/JPEG images and point each zone's `zone-map` at its file. Keep each to a normal screenshot size: the build shrinks them for phones.

@@ -7,7 +7,7 @@ const { setup, configure, answer, CONFIG, START, END } = require('./helpers.js')
 
 const publish = (admin, body = { confirm: true }) => admin.post('/api/admin/results/publish', body);
 const results = (p) => p.get('/api/results');
-const apply = (admin, teamNumber, zone, decision) => admin.post('/api/admin/photos/apply', { teamNumber, zone, decision });
+const apply = (admin, teamNumber, zone, decision) => admin.post('/api/admin/photos/apply', { teamNumber, zone, question: zone === 'zone 2' ? 'Q2' : 'Q4', decision });
 const gameOf = async (env) => (await env.player().get('/api/scoreboard')).body.game;
 
 // Three teams, then the game is over. Alpha (1) and Charlie (3) both finish on 60; Bravo (2) has a wrong answer and a photo
@@ -21,12 +21,12 @@ async function finishedGame() {
   await charlie.post('/api/join', { name: 'Charlie' });
   await answer(alpha, 'zone 1', 'Q1', 'alt one');
   await answer(alpha, 'zone 1', 'Q2', '42');
-  await alpha.post('/api/photo', { zone: 'zone 1' });
+  await alpha.post('/api/photo', { zone: 'zone 1', question: 'Q4' });
   await answer(bravo, 'zone 1', 'Q1', 'purple');
-  await bravo.post('/api/photo', { zone: 'zone 1' });
+  await bravo.post('/api/photo', { zone: 'zone 1', question: 'Q4' });
   await answer(charlie, 'zone 1', 'Q1', 'secret one');
   await answer(charlie, 'zone 1', 'Q2', '42');
-  await charlie.post('/api/photo', { zone: 'zone 1' });
+  await charlie.post('/api/photo', { zone: 'zone 1', question: 'Q4' });
   env.clock.now = END + 1;
   const admin = env.admin();
   assert.equal((await apply(admin, 1, 'zone 1', 'full')).status, 200);
@@ -143,13 +143,13 @@ test('once published, a team gets its place, total and a breakdown of every ques
   });
   assert.deepEqual([zone1.questions[2].answered, zone1.questions[2].yourAnswer, zone1.questions[2].correct, zone1.questions[2].earned], [false, null, null, 0]);
   assert.deepEqual(zone1.questions[2].officialAnswers, ['2.5']); // the official answer is shown even for a question not answered
-  assert.deepEqual(zone1.photo, { challenge: 'photo one', points: 30, submitted: true, scored: true, decision: 'full', percent: 100, earned: 30 });
-  assert.deepEqual(zone2.photo, { challenge: 'photo two', points: 25, submitted: false, scored: false, decision: null, percent: null, earned: 0 });
+  assert.deepEqual(zone1.photos, [{ id: 'Q4', challenge: 'photo one', points: 30, submitted: true, scored: true, decision: 'full', percent: 100, earned: 30 }]);
+  assert.deepEqual(zone2.photos, [{ id: 'Q2', challenge: 'photo two', points: 25, submitted: false, scored: false, decision: null, percent: null, earned: 0 }]);
 
   const b = (await results(bravo)).body.results; // a wrong answer, and a photo that was sent but never scored
   assert.deepEqual([b.place, b.total], [3, 0]);
   assert.deepEqual([b.zones[0].questions[0].correct, b.zones[0].questions[0].earned, b.zones[0].questions[0].yourAnswer], [false, 0, 'purple']);
-  assert.deepEqual([b.zones[0].photo.submitted, b.zones[0].photo.scored, b.zones[0].photo.percent], [true, false, 0]);
+  assert.deepEqual([b.zones[0].photos[0].submitted, b.zones[0].photos[0].scored, b.zones[0].photos[0].percent], [true, false, 0]);
 });
 
 test('a team result always adds up to its score on the scoreboard', async () => {
@@ -159,7 +159,7 @@ test('a team result always adds up to its score on the scoreboard', async () => 
   const board = (await env.player().get('/api/scoreboard')).body.teams;
   for (const [number, browser] of [[1, alpha], [2, bravo], [3, charlie]]) {
     const { results: mine } = (await results(browser)).body;
-    const parts = mine.zones.flatMap((z) => [...z.questions.map((q) => q.earned), z.photo.earned]);
+    const parts = mine.zones.flatMap((z) => [...z.questions.map((q) => q.earned), ...z.photos.map((p) => p.earned)]);
     const sum = parts.reduce((x, y) => x + y, 0);
     assert.equal(sum, mine.total, `team ${number}: the breakdown does not add up to the total`);
     assert.equal(mine.total, board.find((t) => t.number === number).score, `team ${number}: the total differs from the scoreboard`);

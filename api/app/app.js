@@ -24,6 +24,10 @@ const MAX_FAILED_LOGINS = 10;
 const CACHEABLE = { 'cache-control': 'public, max-age=3' }; // the same for everyone, so CloudFront may share it briefly
 
 const questionId = (q) => Object.keys(q).find((k) => QUESTION_ID.test(k));
+// A photo challenge is a question of type "photo" (a zone may have none, one or several); it has no answer to check.
+const isPhoto = (q) => q.type === 'photo';
+const findQuestion = (zone, id) => zone?.questions.find((q) => questionId(q) === id);
+const findPhoto = (zone, id) => { const q = findQuestion(zone, id); return q && isPhoto(q) ? q : undefined; };
 // Own properties only: a request naming a zone "__proto__" or "constructor" must be "not found", not an error.
 const findZone = (game, key) => (typeof key === 'string' && game && Object.hasOwn(game, key) ? game[key] : undefined);
 
@@ -32,8 +36,6 @@ const publicZones = (game) => Object.entries(game).map(([key, zone]) => ({
   key,
   name: zone['zone-name'],
   mapId: mapId(key),
-  photoChallenge: zone['photo-challenge'],
-  photoScore: zone['photo-score'],
   questions: zone.questions.map((q) => ({ id: questionId(q), text: q[questionId(q)], type: q.type, score: q.score })),
 }));
 
@@ -136,8 +138,8 @@ function createApp({
       const { saved, status, t } = await snapshot();
       if (!can(status, 'play')) throw new HttpError(409, 'not-playing');
       const zone = findZone(saved.game, body.zone);
-      const question = zone?.questions.find((q) => questionId(q) === body.question);
-      if (!question) throw new HttpError(400, 'unknown-question');
+      const question = findQuestion(zone, body.question);
+      if (!question || isPhoto(question)) throw new HttpError(400, 'unknown-question');
       const result = checkAnswer(question, body.answer);
       if (!result.valid) throw new HttpError(400, 'invalid-answer'); // does not use up the one submission
       const recorded = await store.recordAnswer(team.playerId, body.zone, body.question, {
@@ -152,8 +154,10 @@ function createApp({
       const team = await requireTeam(request);
       const { saved, status, t } = await snapshot();
       if (!can(status, 'play')) throw new HttpError(409, 'not-playing');
-      if (!findZone(saved.game, body.zone)) throw new HttpError(400, 'unknown-zone');
-      const recorded = await store.recordPhotoSent(team.playerId, body.zone, { at: t });
+      const zone = findZone(saved.game, body.zone);
+      if (!zone) throw new HttpError(400, 'unknown-zone');
+      if (!findPhoto(zone, body.question)) throw new HttpError(400, 'unknown-question'); // not there, or not a photo challenge
+      const recorded = await store.recordPhotoSent(team.playerId, `${body.zone}#${body.question}`, { at: t });
       if (!recorded.ok) throw new HttpError(recorded.error === 'no-team' ? 401 : 409, recorded.error === 'no-team' ? 'no-session' : recorded.error);
       return respond(200, { done: true });
     },
@@ -249,10 +253,13 @@ function createApp({
       const { saved } = await snapshot();
       const rows = [];
       for (const team of await store.listTeams()) {
-        for (const [zoneKey, photo] of Object.entries(team.photos)) {
+        for (const [key, photo] of Object.entries(team.photos)) { // key: "<zone>#<question id>"
+          const [zoneKey, id] = key.split('#');
           const zone = findZone(saved?.game, zoneKey);
+          const challenge = findPhoto(zone, id);
           rows.push({
-            teamNumber: team.number, zone: zoneKey, zoneName: zone?.['zone-name'] ?? zoneKey, photoScore: zone?.['photo-score'] ?? 0,
+            teamNumber: team.number, zone: zoneKey, zoneName: zone?.['zone-name'] ?? zoneKey, question: id,
+            challenge: challenge ? challenge[id] : id, photoScore: challenge?.score ?? 0,
             sentAt: photo.sentAt, decision: photo.decision ?? null, appliedAt: photo.appliedAt ?? null,
           });
         }
@@ -270,9 +277,11 @@ function createApp({
       if (!isDecision(body.decision)) throw new HttpError(400, 'invalid-decision');
       const zone = findZone(saved?.game, body.zone);
       if (!zone) throw new HttpError(400, 'unknown-zone');
+      const challenge = findPhoto(zone, body.question);
+      if (!challenge) throw new HttpError(400, 'unknown-question');
       const team = Number.isInteger(body.teamNumber) ? await teamByNumber(body.teamNumber) : null;
       if (!team) throw new HttpError(400, 'no-team');
-      const applied = await store.applyPhotoDecision(team.playerId, body.zone, { decision: body.decision, photoScore: zone['photo-score'], at: t });
+      const applied = await store.applyPhotoDecision(team.playerId, `${body.zone}#${body.question}`, { decision: body.decision, photoScore: challenge.score, at: t });
       if (!applied.ok) throw new HttpError(400, applied.error);
       return respond(200, { delta: applied.delta, score: applied.score });
     },

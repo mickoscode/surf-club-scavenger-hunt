@@ -13,14 +13,14 @@ test('the admin scores photos: pending first in the order sent, decisions replac
   const b = env.player();
   await a.post('/api/join', { name: 'Alpha' });
   await b.post('/api/join', { name: 'Bravo' });
-  env.clock.now += 1000; await b.post('/api/photo', { zone: 'zone 1' });
-  env.clock.now += 1000; await a.post('/api/photo', { zone: 'zone 2' });
-  env.clock.now += 1000; await a.post('/api/photo', { zone: 'zone 1' });
+  env.clock.now += 1000; await b.post('/api/photo', { zone: 'zone 1', question: 'Q4' });
+  env.clock.now += 1000; await a.post('/api/photo', { zone: 'zone 2', question: 'Q2' });
+  env.clock.now += 1000; await a.post('/api/photo', { zone: 'zone 1', question: 'Q4' });
   const admin = env.admin();
   const order = async () => (await admin.get('/api/admin/photos')).body.photos.map((r) => `${r.teamNumber}:${r.zone}:${r.decision}`);
   assert.deepEqual(await order(), ['2:zone 1:null', '1:zone 2:null', '1:zone 1:null']);
 
-  const apply = (teamNumber, zone, decision) => admin.post('/api/admin/photos/apply', { teamNumber, zone, decision });
+  const apply = (teamNumber, zone, decision) => admin.post('/api/admin/photos/apply', { teamNumber, zone, question: zone === 'zone 2' ? 'Q2' : 'Q4', decision });
   assert.deepEqual((await apply(2, 'zone 1', 'full')).body, { delta: 30, score: 30 });
   assert.deepEqual(await order(), ['1:zone 2:null', '1:zone 1:null', '2:zone 1:full']);
   assert.deepEqual((await apply(2, 'zone 1', 'full')).body, { delta: 0, score: 30 }); // applied twice: no extra points
@@ -32,18 +32,20 @@ test('the admin scores photos: pending first in the order sent, decisions replac
 test('photo decisions are checked: known decision, team, zone and a photo that was actually sent', async () => {
   const { env } = await activeGame();
   const apply = (b) => env.admin().post('/api/admin/photos/apply', b);
-  assert.equal((await apply({ teamNumber: 1, zone: 'zone 1', decision: 'maybe' })).body.error, 'invalid-decision');
-  assert.equal((await apply({ teamNumber: 9, zone: 'zone 1', decision: 'full' })).body.error, 'no-team');
-  assert.equal((await apply({ teamNumber: 1, zone: 'zone 9', decision: 'full' })).body.error, 'unknown-zone');
-  assert.equal((await apply({ teamNumber: 1, zone: '__proto__', decision: 'full' })).body.error, 'unknown-zone');
-  assert.equal((await apply({ teamNumber: 1, zone: 'zone 1', decision: 'full' })).body.error, 'no-photo');
-  assert.equal((await apply({ teamNumber: '1', zone: 'zone 1', decision: 'full' })).status, 400);
+  assert.equal((await apply({ teamNumber: 1, zone: 'zone 1', question: 'Q4', decision: 'maybe' })).body.error, 'invalid-decision');
+  assert.equal((await apply({ teamNumber: 9, zone: 'zone 1', question: 'Q4', decision: 'full' })).body.error, 'no-team');
+  assert.equal((await apply({ teamNumber: 1, zone: 'zone 9', question: 'Q4', decision: 'full' })).body.error, 'unknown-zone');
+  assert.equal((await apply({ teamNumber: 1, zone: '__proto__', photo: 'P1', decision: 'full' })).body.error, 'unknown-zone');
+  assert.equal((await apply({ teamNumber: 1, zone: 'zone 1', photo: 'P9', decision: 'full' })).body.error, 'unknown-question');
+  assert.equal((await apply({ teamNumber: 1, zone: 'zone 1', decision: 'full' })).body.error, 'unknown-question'); // no photo named
+  assert.equal((await apply({ teamNumber: 1, zone: 'zone 1', question: 'Q4', decision: 'full' })).body.error, 'no-photo');
+  assert.equal((await apply({ teamNumber: '1', zone: 'zone 1', question: 'Q4', decision: 'full' })).status, 400);
 });
 
 test('scoring is possible during and after the game, not before', async () => {
   const { env, p } = await activeGame();
-  await p.post('/api/photo', { zone: 'zone 1' });
-  const apply = () => env.admin().post('/api/admin/photos/apply', { teamNumber: 1, zone: 'zone 1', decision: 'full' });
+  await p.post('/api/photo', { zone: 'zone 1', question: 'Q4' });
+  const apply = () => env.admin().post('/api/admin/photos/apply', { teamNumber: 1, zone: 'zone 1', question: 'Q4', decision: 'full' });
   env.clock.now = START - 1;
   assert.equal((await apply()).status, 409);
   env.clock.now = END + 1;
@@ -120,11 +122,11 @@ test('application errors never use 403 or 404, which CloudFront would replace wi
   const { env, p } = await activeGame();
   const admin = env.admin();
   const calls = [
-    () => p.post('/api/answer', { zone: 'nope', question: 'Q1', answer: 'x' }), () => p.post('/api/photo', { zone: 'nope' }),
+    () => p.post('/api/answer', { zone: 'nope', question: 'Q1', answer: 'x' }), () => p.post('/api/photo', { zone: 'nope', question: 'Q4' }),
     () => env.player().post('/api/answer', { zone: 'zone 1', question: 'Q1', answer: 'x' }), () => p.post('/api/join', {}),
     () => admin.put('/api/admin/config', CONFIG), () => admin.post('/api/admin/delete-all', { confirm: 'delete' }),
-    () => admin.del('/api/admin/teams/99'), () => admin.post('/api/admin/photos/apply', { teamNumber: 1, zone: 'zone 1', decision: 'full' }),
-    () => admin.post('/api/admin/photos/apply', { teamNumber: 1, zone: 'nope', decision: 'full' }),
+    () => admin.del('/api/admin/teams/99'), () => admin.post('/api/admin/photos/apply', { teamNumber: 1, zone: 'zone 1', question: 'Q4', decision: 'full' }),
+    () => admin.post('/api/admin/photos/apply', { teamNumber: 1, zone: 'nope', question: 'Q4', decision: 'full' }),
   ];
   for (const now of [START - 1, START + 1000, END + 1]) { // before, during and after the game
     env.clock.now = now;

@@ -65,7 +65,7 @@ function apiClient(url, passcode = null) {
     },
     unpublish: () => admin('POST', '/api/admin/results/unpublish', {}),
     config: async () => (await admin('GET', '/api/admin/config')).body,
-    apply: (teamNumber, zone, decision) => admin('POST', '/api/admin/photos/apply', { teamNumber, zone, decision }),
+    apply: (teamNumber, zone, decision, question = PHOTO_Q[zone]) => admin('POST', '/api/admin/photos/apply', { teamNumber, zone, question, decision }),
     photosToScore: async () => (await admin('GET', '/api/admin/photos')).body.photos,
     // Direct access for tests that look at the admin API's own answers (with the admin's session, if the site has a passcode).
     admin,
@@ -78,12 +78,14 @@ function apiClient(url, passcode = null) {
         number: res.body.team.number,
         cookie,
         answer: (zone, question, answer) => call('POST', '/api/answer', { zone, question, answer }, cookie),
-        photo: (zone) => call('POST', '/api/photo', { zone }, cookie),
+        photo: (zone, question = PHOTO_Q[zone]) => call('POST', '/api/photo', { zone, question }, cookie),
       };
     },
   };
 }
 
+// The fixture game's photo challenge in each zone (a question of type photo).
+const PHOTO_Q = { 'zone 1': 'Q4', 'zone 2': 'Q2' };
 const TEST_PASSCODE = 'k7m2q-xd93p-wn4tr-h8jcf';
 
 // passcode: true gives the site an admin passcode (TEST_PASSCODE, with a cheap hash so tests stay fast); the default is no passcode.
