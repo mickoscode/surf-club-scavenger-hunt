@@ -150,7 +150,7 @@ The scoreboard must be sorted by score (descending order), then team name (alpha
 The scoreboard is a simple table with 4 columns, optimised for mobile display, headed in lower case:
 - **rank**: the team's place, as a plain number (1, 2, 3, not 1st, 2nd). Teams with the same score share a place (1, 1, 3), exactly as on the results page.
 - **name**: the team name, or "Team <number>" when team names are off.
-- **q done**: how many questions and photo challenges the team has attempted over how many there are in the whole game, e.g. "5/30" (the total counts every question and every photo challenge in every zone). Answering a question or sending a photo counts whether it is right or not, so this says nothing about correctness. A team that has done nothing shows "0/30".
+- **done**: how many questions and photo challenges the team has attempted over how many there are in the whole game, e.g. "5/30" (the total counts every question and every photo challenge in every zone). Answering a question or sending a photo counts whether it is right or not, so this says nothing about correctness. A team that has done nothing shows "0/30".
 - **score**: the team's total score, shown as now (whole number, or one decimal place only when needed).
 The scoreboard does not show team numbers (a team sees its own on its play page).
 The player's own team row is highlighted.
@@ -359,7 +359,7 @@ As built: `.github/workflows/load-test.yml` runs `scripts/load-test.js` (code in
 
 Where the finished site is more specific than the text above (details settled while building; the code and `docs/api.md` are the reference):
 
-- **Scoreboard**: four columns headed rank, name, q done and score. rank is the place (teams on the same score share one: 1, 1, 3), q done is `attempted/total` (questions and photo challenges, right or wrong), and there is no team number column; the player's own row is highlighted; scores show as whole numbers or with one decimal place only when needed. The server works out rank and q done; `/api/scoreboard` sends `rank` and `done` for each team and `questionTotal` for the game.
+- **Scoreboard**: four columns headed rank, name, done and score. rank is the place (teams on the same score share one: 1, 1, 3), done is `attempted/total` (questions and photo challenges, right or wrong), and there is no team number column; the player's own row is highlighted; scores show as whole numbers or with one decimal place only when needed. The server works out rank and done; `/api/scoreboard` sends `rank` and `done` for each team and `questionTotal` for the game.
 - **Countdown**: "N min" until the last 5 minutes, then "m:ss"; before the start it counts to the start. It uses the server's clock. The status text and the countdown share one line on `/view/` and `/play/`.
 - **Team line on `/play/`**: "Team 7" (large, bold, blue) and the name (smaller, dark grey) on one baseline; a name too long for the line wraps below the number. The view page shows no separate team name: the team's own row in the scoreboard is highlighted.
 - **Statuses**: the game is `unconfigured`, `pre`, `active` or `post`; the end is inclusive and exact (no grace period).
