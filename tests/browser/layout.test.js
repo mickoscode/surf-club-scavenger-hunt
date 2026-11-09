@@ -75,3 +75,11 @@ withPage('the view page shows the team name only in the scoreboard, not as a sep
   assert.equal(await page.getByText('Zebras', { exact: true }).count(), 1); // the scoreboard cell, nowhere else
   assert.equal(await page.locator($('my-team')).count(), 0);
 });
+
+withPage('on a phone the scoreboard with its four columns fits the screen even with a 30 character team name', phone, async ({ site, page }) => {
+  await site.api.configure();
+  await site.api.join('W'.repeat(30));
+  await page.goto(`${site.url}/view/?refresh=500`);
+  await page.waitForSelector($('scoreboard-row'));
+  assert.ok((await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)) <= 0, 'the scoreboard is wider than the screen');
+});

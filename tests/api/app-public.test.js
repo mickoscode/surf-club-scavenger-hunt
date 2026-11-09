@@ -179,7 +179,7 @@ test('the scoreboard is sorted and carries what the countdown needs', async () =
   await answer(leader, 'zone 1', 'Q2', '42');
   const { body } = await env.player().get('/api/scoreboard');
   assert.deepEqual(body.teams.map((t) => t.name), ['Yankee', 'Alpha', 'bravo', 'Zulu']);
-  assert.deepEqual(Object.keys(body.teams[0]).sort(), ['name', 'number', 'score']);
+  assert.deepEqual(Object.keys(body.teams[0]).sort(), ['done', 'name', 'number', 'rank', 'score']);
   assert.deepEqual([body.game.status, body.game.startMs, body.game.endMs], ['active', START, END]);
 });
 
@@ -189,4 +189,21 @@ test('public pages are shared briefly; everything personal is never cached', asy
   assert.match((await env.player().get('/api/scoreboard')).headers['cache-control'], /public, max-age=3/);
   assert.match((await env.player().get('/api/game')).headers['cache-control'], /public, max-age=3/);
   assert.equal((await env.player().get('/api/me')).headers['cache-control'], 'no-store');
+});
+
+test('the scoreboard gives each team its place (ties share one) and how many questions and photo challenges it has attempted', async () => {
+  const env = setup();
+  await configure(env);
+  const [a, b, c] = [env.player(), env.player(), env.player()];
+  for (const [p, name] of [[a, 'Alpha'], [b, 'Bravo'], [c, 'Charlie']]) await join(p, name);
+  await answer(a, 'zone 1', 'Q2', '42'); // right: 20
+  await answer(a, 'zone 1', 'Q1', 'wrong'); // wrong still counts as attempted
+  await a.post('/api/photo', { zone: 'zone 1', question: 'Q4' });
+  await answer(b, 'zone 1', 'Q2', '42'); // 20, the same score as Alpha
+  const { body } = await env.player().get('/api/scoreboard');
+  assert.equal(body.questionTotal, 6); // zone 1: three questions and a photo challenge; zone 2: one question and a photo challenge
+  const by = Object.fromEntries(body.teams.map((t) => [t.name, t]));
+  assert.deepEqual([by.Alpha.rank, by.Bravo.rank, by.Charlie.rank], [1, 1, 3]);
+  assert.deepEqual([by.Alpha.done, by.Bravo.done, by.Charlie.done], [3, 1, 0]);
+  assert.equal(JSON.stringify(body).includes('wrong'), false); // what was submitted is never in it
 });

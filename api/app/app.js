@@ -11,6 +11,8 @@ const { gameStatus, describeGame, can, validateConfig, AU_TIME_ZONES, DEFAULT_GA
 const { checkAnswer } = require('../lib/answers');
 const { questionPoints, isDecision } = require('../lib/scoring');
 const { validateTeamName, sortScoreboard } = require('../lib/teams');
+const { countQuestions, countDone } = require('../lib/progress');
+const { placeOf } = require('../lib/results');
 const { buildResults } = require('../lib/results');
 const { normaliseWhatsappUrl } = require('../lib/whatsapp');
 const { verifyPasscode, createSession, verifySession, SESSION_MS } = require('../lib/passcode');
@@ -87,8 +89,13 @@ function createApp({
 
     'GET /api/scoreboard': async () => {
       const { saved, info } = await snapshot();
-      const teams = sortScoreboard((await store.listTeams()).map(summary));
-      return respond(200, { game: await gameSummary(saved, info), teams }, CACHEABLE);
+      const all = await store.listTeams();
+      // rank: teams on the same score share a place (1, 1, 3); done: questions and photo challenges attempted, of questionTotal.
+      const teams = sortScoreboard(all.map(summary)).map((t) => {
+        const team = all.find((x) => x.number === t.number);
+        return { ...t, rank: placeOf(team, all), done: countDone(team, saved?.game) };
+      });
+      return respond(200, { game: await gameSummary(saved, info), questionTotal: countQuestions(saved?.game), teams }, CACHEABLE);
     },
 
     // The caller's own team and which forms they have already submitted (never what they submitted).
