@@ -7,6 +7,12 @@ import { safeWhatsAppUrl } from './whatsapp.js';
 import { guardAdminPage, isLocked } from './admin-auth.js';
 
 const STATUS_TEXT = { loading: 'loading', unconfigured: 'no game set up yet', pre: 'before the game', active: 'game in progress', post: 'game finished' };
+const EVENT_PROBLEM = {
+  'players-exist': 'Another event cannot replace a game that has teams. Download and delete the player data first, then try again.',
+  'event-incomplete': 'That event is missing map images. Upload it again on the Events page.',
+  'unknown-event': 'That event no longer exists.',
+  'events-unavailable': 'Events are not available on this site yet.',
+};
 const FIELD_PROBLEM = {
   name: 'The game name must be 1 to 80 characters.',
   timeZone: 'Choose a time zone.',
@@ -27,6 +33,10 @@ let shownTeams = null;
 const form = $('config-form');
 const fields = { name: $('config-name'), timeZone: $('config-timezone'), day: $('config-day'), start: $('config-start'), end: $('config-end'), whatsappUrl: $('config-whatsapp'), joinCode: $('config-join-code') };
 const teamNamesBox = $('config-team-names'); // a checkbox: whether teams have names
+const eventSelect = $('config-event'); // which stored event the live game is loaded from
+let events = []; // the stored events, from /api/admin/events
+let eventsKey = null;
+let eventChosen = false; // the first load picks the live game's event; after that the admin's choice is left alone
 
 function fillForm({ config, defaults, timeZones }) {
   fields.timeZone.replaceChildren(...timeZones.map((z) => el('option', { value: z.id }, z.label)));
@@ -39,6 +49,30 @@ function fillForm({ config, defaults, timeZones }) {
   fields.joinCode.value = config?.joinCode ?? '';
   teamNamesBox.checked = config?.teamNames !== false; // on unless the saved configuration says false
   updateTestLink();
+}
+
+// The saved values of an event's settings go into the form when that event is chosen (the admin can still change them).
+function fillFromEvent(config) {
+  if (!config) return;
+  for (const name of ['name', 'timeZone', 'day', 'start', 'end', 'whatsappUrl', 'joinCode']) fields[name].value = config[name] ?? (name === 'name' ? fields.name.value : '');
+  teamNamesBox.checked = config.teamNames !== false;
+  updateTestLink();
+}
+eventSelect.addEventListener('change', () => fillFromEvent(events.find((e) => e.name === eventSelect.value)?.config));
+
+// The list of stored events: rebuilt only when it changes, so a choice the admin has made is never lost on a refresh.
+function renderEvents(list, active) {
+  const key = JSON.stringify([list.events, list.available]);
+  if (key === eventsKey) return;
+  eventsKey = key;
+  events = list.events;
+  const chosen = eventChosen ? eventSelect.value : (active ?? '');
+  eventSelect.replaceChildren(
+    el('option', { value: '' }, 'Game file in the repository (the older way)'),
+    ...events.map((e) => { const o = el('option', { value: e.name }, `${e.name}${e.complete ? '' : ' (incomplete: see the Events page)'}`); if (!e.complete) o.disabled = true; return o; }),
+  );
+  eventSelect.value = events.some((e) => e.name === chosen && e.complete) ? chosen : '';
+  eventChosen = true;
 }
 
 // "Test link" opens what is typed in the field (when it looks like a group link) so the admin can check it before saving.
@@ -56,10 +90,11 @@ function renderStatus(info, teamCount) {
   badge.dataset.status = status;
   badge.textContent = STATUS_TEXT[status];
   const zones = info.zoneCount > 0 ? `${info.zoneCount} zone${info.zoneCount === 1 ? '' : 's'} loaded` : 'no zones loaded';
-  $('status-detail').textContent = `${zones} · ${teamCount} team${teamCount === 1 ? '' : 's'}`;
+  $('status-detail').textContent = `${zones} · ${teamCount} team${teamCount === 1 ? '' : 's'}${info.event ? ` · event ${info.event}` : ''}`;
+  $('status-detail').dataset.event = info.event ?? '';
   const active = status === 'active';
   $('active-notice').hidden = !active;
-  for (const input of [...Object.values(fields), teamNamesBox, $('config-save')]) input.disabled = active;
+  for (const input of [...Object.values(fields), teamNamesBox, eventSelect, $('config-save')]) input.disabled = active;
   results = { published: info.results.published, unscored: info.unscoredPhotos };
   renderPublish();
   renderDeleteSection();
@@ -125,9 +160,10 @@ function renderTeams(teams) {
 
 async function refresh() {
   if (isLocked()) return; // not logged in (yet, or any more)
-  const [info, teams] = await Promise.all([getJson('/api/admin/config'), getJson('/api/admin/teams')]);
+  const [info, teams, list] = await Promise.all([getJson('/api/admin/config'), getJson('/api/admin/teams'), getJson('/api/admin/events')]);
   $('load-error').hidden = info.ok && teams.ok;
   if (!info.ok || !teams.ok) return;
+  if (list.ok) renderEvents(list.body, info.body.event);
   if (!formLoaded) { fillForm(info.body); formLoaded = true; }
   renderStatus(info.body, teams.body.teams.length);
   renderTeams(teams.body.teams);
@@ -139,9 +175,9 @@ form.addEventListener('submit', async (event) => {
   const problems = $('config-problems');
   const success = $('config-success');
   error.hidden = problems.hidden = success.hidden = true;
-  const res = await putJson('/api/admin/config', { ...Object.fromEntries(Object.entries(fields).map(([name, input]) => [name, input.value])), teamNames: teamNamesBox.checked });
+  const res = await putJson('/api/admin/config', { ...Object.fromEntries(Object.entries(fields).map(([name, input]) => [name, input.value])), teamNames: teamNamesBox.checked, event: eventSelect.value });
   if (res.ok) {
-    success.textContent = `Saved. ${res.body.zoneCount} zone${res.body.zoneCount === 1 ? '' : 's'} loaded from the game file.`;
+    success.textContent = `Saved. ${res.body.zoneCount} zone${res.body.zoneCount === 1 ? '' : 's'} loaded from ${res.body.event ? `the event ${res.body.event}` : 'the game file'}.`;
     success.hidden = false;
     await refresh();
     return;
@@ -152,6 +188,8 @@ form.addEventListener('submit', async (event) => {
   error.textContent = {
     'invalid-config': (res.body?.fields ?? []).map((f) => FIELD_PROBLEM[f] ?? f).join(' '),
     'invalid-game-data': 'The game file (docs/game-questions.json) has problems, so nothing was saved:',
+    'invalid-event': 'The questions of that event have problems, so nothing was saved:',
+    ...EVENT_PROBLEM,
     'game-active': 'The game is in progress, so it cannot be changed.',
     network: 'Could not save. Check the connection and try again.',
   }[code] ?? 'Something went wrong. Please try again.';

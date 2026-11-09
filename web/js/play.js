@@ -5,12 +5,24 @@ import { $, refreshInterval } from './dom.js';
 import { createClock } from './clock.js';
 import { createZones } from './zones.js';
 import { applyWhatsAppLinks, safeWhatsAppUrl } from './whatsapp.js';
+import { renderMarkdown } from './markdown.js';
 
 const clock = createClock();
 const zones = createZones({ container: $('zones'), onSubmitted: refresh });
 let started = false;
 let shownTeam = null;
 let lastTeamNames = true;
+let shownInstructions; // the instructions text last put on the page (undefined: the built-in ones are still there)
+
+// The instructions of the event the game was loaded from (text; empty means none), or null when it has none of its own and the
+// page keeps its built-in instructions.
+function renderInstructions(text) {
+  if (typeof text !== 'string' || text === shownInstructions) return;
+  shownInstructions = text;
+  $('instructions').hidden = text.trim() === '';
+  renderMarkdown(document.querySelector('[data-testid="instructions"] .instructions'), text);
+  whatsappUrl = undefined; // the text was rebuilt: put the WhatsApp links back
+}
 let whatsappUrl; // undefined until known, so the first answer always applies
 
 const PHASE_MESSAGE = {
@@ -50,6 +62,7 @@ async function refresh() {
   if (game.ok) {
     lastTeamNames = game.body.game.teamNames !== false;
     clock.update(game.body.game);
+    renderInstructions(game.body.instructions);
     started = true;
     renderPhase();
     if (game.body.zones.length > 0) zones.render(game.body.zones);
