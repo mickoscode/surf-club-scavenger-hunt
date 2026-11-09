@@ -1,6 +1,6 @@
 // The /game-score/ admin page: the photo challenges teams say they sent to WhatsApp, to be scored by hand.
 // Not yet scored first, in the order sent; scored ones after. Choosing a score and pressing Apply records it; applying
-// again replaces the previous decision (the server never counts a photo twice). There is no login (docs/requirements.md).
+// again replaces the previous decision (the server never counts a photo twice). Behind the admin passcode (web/js/admin-auth.js).
 import { getJson, postJson } from './api.js';
 import { $, el, refreshInterval } from './dom.js';
 import { formatScore } from './format.js';

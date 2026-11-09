@@ -3,7 +3,7 @@
 The backend behind `/api/*` (code in `api/`, rules in `docs/requirements.md`). Two Lambda functions share the code but serve different routes and get different permissions:
 
 - **public**: everything players and viewers use
-- **admin**: the two admin pages (no login, accepted risk: see requirements)
+- **admin**: the two admin pages (behind the admin passcode, see "Admin routes")
 
 Requests with a body must be JSON sent as `Content-Type: application/json` and under 4 KB. Errors are `{ "error": "<code>" }` with an HTTP status; the codes are stable, the wording is up to the page. Unexpected failures are a plain `500 { "error": "server-error" }`.
 

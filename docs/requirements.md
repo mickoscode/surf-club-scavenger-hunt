@@ -7,7 +7,7 @@ Expected size: fewer than 50 teams. No cap on the number of teams is required.
 
 ## Technical Approach
 
-- Static pages (HTML, Bootstrap, JavaScript) on S3 + CloudFront, as in this repo today.
+- Static pages (HTML, Bootstrap, JavaScript) on S3 + CloudFront.
 - The game needs shared state (teams, answers, scores, config), so the site also needs a small backend in the same AWS account, managed by Terraform: API Gateway + Lambda + DynamoDB (same pattern as the surf-club-signin repo).
 - All validation happens on the server: answer checking, scoring, one-submission-only, and game timing. The server clock is the only clock that counts; the browser clock is used only to display the countdown.
 - The official answers never leave the server, and neither does the answer a team submitted, with one exception: once the admin has published the final results, a team's own results page receives its answers, which were right, and the official answers (see "Answer rules" and "Results page"). Before that nothing is sent, and a browser without a team session never receives any of it.
@@ -115,7 +115,7 @@ Team name rules: unique (ignoring upper/lower case), 1 to 30 characters, and rej
 As there is no login or authentication, a simple web session mechanism must be used to remember the player has joined, and to link player data to their player-id.
 
 Once a player has joined:
-- the 'join' button should no longer be displayed on the view page.
+- the 'join' button is no longer displayed on the view page.
 - the 'play' link should be displayed instead of the join button. The play link links to the play page. As soon as the game is over (now > game-end) the 'play' button becomes a 'results' button that links to the results page, even before the final results are published: until then the results page tells the player the results are not ready yet.
 - the view page does not display the player's team name (their own row in the scoreboard is highlighted instead).
 
@@ -174,11 +174,11 @@ Zones are keyed "zone 1", "zone 2", ... Each zone has: zone-name, zone-map (path
 ## General Requirements
 The site must be open to the public, so anyone can; view the live scoreboard, join the game and play the game. No authentication or account creation is required. 
 
-### UX Modifications
+### Status line
 
-The play and view pages show the status text and the countdown ("Time left" and the count down, or "Game starts in" and the count down before the game) on a single line, wrapping on a narrow screen only if it must, with no other style changes (the status text and the countdown keep their current sizes and weights). "Game over" and "Coming soon" have no countdown.
+The play and view pages show the status text and the countdown ("Time left" and the count down, or "Game starts in" and the count down before the game) on a single line, wrapping on a narrow screen only if it must. "Game over" and "Coming soon" (no game configured) have no countdown.
 
-The view page no longer shows the player's team name above the scoreboard (see "Joining"), and the play page shows the team number and name on one line (see "Play page").
+The view page does not show the player's team name above the scoreboard (see "Joining"), and the play page shows the team number and name on one line (see "Play page").
 
 ## Admin Requirements
 
@@ -189,7 +189,7 @@ There is one admin and no accounts. The admin pages and every admin API call (`/
 - **Logging in** asks for the passcode once and starts a session of 12 hours, kept in a cookie that page scripts cannot read (HttpOnly, Secure, SameSite=Strict, only sent to the admin API). The session is signed with the stored hash, so changing the passcode ends every session. There is a log out button, and an expired session asks for the passcode again.
 - **Without a valid session** every admin call is refused with 401 `not-authenticated`, whatever it is (including the data export).
 - **Guessing is limited**: at most 10 failed logins in any 5 minutes, counted across everybody. After that logins are refused until the window has passed. (Someone could therefore block the admin for a few minutes, but not guess the passcode.)
-- **Rollout**: until the hash variable is set, the admin pages and API stay open exactly as before, and the deploy's smoke test prints a warning saying so. Setting the variable and applying Terraform switches the passcode on.
+- **Not set**: if the hash variable is empty, the admin pages and API stay open (this is how a new deployment starts), and the deploy's smoke test prints a warning saying so. Setting the variable and applying Terraform switches the passcode on.
 - **Changing or recovering it**: generate a new passcode and hash, update the variable, apply.
 - The admin pages are still not linked from anywhere and are marked noindex.
 
@@ -293,16 +293,16 @@ The API accepts 50 requests a second sustained with a burst of 200 (API Gateway 
 ### Load test
 
 A GitHub Actions workflow, started by hand from the Actions tab (never on a schedule), that simulates a crowd against the live site and produces a detailed report, so the owner can see where the limits are.
-- **Inputs**: number of teams, number of spectators, duration, ramp-up time, how often a team answers, and a mode ("full", which needs the game to be joinable or in progress, or "spectators only", which works any time).
+- **Inputs**: number of teams, number of spectators, duration, ramp-up time, how often a team answers, and a mode ("full", which needs the game to be in progress, or "spectators only", which works any time).
 - **What it simulates**: teams join, refresh the way the real pages do, answer questions and send photos; spectators refresh the scoreboard. It goes through the site's public address only; it needs no AWS credentials for the load itself.
 - **Report** (a summary in the job log, plus an HTML report with charts and the raw JSON as downloadable artifacts): per endpoint the requests, the status codes (429 means throttled, 5xx a failure) and the latency (typical, 95th and 99th percentile, worst); throughput over time; when errors began and at what request rate; CloudFront cache hit rate; whether the machine generating the load was itself the bottleneck; server-side numbers from CloudWatch (API Gateway, Lambda throttles and concurrency, DynamoDB throttling); an estimated cost for the run; and a plain verdict.
 - **Guardrails**: it refuses to run if any real team exists (test teams are named `loadtest-001` and so on), and refuses sizes above 300 teams, 1,500 spectators or 15 minutes. It never changes the game configuration: the admin sets up a joinable demo game first. It does not run at the same time as a deploy.
 - **Clean up**: it removes its own test teams using the admin passcode, which the admin stores as the GitHub secret `ADMIN_PASSCODE` (the only place the plaintext passcode is kept besides the admin's password manager).
-- **Reading CloudWatch** needs a small read-only permission added to the deploy role.
+- **Reading CloudWatch** uses the deploy role's read-only permissions (it only works when the workflow runs from `main`).
 
-As built: `.github/workflows/load-test.yml` runs `scripts/load-test.js` (code in `scripts/loadtest/`: `generator.js` the simulated users, `stats.js` the numbers, `verdict.js` the plain verdict, `cost.js`, `cloudwatch.js`, `report.js` the HTML and Markdown, `cli.js` the guards and clean-up). It refuses to start (exit 1, nothing sent) when the scoreboard is unreachable, the admin passcode is needed but missing or wrong, any non-`loadtest-` team exists, or (full mode) the game is not in progress; it removes leftover and its own `loadtest-` teams, concurrency 10, verifying afterwards (exit 3 if any remain). CloudWatch is read through the deploy role, which only works from `main`; otherwise the report has no server-side section. The deploy role gained `cloudwatch:GetMetricData`, `lambda:GetAccountSettings` and read-only `apigateway:GET` on this API. The load test's own tests run in `npm test` (about a minute: short real runs against the local site).
+As built: `.github/workflows/load-test.yml` runs `scripts/load-test.js` (code in `scripts/loadtest/`: `generator.js` the simulated users, `stats.js` the numbers, `verdict.js` the plain verdict, `cost.js`, `cloudwatch.js`, `report.js` the HTML and Markdown, `cli.js` the guards and clean-up). It refuses to start (exit 1, nothing sent) when the scoreboard is unreachable, the admin passcode is needed but missing or wrong, any non-`loadtest-` team exists, or (full mode) the game is not in progress; it removes leftover and its own `loadtest-` teams, concurrency 10, verifying afterwards (exit 3 if any remain). CloudWatch is read through the deploy role, which only works from `main`; otherwise the report has no server-side section. The deploy role has read-only `cloudwatch:GetMetricData`, `lambda:GetAccountSettings` and `apigateway:GET` for this. The load test's own tests run in `npm test` (about a minute: short real runs against the local site).
 
-## Parked for later (not in the first version)
+## Parked for later
 
 - Restoring an old game: uploading the downloaded json file back into the website.
 - Recovering a team's session after a cleared browser or a different phone (e.g. rejoin with team number and name).

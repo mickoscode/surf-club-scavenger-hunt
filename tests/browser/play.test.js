@@ -1,5 +1,5 @@
 // The /play/ page shell in a real browser: who you are, the countdown, the instructions, the game phase.
-// (The zones and forms are tested with the next PR.) Elements by data-testid, state from data-* attributes.
+// (The zones and forms are in zones.test.js.) Elements by data-testid, state from data-* attributes.
 const assert = require('node:assert/strict');
 const { browserSuite, signIn, until, START, END } = require('./helpers.js');
 

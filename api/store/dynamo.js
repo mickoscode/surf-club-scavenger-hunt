@@ -232,7 +232,7 @@ function createDynamoStore({ client, tableName }) {
   };
 }
 
-// The table definition (the Terraform in a later PR must match it).
+// The table definition (terraform/dynamodb.tf must match it).
 const TABLE_DEFINITION = {
   AttributeDefinitions: [{ AttributeName: 'pk', AttributeType: 'S' }, { AttributeName: 'sk', AttributeType: 'S' }],
   KeySchema: [{ AttributeName: 'pk', KeyType: 'HASH' }, { AttributeName: 'sk', KeyType: 'RANGE' }],
