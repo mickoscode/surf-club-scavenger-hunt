@@ -247,7 +247,7 @@ resource "aws_cloudfront_distribution" "site" {
 
   # The admin pages: same bucket, but marked noindex.
   dynamic "ordered_cache_behavior" {
-    for_each = ["/game-config/*", "/game-score/*"]
+    for_each = ["/game-config/*", "/game-score/*", "/game-events/*"]
     content {
       path_pattern     = ordered_cache_behavior.value
       allowed_methods  = ["GET", "HEAD"]

@@ -65,8 +65,8 @@ test('every zone of the game file has a thumbnail and a full-size map that are s
   }
 });
 
-test('both admin pages exist and tell search engines not to index them', () => {
-  for (const page of ['game-config/index.html', 'game-score/index.html']) {
+test('all three admin pages exist and tell search engines not to index them', () => {
+  for (const page of ['game-config/index.html', 'game-score/index.html', 'game-events/index.html']) {
     const html = fs.readFileSync(path.join(dist, page), 'utf8');
     assert.match(html, /<meta name="robots" content="[^"]*noindex/, page);
   }

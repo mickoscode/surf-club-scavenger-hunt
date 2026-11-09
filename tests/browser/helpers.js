@@ -7,6 +7,8 @@ const { chromium } = require('playwright');
 const { createSiteServer } = require('../../scripts/dev-server.js');
 const { createMemoryStore } = require('../../api/store/memory.js');
 const { hashPasscode } = require('../../api/lib/passcode.js');
+const { createMemoryBlobs } = require('../../api/store/blobs.js');
+const { createEvents } = require('../../api/lib/events.js');
 const { GAME, CONFIG, START, END } = require('../api/helpers.js');
 
 const root = path.join(__dirname, '..', '..');
@@ -93,10 +95,14 @@ async function startSite({ now = START + 60_000, intercept, game = GAME, passcod
   ensureBuilt();
   const clock = { now };
   const adminPasscodeHash = passcode ? await hashPasscode(TEST_PASSCODE, { cost: { N: 1024, r: 8, p: 1 } }) : '';
-  const server = createSiteServer({ store: createMemoryStore(), now: () => clock.now, loadGame: () => structuredClone(game), intercept, adminPasscodeHash });
+  // Events (games prepared in a private bucket) and the site's event-maps/ folder, both in memory.
+  const [blobs, siteBlobs] = [createMemoryBlobs(), createMemoryBlobs()];
+  let activations = 0;
+  const events = createEvents({ blobs, siteBlobs, newId: () => `act${++activations}` });
+  const server = createSiteServer({ store: createMemoryStore(), now: () => clock.now, loadGame: () => structuredClone(game), intercept, adminPasscodeHash, events, siteBlobs });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}`;
-  return { url, clock, passcode: passcode ? TEST_PASSCODE : null, api: apiClient(url, passcode ? TEST_PASSCODE : null), close: () => new Promise((resolve) => server.close(resolve)) };
+  return { url, clock, events, blobs, siteBlobs, passcode: passcode ? TEST_PASSCODE : null, api: apiClient(url, passcode ? TEST_PASSCODE : null), close: () => new Promise((resolve) => server.close(resolve)) };
 }
 
 // Makes this browser belong to a team that joined through the API, as if it had joined on the page.
