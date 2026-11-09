@@ -44,11 +44,12 @@ function adminCookie(value, { secure = true, maxAgeSeconds } = {}) {
 }
 
 // POST bodies must be JSON sent as application/json, which a plain HTML form on another site cannot send.
-function readJson(request) {
+// maxBytes: the usual small limit, or more for the few routes that upload a file (the questions, a map).
+function readJson(request, maxBytes = MAX_BODY_BYTES) {
   const type = String(request.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
   if (type !== 'application/json') throw new HttpError(415, 'unsupported-media-type');
   const text = request.body ?? '';
-  if (Buffer.byteLength(text) > MAX_BODY_BYTES) throw new HttpError(413, 'body-too-large');
+  if (Buffer.byteLength(text) > maxBytes) throw new HttpError(413, 'body-too-large');
   let parsed;
   try { parsed = JSON.parse(text); } catch { throw new HttpError(400, 'bad-json'); }
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new HttpError(400, 'bad-json');

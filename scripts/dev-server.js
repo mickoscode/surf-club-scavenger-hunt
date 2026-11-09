@@ -14,6 +14,8 @@ const vm = require('node:vm');
 const { createApp } = require('../api/app/app');
 const { createMemoryStore } = require('../api/store/memory');
 const { loadGameData } = require('../api/app/game-file');
+const { createMemoryBlobs } = require('../api/store/blobs');
+const { createEvents } = require('../api/lib/events');
 
 const ROOT = path.join(__dirname, '..');
 const MIME = {
@@ -21,10 +23,11 @@ const MIME = {
   '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.json': 'application/json',
 };
 
-function createApiHandler({ store = createMemoryStore(), now = Date.now, loadGame = loadGameData, cookieSecure = false, intercept, adminPasscodeHash = process.env.ADMIN_PASSCODE_HASH ?? '' } = {}) {
+// events: the events store (api/lib/events.js), or none; the admin app is the only one given it, as in AWS.
+function createApiHandler({ store = createMemoryStore(), now = Date.now, loadGame = loadGameData, cookieSecure = false, intercept, events = null, adminPasscodeHash = process.env.ADMIN_PASSCODE_HASH ?? '' } = {}) {
   const shared = { store, now, loadGameData: loadGame, cookieSecure };
   const publicApp = createApp({ ...shared, role: 'public' });
-  const adminApp = createApp({ ...shared, role: 'admin', adminPasscodeHash });
+  const adminApp = createApp({ ...shared, role: 'admin', adminPasscodeHash, events });
 
   return async (req, res) => {
     const chunks = [];
@@ -57,7 +60,8 @@ function loadRewrite() {
   return sandbox.handler;
 }
 
-function createSiteHandler({ distDir = path.join(ROOT, 'dist'), ...apiOptions } = {}) {
+// siteBlobs: where the active event's maps were copied to (the site's event-maps/ folder in AWS), served here at /event-maps/.
+function createSiteHandler({ distDir = path.join(ROOT, 'dist'), siteBlobs = null, ...apiOptions } = {}) {
   const api = createApiHandler(apiOptions);
   const rewrite = loadRewrite();
   const csp = readContentSecurityPolicy();
@@ -70,6 +74,11 @@ function createSiteHandler({ distDir = path.join(ROOT, 'dist'), ...apiOptions } 
   return async (req, res) => {
     const pathname = new URL(req.url, 'http://localhost').pathname;
     if (pathname.startsWith('/api/')) return api(req, res);
+    if (siteBlobs && pathname.startsWith('/event-maps/')) {
+      const body = await siteBlobs.get(decodeURIComponent(pathname.slice(1)));
+      if (!body) return sendFile(res, 404, path.join(distDir, '404.html'));
+      return void res.writeHead(200, { ...baseHeaders, 'cache-control': 'public, max-age=31536000, immutable', 'content-type': MIME[path.extname(pathname)] ?? 'application/octet-stream' }).end(body);
+    }
 
     const rewritten = rewrite({ request: { uri: pathname, method: req.method, headers: {} } });
     if (rewritten.statusCode) return void res.writeHead(rewritten.statusCode, { location: rewritten.headers.location.value }).end();
@@ -91,5 +100,8 @@ if (require.main === module) {
     console.error('dist/ is missing: run "npm run build" first (or use "npm run dev", which does)');
     process.exit(1);
   }
-  createSiteServer().listen(port, () => console.log(`Site and API (in-memory store) on http://localhost:${port}/`));
+  // Events and their maps are kept in memory too, so the events page works locally.
+  const [blobs, siteBlobs] = [createMemoryBlobs(), createMemoryBlobs()];
+  const events = createEvents({ blobs, siteBlobs, newId: () => Math.random().toString(16).slice(2, 10) });
+  createSiteServer({ events, siteBlobs }).listen(port, () => console.log(`Site and API (in-memory store) on http://localhost:${port}/`));
 }

@@ -54,8 +54,9 @@ function createDynamoStore({ client, tableName }) {
       const { Item } = await send(new GetCommand({ TableName: T, Key: { pk: 'META', sk: 'GAME' }, ConsistentRead: true }));
       return Item ? strip(Item) : null;
     },
-    async saveGame({ config, game, configuredAt = Date.now() }) {
-      await send(new PutCommand({ TableName: T, Item: { pk: 'META', sk: 'GAME', config, game, configuredAt } }));
+    async saveGame({ config, game, event = null, configuredAt = Date.now() }) {
+      // event: the event the game was loaded from ({ name, instructions, maps }), or null for a game loaded from the repository's file.
+      await send(new PutCommand({ TableName: T, Item: { pk: 'META', sk: 'GAME', config, game, event, configuredAt } }));
     },
 
     async createTeam({ playerId, name, key, joinedAt = Date.now() }) {

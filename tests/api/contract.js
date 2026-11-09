@@ -29,6 +29,14 @@ function runStoreContract(label, makeStore, options = {}) {
     assert.equal(saved.configuredAt, 5);
   });
 
+  t('keeps which event the game was loaded from (its instructions and map addresses), or none', async (store) => {
+    await store.saveGame({ ...game, configuredAt: 5 });
+    assert.equal((await store.getGame()).event, null);
+    const event = { name: 'summer', instructions: '# Hi', maps: { 'zone 1': { thumb: '/event-maps/a/zone-1-thumb.webp', full: '/event-maps/a/zone-1.webp' } } };
+    await store.saveGame({ ...game, event, configuredAt: 6 });
+    assert.deepEqual((await store.getGame()).event, event);
+  });
+
   t('team numbers count up from 1, and a duplicate name (any case) is refused without using a number', async (store) => {
     const a = await join(store, 1, 'Sea Dogs');
     assert.equal(a.ok, true);

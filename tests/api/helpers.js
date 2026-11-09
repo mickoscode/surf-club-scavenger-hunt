@@ -2,6 +2,8 @@
 // that keep their cookie like a real one does.
 const { createApp } = require('../../api/app/app.js');
 const { createMemoryStore } = require('../../api/store/memory.js');
+const { createMemoryBlobs } = require('../../api/store/blobs.js');
+const { createEvents } = require('../../api/lib/events.js');
 
 const CONFIG = { name: 'Test game', timeZone: 'Australia/Perth', day: '2026-11-14', start: '10:00', end: '12:00' };
 const START = Date.UTC(2026, 10, 14, 2, 0); // 10:00 AWST
@@ -30,7 +32,12 @@ function setup({ now = START + 60_000, game = GAME, adminPasscodeHash = '' } = {
     newId: () => (++ids).toString(16).padStart(32, '0'),
   };
   const publicApp = createApp({ ...shared, role: 'public' });
-  const adminApp = createApp({ ...shared, role: 'admin', adminPasscodeHash });
+  // Events (games prepared in a private bucket) are only available to the admin app, as in AWS; the buckets are in memory.
+  const blobs = createMemoryBlobs();
+  const siteBlobs = createMemoryBlobs();
+  let activations = 0;
+  const events = createEvents({ blobs, siteBlobs, newId: () => `act${++activations}` });
+  const adminApp = createApp({ ...shared, role: 'admin', adminPasscodeHash, events });
 
   // A "browser": remembers the session cookie the way a real one does.
   const browser = (app) => {
@@ -52,7 +59,7 @@ function setup({ now = START + 60_000, game = GAME, adminPasscodeHash = '' } = {
       call, jar, get: (p) => call('GET', p), post: (p, b) => call('POST', p, b), put: (p, b) => call('PUT', p, b), del: (p) => call('DELETE', p),
     };
   };
-  return { clock, store, player: () => browser(publicApp), admin: () => browser(adminApp) };
+  return { clock, store, events, blobs, siteBlobs, player: () => browser(publicApp), admin: () => browser(adminApp) };
 }
 
 // Saves the fixture config through the admin API, as the admin would.
