@@ -19,6 +19,38 @@ locals {
       ]
     }
   }
+
+  # What the admin function may do with the events bucket, and with the site's event-maps/ folder (see aws_iam_role_policy.lambda).
+  events_statements = [
+    {
+      Sid      = "ListEvents"
+      Effect   = "Allow"
+      Action   = ["s3:ListBucket"]
+      Resource = aws_s3_bucket.events.arn
+    },
+    {
+      Sid      = "ReadWriteEvents"
+      Effect   = "Allow"
+      Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+      Resource = "${aws_s3_bucket.events.arn}/*"
+    },
+    {
+      # Activating an event copies its maps into the site under event-maps/ (a path the deploy leaves alone).
+      Sid      = "ListEventMapsOnSite"
+      Effect   = "Allow"
+      Action   = ["s3:ListBucket"]
+      Resource = aws_s3_bucket.site.arn
+      Condition = {
+        StringLike = { "s3:prefix" = ["event-maps/*"] }
+      }
+    },
+    {
+      Sid      = "WriteEventMapsOnSite"
+      Effect   = "Allow"
+      Action   = ["s3:PutObject", "s3:DeleteObject"]
+      Resource = "${aws_s3_bucket.site.arn}/event-maps/*"
+    },
+  ]
 }
 
 resource "aws_cloudwatch_log_group" "api" {
@@ -67,36 +99,7 @@ resource "aws_iam_role_policy" "lambda" {
         }
       ],
       # Only the admin function: the events (a real game's questions and answers) are private, and the live game never reads them.
-      each.value.manages_events ? [
-        {
-          Sid      = "ListEvents"
-          Effect   = "Allow"
-          Action   = ["s3:ListBucket"]
-          Resource = aws_s3_bucket.events.arn
-        },
-        {
-          Sid      = "ReadWriteEvents"
-          Effect   = "Allow"
-          Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-          Resource = "${aws_s3_bucket.events.arn}/*"
-        },
-        {
-          # Activating an event copies its maps into the site under event-maps/ (a path the deploy leaves alone).
-          Sid      = "ListEventMapsOnSite"
-          Effect   = "Allow"
-          Action   = ["s3:ListBucket"]
-          Resource = aws_s3_bucket.site.arn
-          Condition = {
-            StringLike = { "s3:prefix" = ["event-maps/*"] }
-          }
-        },
-        {
-          Sid      = "WriteEventMapsOnSite"
-          Effect   = "Allow"
-          Action   = ["s3:PutObject", "s3:DeleteObject"]
-          Resource = "${aws_s3_bucket.site.arn}/event-maps/*"
-        },
-      ] : [],
+      [for statement in local.events_statements : statement if each.value.manages_events],
     )
   })
 }
