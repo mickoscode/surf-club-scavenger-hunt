@@ -71,6 +71,11 @@
             <label class="form-check-label" for="config-team-names">Teams have names (turn off to show every team as &ldquo;Team 7&rdquo; and ask for no name when joining)</label>
           </div>
           <div class="mb-3">
+            <label class="form-label" for="config-join-code">Code to join the game (optional)</label>
+            <input class="form-control" id="config-join-code" name="joinCode" type="text" maxlength="30" autocomplete="off" autocapitalize="off" spellcheck="false" data-testid="config-join-code">
+            <div class="form-text">Tell this code to the people at the event in person. New teams must enter it to join. Leave it empty for no code.</div>
+          </div>
+          <div class="mb-3">
             <label class="form-label" for="config-whatsapp">WhatsApp group link (optional)</label>
             <input class="form-control" id="config-whatsapp" name="whatsappUrl" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://chat.whatsapp.com/..." data-testid="config-whatsapp">
             <div class="form-text">

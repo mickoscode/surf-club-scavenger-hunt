@@ -18,6 +18,7 @@ Allow about 30 minutes. Tick as you go; write down anything odd.
 ## Joining (before the start)
 - [ ] Each phone joins with a different team name; the **Play** button replaces the Join button and the team's own row in the scoreboard is highlighted
 - [ ] A name already taken is refused with a clear message; an empty name too
+- [ ] (If you will use a join code: set one in `/game-config/` and Save; the join form on a phone now also asks for the code; a wrong code is refused with a clear message and the name stays typed; the right one, in any capitals, joins; a phone that has already joined is not asked again)
 - [ ] (If you will run the game with team names off: untick **Teams have names**, Save, and check the Join button joins at once and every team is shown as "Team 1", "Team 2"... on the scoreboard, the play page and the results)
 - [ ] Close the browser completely and reopen the site: still joined
 - [ ] The scoreboard on every phone shows all teams, updating within about 5 seconds

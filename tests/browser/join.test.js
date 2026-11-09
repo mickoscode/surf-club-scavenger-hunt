@@ -164,3 +164,52 @@ withPage('with team names off the Join button joins at once, with no name to typ
   await page.waitForSelector(`${$('team-number')}[data-team-number="1"]`);
   assert.equal(await page.locator($('team-name')).isHidden(), true); // only "Team 1" is shown, not a second name
 });
+
+// ------------------------------------------------------------------------------------------------ a code to join
+
+withPage('with no code set the join form has no code field', {}, async ({ site, page }) => {
+  await site.api.configure();
+  await page.goto(`${site.url}/view/?refresh=500`);
+  await page.click($('join-button'));
+  assert.equal(await page.locator($('join-code-input')).count(), 0);
+});
+
+withPage('with a code set the form asks for it too, a wrong code is refused and keeps what was typed, and the right one (any capitals) joins', {}, async ({ site, page }) => {
+  await site.api.configure({ joinCode: 'SURF24' });
+  await page.goto(`${site.url}/view/?refresh=500`);
+  await page.click($('join-button'));
+  await page.fill($('team-name-input'), 'Sea Dogs');
+  await page.fill($('join-code-input'), 'wrong1');
+  await page.click($('join-submit'));
+  await page.waitForSelector(`${$('join-error')}:not([hidden])`);
+  assert.equal(await page.locator($('join-error')).getAttribute('data-error'), 'wrong-code');
+  assert.equal(await page.inputValue($('team-name-input')), 'Sea Dogs'); // not wiped
+  assert.equal(await page.locator($('scoreboard-row')).count(), 0); // nothing was created
+
+  await page.fill($('join-code-input'), 'surf 24');
+  await page.click($('join-submit'));
+  await page.waitForSelector($('play-link'));
+  await page.waitForSelector(`${$('scoreboard-row')}[data-mine="true"]`);
+  assert.ok(!(await page.content()).toUpperCase().includes('SURF24')); // the code is never on the page
+});
+
+withPage('the code is asked for even when team names are off, and then it is the only field', {}, async ({ site, page }) => {
+  await site.api.configure({ joinCode: 'SURF24', teamNames: false });
+  await page.goto(`${site.url}/view/?refresh=500`);
+  await page.click($('join-button'));
+  assert.equal(await page.locator($('team-name-input')).count(), 0);
+  await page.fill($('join-code-input'), 'nope!');
+  await page.click($('join-submit'));
+  await page.waitForSelector(`${$('join-error')}:not([hidden])`);
+  assert.equal(await page.locator($('join-error')).getAttribute('data-error'), 'wrong-code');
+  await page.fill($('join-code-input'), 'SURF24');
+  await page.click($('join-submit'));
+  await page.waitForSelector($('play-link'));
+});
+
+withPage('the join form with a code fits a phone', { page: { viewport: { width: 360, height: 640 } } }, async ({ site, page }) => {
+  await site.api.configure({ joinCode: 'SURF24' });
+  await page.goto(`${site.url}/view/`);
+  await page.click($('join-button'));
+  assert.ok((await overflow(page)) <= 0);
+});

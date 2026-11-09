@@ -12,6 +12,7 @@ const { checkAnswer } = require('../lib/answers');
 const { questionPoints, isDecision } = require('../lib/scoring');
 const { validateTeamName, sortScoreboard, teamNamesOn, teamLabel } = require('../lib/teams');
 const { countQuestions, countDone } = require('../lib/progress');
+const { normaliseJoinCode, matchesJoinCode } = require('../lib/joincode');
 const { placeOf } = require('../lib/results');
 const { buildResults } = require('../lib/results');
 const { normaliseWhatsappUrl } = require('../lib/whatsapp');
@@ -62,7 +63,7 @@ function createApp({
   // What the pages need to know about the game, including whether the final results are published (so the scoreboard
   // heading and the Results button can follow). The same for everyone, so CloudFront may share it briefly.
   async function gameSummary(saved, info) {
-    return { name: saved?.config?.name ?? DEFAULT_GAME_NAME, ...info, teamNames: teamNamesOn(saved?.config), published: (await store.getPublishedAt()) !== null };
+    return { name: saved?.config?.name ?? DEFAULT_GAME_NAME, ...info, teamNames: teamNamesOn(saved?.config), joinCodeRequired: Boolean(saved?.config?.joinCode), published: (await store.getPublishedAt()) !== null };
   }
   async function sessionTeam(request) {
     const id = parseCookies(request.headers.cookie)[COOKIE_NAME];
@@ -133,6 +134,8 @@ function createApp({
       const { status, config } = await snapshot();
       if (existing) return respond(200, { team: { number: existing.number, name: teamLabel(existing, config) } });
       if (!can(status, 'join')) throw new HttpError(409, 'not-joinable');
+      // The join code, when one is set: checked first, so nothing else about joining is revealed to someone without it.
+      if (config.joinCode && !matchesJoinCode(body.code, config.joinCode)) throw new HttpError(400, 'wrong-code');
       const playerId = newId();
       // With team names off nothing is asked, stored or checked: the team is "Team <number>", and its (unique) key cannot clash with any name.
       let name = { name: '', key: `#${playerId}` };
@@ -236,10 +239,12 @@ function createApp({
         day: body.day, start: body.start, end: body.end,
         ...(link ? { whatsappUrl: link } : {}),
         teamNames: body.teamNames === undefined ? true : body.teamNames, // on unless the admin turns it off
+        ...(body.joinCode === undefined || body.joinCode === null || String(body.joinCode).trim() === '' ? {} : { joinCode: body.joinCode }), // optional; empty means no code (anything else is validated)
       };
       const fields = validateConfig(config);
       if (fields.length) throw new HttpError(400, 'invalid-config', { fields });
       if (config.whatsappUrl) config.whatsappUrl = normaliseWhatsappUrl(config.whatsappUrl).url;
+      if (config.joinCode) config.joinCode = normaliseJoinCode(config.joinCode).code; // stored tidy, in capitals, as the admin reads it out
       const game = loadGameData();
       const problems = validateGameData(game, { checkMaps: false });
       if (problems.length) throw new HttpError(422, 'invalid-game-data', { problems });

@@ -14,6 +14,7 @@ const FIELD_PROBLEM = {
   start: 'Enter a start time.',
   end: 'Enter an end time.',
   'end-before-start': 'The end must be after the start.',
+  joinCode: 'The code needs 5 to 12 letters and digits (or leave it empty for no code).',
   whatsappUrl: 'Use the group\'s invite link, which starts with https://chat.whatsapp.com/ (or leave it empty).',
 };
 
@@ -24,7 +25,7 @@ let formLoaded = false;
 let shownTeams = null;
 
 const form = $('config-form');
-const fields = { name: $('config-name'), timeZone: $('config-timezone'), day: $('config-day'), start: $('config-start'), end: $('config-end'), whatsappUrl: $('config-whatsapp') };
+const fields = { name: $('config-name'), timeZone: $('config-timezone'), day: $('config-day'), start: $('config-start'), end: $('config-end'), whatsappUrl: $('config-whatsapp'), joinCode: $('config-join-code') };
 const teamNamesBox = $('config-team-names'); // a checkbox: whether teams have names
 
 function fillForm({ config, defaults, timeZones }) {
@@ -35,6 +36,7 @@ function fillForm({ config, defaults, timeZones }) {
   fields.start.value = config?.start ?? '';
   fields.end.value = config?.end ?? '';
   fields.whatsappUrl.value = config?.whatsappUrl ?? '';
+  fields.joinCode.value = config?.joinCode ?? '';
   teamNamesBox.checked = config?.teamNames !== false; // on unless the saved configuration says false
   updateTestLink();
 }

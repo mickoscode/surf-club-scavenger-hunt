@@ -4,6 +4,7 @@
 // put it anywhere. Rules: docs/requirements.md ("Game Configuration & Management", "Typical Timeline").
 
 const { normaliseWhatsappUrl } = require('./whatsapp');
+const { normaliseJoinCode } = require('./joincode');
 
 const DEFAULT_GAME_NAME = 'Sorrento Youth Scavenger Hunt';
 const DEFAULT_TIME_ZONE = 'Australia/Perth'; // AWST, UTC+8, no daylight saving
@@ -53,7 +54,7 @@ const isRealDate = (s) => {
 };
 const isTime = (s) => typeof s === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 
-// Config shape: { name, timeZone, day: 'yyyy-mm-dd', start: 'hh:mm', end: 'hh:mm', whatsappUrl?, teamNames? (false = teams have no names) }. Returns a list of problems.
+// Config shape: { name, timeZone, day: 'yyyy-mm-dd', start: 'hh:mm', end: 'hh:mm', whatsappUrl?, teamNames? (false = teams have no names), joinCode? (5-12 letters and digits) }. Returns a list of problems.
 function validateConfig(config) {
   if (config === null || typeof config !== 'object' || Array.isArray(config)) return ['config must be an object'];
   const problems = [];
@@ -64,6 +65,7 @@ function validateConfig(config) {
   if (!isTime(config.end)) problems.push('end');
   if (isTime(config.start) && isTime(config.end) && config.end <= config.start) problems.push('end-before-start');
   if (!normaliseWhatsappUrl(config.whatsappUrl).ok) problems.push('whatsappUrl'); // optional: absent is fine
+  if (!normaliseJoinCode(config.joinCode).ok) problems.push('joinCode');
   if (config.teamNames !== undefined && typeof config.teamNames !== 'boolean') problems.push('teamNames');
   return problems;
 }

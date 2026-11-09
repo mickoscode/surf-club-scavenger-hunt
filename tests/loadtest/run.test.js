@@ -114,6 +114,19 @@ test('leftover test teams from an earlier run are removed first, and only those'
   } finally { await site.close(); }
 });
 
+test('with a join code set the test reads it through its admin session and joins with it, and the code is not in the report', async () => {
+  const site = await startSite();
+  try {
+    await site.admin('PUT', '/api/admin/config', { ...CONFIG, joinCode: 'LOAD99' });
+    const r = await run(site, ['--teams', '3']);
+    assert.equal(r.code, 0, r.lines.join('\n'));
+    assert.ok(r.json().endpoints.find((e) => e.label === 'POST /api/join').ok >= 1); // the joins were accepted
+    assert.equal(r.json().verdict.level, 'good');
+    for (const file of ['report.json', 'report.html', 'summary.md', 'records.json']) assert.equal(r.read(file).toUpperCase().includes('LOAD99'), false, file);
+    assert.deepEqual(await site.teams(), []);
+  } finally { await site.close(); }
+});
+
 test('full mode refuses to run when team names are off, and spectators-only still works', async () => {
   const site = await startSite();
   try {
