@@ -144,6 +144,8 @@ async function preflight({ client, params, passcode, log }) {
     if (result.remaining) throw new Abort(`Could not remove the leftover test teams (${result.remaining} remain). Nothing was run.`);
   }
 
+  // The load test recognises its own teams by their names (loadtest-001...), so full mode cannot run when teams have no names.
+  if (params.mode === 'full' && board.json.game.teamNames === false) throw new Abort('Full mode needs team names to be on (the test tells its own teams apart by name). Turn them on in the game configuration, or use spectators-only mode. Nothing was run.');
   const status = board.json.game.status;
   if (params.mode === 'full' && status !== 'active') throw new Abort(`Full mode needs the game to be in progress (it is "${status}"). Set up a demo game that has started, or use spectators-only mode. Nothing was run.`);
   return { status };

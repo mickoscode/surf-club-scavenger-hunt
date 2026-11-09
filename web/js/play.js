@@ -10,6 +10,7 @@ const clock = createClock();
 const zones = createZones({ container: $('zones'), onSubmitted: refresh });
 let started = false;
 let shownTeam = null;
+let lastTeamNames = true;
 let whatsappUrl; // undefined until known, so the first answer always applies
 
 const PHASE_MESSAGE = {
@@ -18,14 +19,15 @@ const PHASE_MESSAGE = {
   post: 'The game is over. Final results will be published soon!',
 };
 
-function renderTeam(team) {
-  const key = `${team.number}:${team.name}`;
+function renderTeam(team, teamNames) {
+  const key = `${team.number}:${team.name}:${teamNames}`;
   if (key === shownTeam) return;
   shownTeam = key;
   const number = $('team-number');
   number.dataset.teamNumber = String(team.number);
   number.textContent = `Team ${team.number}`;
-  $('team-name').textContent = team.name; // text, never markup
+  $('team-name').textContent = teamNames ? team.name : ''; // text, never markup; with team names off only "Team 7" is shown
+  $('team-name').hidden = !teamNames;
 }
 
 function renderPhase() {
@@ -44,8 +46,9 @@ async function refresh() {
   const [me, game] = await Promise.all([getJson('/api/me'), getJson('/api/game')]);
   $('load-error').hidden = me.ok && game.ok;
   if (me.ok && !me.body.team) return location.replace('/view/');
-  if (me.ok) renderTeam(me.body.team);
+  if (me.ok) renderTeam(me.body.team, game.ok ? game.body.game.teamNames !== false : lastTeamNames);
   if (game.ok) {
+    lastTeamNames = game.body.game.teamNames !== false;
     clock.update(game.body.game);
     started = true;
     renderPhase();

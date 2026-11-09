@@ -10,7 +10,7 @@ const { HttpError, respond, parseCookies, sessionCookie, adminCookie, readJson, 
 const { gameStatus, describeGame, can, validateConfig, AU_TIME_ZONES, DEFAULT_GAME_NAME, DEFAULT_TIME_ZONE } = require('../lib/gamestate');
 const { checkAnswer } = require('../lib/answers');
 const { questionPoints, isDecision } = require('../lib/scoring');
-const { validateTeamName, sortScoreboard } = require('../lib/teams');
+const { validateTeamName, sortScoreboard, teamNamesOn, teamLabel } = require('../lib/teams');
 const { countQuestions, countDone } = require('../lib/progress');
 const { placeOf } = require('../lib/results');
 const { buildResults } = require('../lib/results');
@@ -62,7 +62,7 @@ function createApp({
   // What the pages need to know about the game, including whether the final results are published (so the scoreboard
   // heading and the Results button can follow). The same for everyone, so CloudFront may share it briefly.
   async function gameSummary(saved, info) {
-    return { name: saved?.config?.name ?? DEFAULT_GAME_NAME, ...info, published: (await store.getPublishedAt()) !== null };
+    return { name: saved?.config?.name ?? DEFAULT_GAME_NAME, ...info, teamNames: teamNamesOn(saved?.config), published: (await store.getPublishedAt()) !== null };
   }
   async function sessionTeam(request) {
     const id = parseCookies(request.headers.cookie)[COOKIE_NAME];
@@ -74,7 +74,8 @@ function createApp({
     return team;
   };
   const teamByNumber = async (number) => (await store.listTeams()).find((t) => t.number === number) ?? null;
-  const summary = (team) => ({ number: team.number, name: team.name, score: team.score });
+  // A team as the pages show it: with team names off its name is "Team <number>" (config: the saved game configuration).
+  const summary = (team, config) => ({ number: team.number, name: teamLabel(team, config), score: team.score });
 
   // ---------------------------------------------------------------- public routes
   const publicRoutes = {
@@ -90,8 +91,9 @@ function createApp({
     'GET /api/scoreboard': async () => {
       const { saved, info } = await snapshot();
       const all = await store.listTeams();
+      const config = saved?.config;
       // rank: teams on the same score share a place (1, 1, 3); done: questions and photo challenges attempted, of questionTotal.
-      const teams = sortScoreboard(all.map(summary)).map((t) => {
+      const teams = sortScoreboard(all.map((x) => summary(x, config)), { namesOn: teamNamesOn(config) }).map((t) => {
         const team = all.find((x) => x.number === t.number);
         return { ...t, rank: placeOf(team, all), done: countDone(team, saved?.game) };
       });
@@ -104,7 +106,7 @@ function createApp({
       if (!team) return respond(200, { team: null });
       const saved = await store.getGame();
       return respond(200, {
-        team: summary(team),
+        team: summary(team, saved?.config),
         done: { answers: Object.keys(team.subs), photos: Object.keys(team.photos) },
         // The WhatsApp group's invite link works like a key to the group, so only a team with a session is given it: it is
         // never in the public game or scoreboard responses.
@@ -118,9 +120,9 @@ function createApp({
       const published = (await store.getPublishedAt()) !== null;
       const team = await sessionTeam(request);
       if (!team) return respond(200, { published, team: null });
-      const who = { number: team.number, name: team.name };
-      if (!published) return respond(200, { published: false, team: who });
       const { saved } = await snapshot();
+      const who = { number: team.number, name: teamLabel(team, saved?.config) };
+      if (!published) return respond(200, { published: false, team: who });
       const results = buildResults({ team, teams: await store.listTeams(), game: saved.game });
       return respond(200, { published: true, team: who, results });
     },
@@ -128,15 +130,19 @@ function createApp({
     'POST /api/join': async (request) => {
       const body = readJson(request);
       const existing = await sessionTeam(request);
-      if (existing) return respond(200, { team: { number: existing.number, name: existing.name } });
-      const { status } = await snapshot();
+      const { status, config } = await snapshot();
+      if (existing) return respond(200, { team: { number: existing.number, name: teamLabel(existing, config) } });
       if (!can(status, 'join')) throw new HttpError(409, 'not-joinable');
-      const name = validateTeamName(body.name);
-      if (!name.ok) throw new HttpError(400, name.error);
       const playerId = newId();
+      // With team names off nothing is asked, stored or checked: the team is "Team <number>", and its (unique) key cannot clash with any name.
+      let name = { name: '', key: `#${playerId}` };
+      if (teamNamesOn(config)) {
+        name = validateTeamName(body.name);
+        if (!name.ok) throw new HttpError(400, name.error);
+      }
       const created = await store.createTeam({ playerId, name: name.name, key: name.key, joinedAt: now() });
       if (!created.ok) throw new HttpError(409, created.error);
-      return respond(200, { team: { number: created.team.number, name: created.team.name } }, {}, [sessionCookie(playerId, { secure: cookieSecure })]);
+      return respond(200, { team: { number: created.team.number, name: teamLabel(created.team, config) } }, {}, [sessionCookie(playerId, { secure: cookieSecure })]);
     },
 
     'POST /api/answer': async (request) => {
@@ -229,6 +235,7 @@ function createApp({
         timeZone: body.timeZone ?? DEFAULT_TIME_ZONE,
         day: body.day, start: body.start, end: body.end,
         ...(link ? { whatsappUrl: link } : {}),
+        teamNames: body.teamNames === undefined ? true : body.teamNames, // on unless the admin turns it off
       };
       const fields = validateConfig(config);
       if (fields.length) throw new HttpError(400, 'invalid-config', { fields });
@@ -243,7 +250,8 @@ function createApp({
     },
 
     'GET /api/admin/teams': async () => {
-      const teams = (await store.listTeams()).map(summary).sort((a, b) => a.number - b.number);
+      const { config } = await snapshot();
+      const teams = (await store.listTeams()).map((x) => summary(x, config)).sort((a, b) => a.number - b.number);
       return respond(200, { teams });
     },
 

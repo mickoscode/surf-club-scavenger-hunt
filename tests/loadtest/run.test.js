@@ -114,6 +114,18 @@ test('leftover test teams from an earlier run are removed first, and only those'
   } finally { await site.close(); }
 });
 
+test('full mode refuses to run when team names are off, and spectators-only still works', async () => {
+  const site = await startSite();
+  try {
+    await site.admin('PUT', '/api/admin/config', { ...CONFIG, teamNames: false });
+    const full = await run(site, ['--teams', '2']);
+    assert.equal(full.code, 1);
+    assert.match(full.lines.join('\n'), /team names/);
+    assert.deepEqual(await site.teams(), []);
+    assert.equal((await run(site, ['--mode', 'spectators-only', '--spectators', '3'])).code, 0);
+  } finally { await site.close(); }
+});
+
 test('full mode needs a game in progress; spectators-only works any time and joins no teams', async () => {
   const site = await startSite();
   try {

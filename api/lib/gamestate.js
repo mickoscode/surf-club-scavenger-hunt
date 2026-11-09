@@ -53,7 +53,7 @@ const isRealDate = (s) => {
 };
 const isTime = (s) => typeof s === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 
-// Config shape: { name, timeZone, day: 'yyyy-mm-dd', start: 'hh:mm', end: 'hh:mm', whatsappUrl? }. Returns a list of problems.
+// Config shape: { name, timeZone, day: 'yyyy-mm-dd', start: 'hh:mm', end: 'hh:mm', whatsappUrl?, teamNames? (false = teams have no names) }. Returns a list of problems.
 function validateConfig(config) {
   if (config === null || typeof config !== 'object' || Array.isArray(config)) return ['config must be an object'];
   const problems = [];
@@ -64,6 +64,7 @@ function validateConfig(config) {
   if (!isTime(config.end)) problems.push('end');
   if (isTime(config.start) && isTime(config.end) && config.end <= config.start) problems.push('end-before-start');
   if (!normaliseWhatsappUrl(config.whatsappUrl).ok) problems.push('whatsappUrl'); // optional: absent is fine
+  if (config.teamNames !== undefined && typeof config.teamNames !== 'boolean') problems.push('teamNames');
   return problems;
 }
 
