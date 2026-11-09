@@ -27,7 +27,7 @@ withPage('the scoreboard shows the teams in score order and refreshes by itself'
   assert.deepEqual(await numbers(page), ['3', '4', '2', '1']);
 });
 
-withPage('the scoreboard has the columns rank, name, q done and score, with tied teams sharing a rank, and no team number', {}, async ({ site, page }) => {
+withPage('the scoreboard has the columns rank, name, done and score, with tied teams sharing a rank, and no team number', {}, async ({ site, page }) => {
   await site.api.configure();
   await site.api.join('Charlie'); // team 1, but it ends up last
   const first = await site.api.join('Alpha');
@@ -39,13 +39,13 @@ withPage('the scoreboard has the columns rank, name, q done and score, with tied
   await page.goto(`${site.url}/view/?refresh=500`);
   await until(async () => (await rowsOf(page).count()) === 3);
   const rows = await rowsOf(page).evaluateAll((els) => els.map((e) => [e.dataset.rank, e.dataset.done, e.dataset.total, e.querySelectorAll('td').length]));
-  assert.deepEqual(rows, [['1', '2', '6', 4], ['1', '2', '6', 4], ['3', '0', '6', 4]]); // four cells: rank, name, q done, score
+  assert.deepEqual(rows, [['1', '2', '6', 4], ['1', '2', '6', 4], ['3', '0', '6', 4]]); // four cells: rank, name, done, score
   const headings = await page.locator('[data-testid="scoreboard"] th').count();
   assert.equal(headings, 4);
   const cells = await rowsOf(page).first().locator('td').allTextContents();
   assert.deepEqual(await rowsOf(page).evaluateAll((els) => els.map((e) => e.querySelector('td').textContent)), ['1', '1', '3']); // the rank cell is the place, a plain number, not the team number
   assert.equal(cells[2], '2/6');
-  assert.equal(cells.length, 4); // rank, name, q done, score: no separate team number
+  assert.equal(cells.length, 4); // rank, name, done, score: no separate team number
 });
 
 withPage('before a game is configured the page says so and shows no countdown', {}, async ({ site, page }) => {
