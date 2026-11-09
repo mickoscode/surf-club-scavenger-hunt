@@ -2,8 +2,8 @@
 misconfigurations:
   # A customer-managed KMS key adds a monthly cost and gains nothing for content that is public anyway.
   - id: AWS-0132
-    paths: [s3.tf]
-    statement: Bucket content is public website content; SSE-S3 (AES256) is sufficient.
+    paths: [s3.tf, events.tf]
+    statement: Site content is public; the events bucket holds a children's game's questions behind AWS access control, so SSE-S3 (AES256) is sufficient and a customer-managed key would only add cost.
   # No WAF by design: it costs roughly $6/month and this is a static page with no endpoints to abuse.
   - id: AWS-0011
     paths: [cloudfront.tf]

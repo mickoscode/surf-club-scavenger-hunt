@@ -30,6 +30,10 @@ The API's infrastructure (DynamoDB, two Lambda functions, API Gateway, the `/api
 
 Settings > Rules > Rulesets > New branch ruleset, target `main`: require a pull request, block force pushes and deletion, and require status checks `Validate site`, `Browser tests`, `API tests`, `Game data`, `Terraform validate`, `Terraform security scan` and `Terraform plan`. The check names only appear in the picker after they have run once, which is why this comes after the first pull request. These jobs are skipped (not absent) when their folder is unchanged, so they can safely be required.
 
+## The events bucket
+
+Terraform also creates a second, private bucket, `<aws-account-id>-scavenger-events` (see the `events_bucket_name` output), where the games ("events") the admin prepares are kept, away from the public repository. Nothing is public and nothing reads it through CloudFront: only the admin Lambda function can read and write it, and it also writes the active event's maps to the site bucket under `event-maps/` (the deploy leaves that folder alone). Versioning is on (old versions are removed after 30 days), so a bad edit can be undone in the S3 console. **The HCP workspace's AWS identity also needs permission** to create it: the same S3 bucket permissions as for the site bucket, plus versioning and lifecycle configuration.
+
 ## Admin passcode
 
 The two admin pages and the admin API need a passcode. Until it is set they are open to anyone who knows the page addresses, so set it before the real game.

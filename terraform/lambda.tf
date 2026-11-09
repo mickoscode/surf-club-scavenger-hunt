@@ -7,9 +7,11 @@ locals {
     public = {
       description    = "Scavenger hunt API: join, play, scoreboard"
       dynamo_actions = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:PutItem", "dynamodb:UpdateItem"]
+      manages_events = false
     }
     admin = {
-      description = "Scavenger hunt admin API: config, scoring, teams, export and delete"
+      description    = "Scavenger hunt admin API: config, scoring, teams, events, export and delete"
+      manages_events = true # reads and writes the events bucket, and copies the active event's maps to the site
 
       dynamo_actions = [
         "dynamodb:GetItem", "dynamodb:Query", "dynamodb:PutItem", "dynamodb:UpdateItem",
@@ -17,6 +19,38 @@ locals {
       ]
     }
   }
+
+  # What the admin function may do with the events bucket, and with the site's event-maps/ folder (see aws_iam_role_policy.lambda).
+  events_statements = [
+    {
+      Sid      = "ListEvents"
+      Effect   = "Allow"
+      Action   = ["s3:ListBucket"]
+      Resource = aws_s3_bucket.events.arn
+    },
+    {
+      Sid      = "ReadWriteEvents"
+      Effect   = "Allow"
+      Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+      Resource = "${aws_s3_bucket.events.arn}/*"
+    },
+    {
+      # Activating an event copies its maps into the site under event-maps/ (a path the deploy leaves alone).
+      Sid      = "ListEventMapsOnSite"
+      Effect   = "Allow"
+      Action   = ["s3:ListBucket"]
+      Resource = aws_s3_bucket.site.arn
+      Condition = {
+        StringLike = { "s3:prefix" = ["event-maps/*"] }
+      }
+    },
+    {
+      Sid      = "WriteEventMapsOnSite"
+      Effect   = "Allow"
+      Action   = ["s3:PutObject", "s3:DeleteObject"]
+      Resource = "${aws_s3_bucket.site.arn}/event-maps/*"
+    },
+  ]
 }
 
 resource "aws_cloudwatch_log_group" "api" {
@@ -49,20 +83,24 @@ resource "aws_iam_role_policy" "lambda" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Sid      = "GameTable"
-        Effect   = "Allow"
-        Action   = each.value.dynamo_actions
-        Resource = [aws_dynamodb_table.game.arn]
-      },
-      {
-        Sid      = "OwnLogGroupOnly"
-        Effect   = "Allow"
-        Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
-        Resource = "${aws_cloudwatch_log_group.api[each.key].arn}:*"
-      }
-    ]
+    Statement = concat(
+      [
+        {
+          Sid      = "GameTable"
+          Effect   = "Allow"
+          Action   = each.value.dynamo_actions
+          Resource = [aws_dynamodb_table.game.arn]
+        },
+        {
+          Sid      = "OwnLogGroupOnly"
+          Effect   = "Allow"
+          Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
+          Resource = "${aws_cloudwatch_log_group.api[each.key].arn}:*"
+        }
+      ],
+      # Only the admin function: the events (a real game's questions and answers) are private, and the live game never reads them.
+      [for statement in local.events_statements : statement if each.value.manages_events],
+    )
   })
 }
 
@@ -102,11 +140,11 @@ resource "aws_lambda_function" "api" {
   filename         = data.archive_file.placeholder[each.key].output_path
   source_code_hash = data.archive_file.placeholder[each.key].output_base64sha256
 
-  # Only the admin function is given the passcode hash (a one-way hash: it cannot be turned back into the passcode).
+  # Only the admin function is given the passcode hash (a one-way hash: it cannot be turned back into the passcode) and the bucket names.
   environment {
     variables = merge(
       { TABLE_NAME = aws_dynamodb_table.game.name },
-      each.key == "admin" ? tomap({ ADMIN_PASSCODE_HASH = var.admin_passcode_hash }) : tomap({}),
+      each.key == "admin" ? tomap({ ADMIN_PASSCODE_HASH = var.admin_passcode_hash, EVENTS_BUCKET = aws_s3_bucket.events.bucket, SITE_BUCKET = aws_s3_bucket.site.bucket }) : tomap({}),
     )
   }
 

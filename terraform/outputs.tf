@@ -3,6 +3,11 @@ output "site_url" {
   description = "Where the site is served"
 }
 
+output "events_bucket_name" {
+  value       = aws_s3_bucket.events.bucket
+  description = "The private bucket holding the prepared games (events); read and written by the admin function only"
+}
+
 output "cloudfront_distribution_id" {
   value       = aws_cloudfront_distribution.site.id
   description = "Set this as the GitHub repository variable CF_DISTRIBUTION_ID (used by deploy.yml)"
