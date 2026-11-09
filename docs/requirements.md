@@ -11,7 +11,8 @@ Expected size: fewer than 50 teams. No cap on the number of teams is required.
 - The game needs shared state (teams, answers, scores, config), so the site also needs a small backend in the same AWS account, managed by Terraform: API Gateway + Lambda + DynamoDB (same pattern as the surf-club-signin repo).
 - All validation happens on the server: answer checking, scoring, one-submission-only, and game timing. The server clock is the only clock that counts; the browser clock is used only to display the countdown.
 - The official answers never leave the server, and neither does the answer a team submitted, with one exception: once the admin has published the final results, a team's own results page receives its answers, which were right, and the official answers (see "Answer rules" and "Results page"). Before that nothing is sent, and a browser without a team session never receives any of it.
-- Accepted risk: this repository is public, so anyone who looks can read the official answers in docs/game-questions.json on GitHub. The server only prevents them being sent to the players' browsers. (Decision 2026-11-07: accepted. Options considered: keep the real questions out of the repo, or make the repo private, which would lose rulesets and required reviewers on GitHub Free.)
+- Games ("events") are stored in a private S3 bucket, not in this repository (see "Events"): several can be prepared, and the admin chooses which one is live. `docs/` holds documentation and an example event only. The repository is public, so the example is readable by anyone, but a real game's questions and answers are not.
+- Earlier decision (2026-11-07, superseded by events): while the game lived in `docs/game-questions.json` its answers were readable on public GitHub, which was accepted. Real games no longer have that exposure.
 - The admin pages and their API calls are protected by an admin passcode (see "Admin passcode"). The API is limited to 50 requests a second sustained, with a burst of 200 (see "Request limits and cost").
 
 ## Website Pages
@@ -21,7 +22,9 @@ The site will only ever be accessible via a free aws cloudfront domain. Players 
 page: <cloudfront_url>/
 Redirects to /view/
 page: <cloudfront_url>/game-config/
-Used by Admin to edit the game config (5 fields), remove teams, and download/delete player data. Zones, questions and maps are NOT edited here: they are managed in the code repository (see Game Play).
+Used by Admin to choose the active event, edit its game config (name, time zone, day, start, end, team names on or off, join code, WhatsApp link), remove teams, and download/delete player data. Zones, questions and maps are NOT edited here: they are uploaded on the events page (see "Events").
+page: <cloudfront_url>/game-events/
+Used by Admin to upload, replace, download and delete events (see "Events").
 Used by Admin to confirm all scores have been applied, by publishing the final results (a separate form on this page, see "Publishing the final results"). Publishing is what makes the results page show a player's final results and the answers to all questions, and turns the scoreboard's "provisional results:" into "final results:".
 page: <cloudfront_url>/game-score/
 Used by Admin to set scores for photo questions (submitted via separate whatsapp group). 
@@ -34,7 +37,7 @@ page: <cloudfront_url>/results/
 Used by players, once the admin has published the final results, to see how they finished and a detailed breakdown of their score: all the answers, which were correct and which were wrong, and the official answers (see "Results page"). The top of the page includes a link back to the view/scoreboard page, identical to the one on the play page.
 This page is not relevant to viewers. If a viewer visits this page (i.e. there is no active player session), they see only the link back to the view/scoreboard page.
 
-The admin pages are protected by the admin passcode, are not linked from anywhere and are marked noindex.
+The three admin pages (/game-config/, /game-score/, /game-events/) are protected by the admin passcode, are not linked from anywhere and are marked noindex.
 
 ## Game Configuration & Management
 
@@ -52,8 +55,24 @@ is-game-active (calculation): true/false - this is calculated as needed (as defi
 
 ### Zones and questions are loaded when the config is saved
 
-When the admin saves the game configuration, the game loads (takes a copy of) the zones, questions and photo challenges from docs/game-questions.json as it is deployed at that moment. The game must work with whatever that file contains: for example a future game may have 4 zones, or 8 questions in a zone. Nothing in the website assumes 5 zones or 5 questions.
-Merging a change to game-questions.json does not affect a configured game until the config is saved again (which is only possible when the game is not active). Questions that are not in the current copy do not exist for players.
+When the admin saves the game configuration, the game loads (takes a copy of) the zones, questions, photo challenges and maps of the chosen event as they are stored at that moment. The game must work with whatever the event contains: for example a game may have 4 zones, 8 questions in a zone, or a zone with no photo challenge. Nothing in the website assumes 5 zones or 5 questions.
+Uploading a change to an event does not affect the live game until the config is saved again (which is only possible when the game is not active). Questions that are not in the current copy do not exist for players.
+
+### Events
+
+An event is one complete game: its configuration, questions, photo challenges and maps. Many events can be stored; exactly one is active (the live game) at a time. This lets the admin prepare several games and switch the site between them (a demo for one audience, another for a different audience, then the real event).
+- **Storage**: a private S3 bucket (`<aws-account-id>-scavenger-events`) with one folder per event: `<event>/game-config.json`, `<event>/game-questions.json` and `<event>/game-zones/*`. The bucket is not public, is encrypted, and keeps old versions of files so a bad edit can be undone. Only the admin function can read or write it. Players and the public function never touch it.
+- **Event name**: 1 to 40 characters: lower case letters, digits and hyphens. It is the folder name and is only for the admin.
+- **Activating**: choosing an event on the config page and saving copies its configuration, questions and maps into the live game. The saved configuration values are also written back to the event's `game-config.json`, so the stored event always matches what was last used. Maps are copied to the site under a path unique to that activation. Nothing in the live game reads the bucket after that.
+- **Switching events is refused while any player data exists** (teams, submissions). The admin downloads and deletes the data first using the existing controls. Saving the same event again keeps the teams, as today. As always, the configuration cannot be changed while the game is active.
+- **The events page** (`/game-events/`) lists the stored events (event name, game name, day, number of zones and questions, and which is active) and lets the admin:
+  - **Upload** a new event: type its name and choose its folder (the questions file and the map images, and optionally `game-config.json`). The page checks the questions file with the same rules as the server (the "Game data" rules), shrinks the maps in the browser (a small thumbnail and a full-size image for each) and uploads them. Nothing is stored unless everything is valid.
+  - **Replace** the questions or maps of an existing event by uploading again (there is no in-browser question editor).
+  - **Download** an event (its files).
+  - **Delete** an event, after a confirmation. The active event cannot be deleted.
+- **Limits**: the questions file at most 256 KB, each map image at most 500 KB after shrinking, at most 20 zones per event and 100 events. Images must really be images (checked by content, not by name), and the server builds every storage path itself from the validated event name, never from a path supplied by the browser.
+- **docs/**: nothing in the live game reads `docs/`. `docs/game-questions.json` and `docs/game-zones/` stay as an example of the format; the "Game data" check validates the example so the documented format stays correct. To start, the admin can upload the example as an event.
+- With no event active the game is `unconfigured`, exactly as a new site is today.
 
 ### Typical Timeline
 
@@ -96,22 +115,27 @@ The are 3 distinct users for the website:
 ## Game Play
 
 The game is played in the real world, while the website facilitates timing, questions, answers and scoring.
-Game data is managed in docs/game-questions.json (see "game-questions.json format" below).
-The game zones, questions and maps are managed in the code repository. The admin edits the game data by submitting and merging a PR, and then a workflow updates the website. 
-The admin will merge a PR to publish a game consisting of multiple zones.
+Game data is a game-questions.json file plus map images, stored per event (see "Events" and "game-questions.json format" below).
+The game zones, questions and maps are uploaded by the admin on the events page; nothing needs a code change or a deploy.
 Each zone will have:
 - zone-name (string): e.g. "Southside"
 - zone-map (image): png or jpeg format (the Google Maps images in docs/game-zones are approved for use)
 - questions to answer (5 in the default game; any number is supported)
-- photo-challenge (string): description of what needs to be captured in the photo, which must be submitted via whatsapp
-- photo-score (number): points for the photo challenge
+- photo challenges: none, one or several. Each has its own description of what needs to be captured in the photo (which must be submitted via whatsapp) and its own score (number)
 
 ### Joining
 
-Players click 'join' to enter the game. They must enter a "team name", and the website will allocate them a unique team number (small integer starting at 1, shared & visible) and a unique player-id (random, hidden). The player can then reference their team number when submitting photos.
-The form for joining has 1 input field "Enter Team Name:", plus a second field "Code to join the game:" only when the admin has set a join code (see "Join code").
+Players click 'join' to enter the game. They must enter a "team name" (unless team names are turned off, see below), and the website will allocate them a unique team number (small integer starting at 1, shared & visible) and a unique player-id (random, hidden). The player can then reference their team number when submitting photos.
+The form for joining has 1 input field "Enter Team Name:" (only when team names are on), plus a field "Code to join the game:" only when the admin has set a join code (see "Join code"). With team names off and no join code the form is just a join button.
 One join = one team = one device. There is no second device, no per-player scoring, and no way to recover a lost session (see "Parked").
 Team name rules: unique (ignoring upper/lower case), 1 to 30 characters, and rejected if it fails a basic profanity filter (the team names are shown publicly, to children).
+
+### Team names on or off
+
+The game configuration has a setting "team names", on by default. With it on, everything works as described elsewhere.
+- **Off**: the join form does not ask for a name, and no name is stored or checked (the name rules, the profanity filter and "name taken" do not apply). A team is shown as "Team <number>" everywhere: on the scoreboard, in the play page heading (the number only), on the results page, and in the admin pages (team list, scoring, confirmations).
+- It is part of the configuration, so it is set before the game starts and cannot be changed while the game is active. If it is changed while teams exist, the names they already have are kept in the data and what is shown follows the current setting.
+- The load test needs team names on (it recognises its own teams by name) and refuses to run when they are off.
 As there is no login or authentication, a simple web session mechanism must be used to remember the player has joined, and to link player data to their player-id.
 
 Once a player has joined:
@@ -123,24 +147,29 @@ Once a player has joined:
 
 Under the join/play/results button, the scoreboard should be displayed. Immediately above the scoreboard, the exact text "provisional results:" (lower case, with the colon) should be displayed, until the final results are confirmed and published. Once the results are confirmed, "provisional" should be changed to "final" ("final results:"). The heading is only shown above the scoreboard table: it is not shown while there are no teams.
 The scoreboard should auto-refresh every 5 seconds, to include latest score totals and latest list of teams.
-The scoreboard must be sorted by score (descending order), then team name (alphabetically).
-The scoreboard is a simple table with 3 columns (team number, team name, score), optimised for mobile display.
+The scoreboard must be sorted by score (descending order), then team name (alphabetically), or by team number when team names are off.
+The scoreboard is a simple table with 4 columns, optimised for mobile display, headed in lower case:
+- **rank**: the team's place, as a plain number (1, 2, 3, not 1st, 2nd). Teams with the same score share a place (1, 1, 3), exactly as on the results page.
+- **name**: the team name, or "Team <number>" when team names are off.
+- **q done**: how many questions and photo challenges the team has attempted over how many there are in the whole game, e.g. "5/30" (the total counts every question and every photo challenge in every zone). Answering a question or sending a photo counts whether it is right or not, so this says nothing about correctness. A team that has done nothing shows "0/30".
+- **score**: the team's total score, shown as now (whole number, or one decimal place only when needed).
+The scoreboard does not show team numbers (a team sees its own on its play page).
 The player's own team row is highlighted.
 Scores are shown as whole numbers, and with 1 decimal place only when a total needs it (e.g. 12.5).
 
 ### Play page
 
 The play page works as follows:
-- team name is displayed at the top, with the team number displayed large and clear (e.g. "Team 7"), because players need it for whatsapp photos. Team number and Team name should be displayed on a single line (wrapping as needed). Different text sizing and colouring should be used to make the distinction between name and number: the number ("Team 7") large, bold and in the site's blue; the name smaller and dark grey, sitting on the same baseline. A name of up to 30 characters with no spaces must still fit a phone screen.
+- team name is displayed at the top, with the team number displayed large and clear (e.g. "Team 7"), because players need it for whatsapp photos. Team number and Team name should be displayed on a single line (wrapping as needed). Different text sizing and colouring should be used to make the distinction between name and number: the number ("Team 7") large, bold and in the site's blue; the name smaller and dark grey, sitting on the same baseline. A name of up to 30 characters with no spaces must still fit a phone screen. When team names are off only the number ("Team 7") is shown.
 - a 'view scoreboard' link is displayed below team name, which links back to the view page.
 - once the final results are published, a link to the results page is also shown (the same 'results' button as on the view page).
 
-Under the 'view scoreboard' link, display small tiles using the zone names and zone map images. Each tile shows the player's progress in that zone, e.g. "3/6 done" (questions plus the photo challenge).
+Under the 'view scoreboard' link, display small tiles using the zone names and zone map images. Each tile shows the player's progress in that zone, e.g. "3/6 done" (questions plus the photo challenges; a zone may have several photo challenges or none).
 clicking a zone tile should display individual forms to submit answers to each of the questions for that zone.
 Players must also be able to view full size zone-map, and close it, returning to the zone questions.
 Players must also be able to return to the play page, where they can again select any of the zone tiles, or click the 'view scoreboard' link.
 When a correct answer is submitted, the team score total should be updated, which will then be visible on the next auto refresh for the score board.
-The Photo challenge form should display the description, along with a button named 'photo sent to whatsapp'. 
+Each photo challenge has its own form, which displays the description along with a button named 'photo sent to whatsapp'. A zone with no photo challenge has none. 
 Each question and photo challenge can be submitted only once, so the form should be disabled (and visibly marked as done) when submitted.
 A form is marked done only after the server has confirmed the submission. If the network fails the player can try again; if the same form is somehow sent twice, the first one received counts.
 
@@ -177,7 +206,11 @@ Every question has a type (see "game-questions.json format"): string, whole-numb
 
 ### game-questions.json format
 
-Zones are keyed "zone 1", "zone 2", ... Each zone has: zone-name, zone-map (path to the image in the repo), photo-challenge, photo-score, and a list of questions. Each question has:
+Zones are keyed "zone 1", "zone 2", ... Each zone has: zone-name, zone-map (the image file in the event's game-zones folder), a list of photo challenges ("photos": may be empty, or left out) and a list of questions. Each photo challenge has:
+- "P1", "P2", ... : the description of what to photograph (the key is the photo challenge's id within the zone)
+- "score" : points for the photo challenge (a number)
+
+Each question has:
 - "Q1", "Q2", ... : the question text (the key is the question's id within the zone)
 - "type" : "string", "whole-number" or "decimal"
 - "answer" : for whole-number and decimal, a single value as a string, e.g. "42" or "2.5". For string, either one answer, e.g. "paris", or a list of accepted answers, e.g. ["bike", "bicycle"] (each one gets the same typo tolerance). Write answers in lower case.
@@ -205,19 +238,21 @@ There is one admin and no accounts. The admin pages and every admin API call (`/
 - **Changing or recovering it**: generate a new passcode and hash, update the variable, apply.
 - The admin pages are still not linked from anywhere and are marked noindex.
 
-Remaining accepted risk: the repository is public, so the questions, answers and the names of the admin pages are readable by anyone; the passcode protects what the admin pages can do, not what is in the repo.
+Remaining accepted risk: the repository is public, so the names of the admin pages and the example game in `docs/` are readable by anyone; the passcode protects what the admin pages can do. A real game's questions and answers are in the private events bucket.
 
 page: <cloudfront_url>/game-config/
 
-Admins use this page to edit config:
+Admins use this page to choose the active event and edit its config:
+event (choice): the stored event to make live; the fields below are filled in from it and saved back to it (see "Events").
 game-name (string): default = "Sorrento Youth Scavenger Hunt"
 game-timezone (timezone): Australian time zone dropdown; default = AWST Australian Western Standard Time (UTC + 8)
 game-day (date): yyyy-mm-dd
 game-start (datetime): <game-day> hh:mm:00
 game-end (datetime): <game-day> hh:mm:00   (must be > game-start)
 join-code (optional): the code a new team must enter to join (see "Join code"), 5 to 12 letters and digits, shown to the admin on the page; empty means no code.
+team-names (on/off): whether teams have names; on by default (see "Team names on or off").
 whatsapp-link (optional): the invite link of the WhatsApp group the teams send photos to, e.g. https://chat.whatsapp.com/AbCdEf123. Only links of that form are accepted. Leave it empty and everything simply says "WhatsApp" as plain text, as before. The page has a "Test link" next to the field.
-Saving the config also loads the zones and questions from game-questions.json (see above). It is not possible while the game is active, so the join code and the WhatsApp link are also set (and the link tested) before the game starts.
+Saving the config also loads the zones, questions and maps of the chosen event (see above). It is not possible while the game is active, so the join code and the WhatsApp link are also set (and the link tested) before the game starts. Choosing a different event is refused while any player data exists.
 
 The page also lists the teams, with a 'remove' button for each (with confirmation), for moderating team names. Removing a team deletes its data. This is allowed at any time, including while the game is active.
 
@@ -241,8 +276,9 @@ Team members must include their team number in the whatsapp message, and the pho
 
 This page should dynamically list the photo challenges that have been submitted, in the order that they are sent (it refreshes automatically every 5 seconds).
 Each submission should be listed on a single line that displays:
-- Team number
+- Team number (or the team's name too, when team names are on)
 - zone name
+- the photo challenge (its description)
 - 'full' radio button to award 100% of score, as defined in game-questions.json 
 - 'half' radio button to award 50% of score, as defined in game-questions.json (not rounded: it can be a decimal)
 - 'zero' radio button to award 0 
@@ -250,7 +286,7 @@ Each submission should be listed on a single line that displays:
 Each line carries the team's internal id as a hidden form field, so the decision is always applied to the correct team. The id itself is not displayed.
 No radio button is selected by default, and 'apply' stays disabled until one is chosen, so a decision is always deliberate.
 
-It should be possible to re-select a different radio button for a line that has already been applied, so that the score can be corrected if necessary. Correcting a score, by re-applying will require the previous apply to be deducted, before the latest decision is applied. It should not be possible to increase a players score by accidentally apply multiple decisions for the same zone photo challenge. 
+It should be possible to re-select a different radio button for a line that has already been applied, so that the score can be corrected if necessary. Correcting a score, by re-applying will require the previous apply to be deducted, before the latest decision is applied. It should not be possible to increase a players score by accidentally apply multiple decisions for the same photo challenge. 
 The admin cannot undo or reset a team's answer submissions.
 While the final results are published, this page is read-only (a note says why, and Apply is disabled); see "Publishing the final results".
 
@@ -275,7 +311,7 @@ Only available once the final results are published. A player (a browser with a 
 - A large heading with their place: "You finished 3rd of 12" (place, then number of teams). For 1st, 2nd and 3rd, a gold, silver or bronze medal character (🥇 🥈 🥉) is shown with the heading to emphasise the achievement. Teams with the same score share a place (1st, 1st, 3rd) and each gets that place's medal; the number of teams is every team that joined.
 - Their total score.
 - For each zone, for every question in it (including questions they never answered): the question, their answer (or "Not answered"), whether it was correct or wrong (marked clearly with an icon and text, not colour alone), the points earned out of the points available, and the official answer (when several answers are accepted, all of them, e.g. "bike or bicycle").
-- For each zone's photo challenge: the percentage awarded and the points ("Full: 100% - 30 of 30 points", "Half: 50%", "Zero: 0%"), or clearly "No photo submitted". A photo that was submitted but never scored shows 0% and says it was not scored.
+- For each photo challenge in each zone: the percentage awarded and the points ("Full: 100% - 30 of 30 points", "Half: 50%", "Zero: 0%"), or clearly "No photo submitted". A photo that was submitted but never scored shows 0% and says it was not scored.
 
 Before the results are published (including during the game) the page tells a player the results are not ready yet and shows only the link back to the scoreboard; nothing about the answers is sent to the browser. A viewer (no team session, or a removed team) always sees only the link back to the scoreboard. Like all pages it is mobile first and must fit a phone.
 
@@ -306,10 +342,10 @@ The API accepts 50 requests a second sustained with a burst of 200 (API Gateway 
 ### Load test
 
 A GitHub Actions workflow, started by hand from the Actions tab (never on a schedule), that simulates a crowd against the live site and produces a detailed report, so the owner can see where the limits are.
-- **Inputs**: number of teams, number of spectators, duration, ramp-up time, how often a team answers, and a mode ("full", which needs the game to be in progress, or "spectators only", which works any time).
+- **Inputs**: number of teams, number of spectators, duration, ramp-up time, how often a team answers, and a mode ("full", which needs the game to be in progress with team names on, or "spectators only", which works any time).
 - **What it simulates**: teams join, refresh the way the real pages do, answer questions and send photos; spectators refresh the scoreboard. It goes through the site's public address only; it needs no AWS credentials for the load itself.
 - **Report** (a summary in the job log, plus an HTML report with charts and the raw JSON as downloadable artifacts): per endpoint the requests, the status codes (429 means throttled, 5xx a failure) and the latency (typical, 95th and 99th percentile, worst); throughput over time; when errors began and at what request rate; CloudFront cache hit rate; whether the machine generating the load was itself the bottleneck; server-side numbers from CloudWatch (API Gateway, Lambda throttles and concurrency, DynamoDB throttling); an estimated cost for the run; and a plain verdict.
-- **Guardrails**: it refuses to run if any real team exists (test teams are named `loadtest-001` and so on), and refuses sizes above 300 teams, 1,500 spectators or 15 minutes. It never changes the game configuration: the admin sets up a joinable demo game first. It does not run at the same time as a deploy.
+- **Guardrails**: it refuses to run if any real team exists (test teams are named `loadtest-001` and so on), and refuses sizes above 300 teams, 1,500 spectators or 15 minutes. It never changes the game configuration: the admin sets up a joinable demo game first (team names on). If a join code is set it reads the code through its admin session and uses it to join its test teams; it refuses to run when team names are off. It does not run at the same time as a deploy.
 - **Clean up**: it removes its own test teams using the admin passcode, which the admin stores as the GitHub secret `ADMIN_PASSCODE` (the only place the plaintext passcode is kept besides the admin's password manager).
 - **Reading CloudWatch** uses the deploy role's read-only permissions (it only works when the workflow runs from `main`).
 
