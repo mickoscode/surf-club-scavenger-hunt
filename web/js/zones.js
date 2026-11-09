@@ -15,6 +15,9 @@ const MESSAGES = {
 };
 const GENERIC_ERROR = 'Something went wrong. Please try again.';
 
+// A zone loaded from an event has its map addresses; one loaded from the repository's game file has the built-in maps.
+const mapThumb = (zone) => zone.map?.thumb ?? `/maps/${zone.mapId}-thumb.webp`;
+const mapFull = (zone) => zone.map?.full ?? `/maps/${zone.mapId}.webp`;
 const answerKey = (zone, question) => `${zone.key}#${question.id}`; // a question's (or photo challenge's) key in /api/me's done lists
 
 export function createZones({ container, onSubmitted }) {
@@ -35,7 +38,7 @@ export function createZones({ container, onSubmitted }) {
 
   function openMap(zone, from) {
     opener = from;
-    overlayImage.src = `/maps/${zone.mapId}.webp`;
+    overlayImage.src = mapFull(zone);
     overlay.hidden = false;
     closeButton.focus();
   }
@@ -169,7 +172,7 @@ export function createZones({ container, onSubmitted }) {
 
   function buildTile(zone) {
     const tile = el('button', { type: 'button', class: 'card h-100 w-100 text-start p-0 zone-tile', 'data-testid': 'zone-tile', 'data-zone': zone.key });
-    tile.append(el('img', { src: `/maps/${zone.mapId}-thumb.webp`, alt: `Map of ${zone.name}`, class: 'card-img-top', loading: 'lazy' }));
+    tile.append(el('img', { src: mapThumb(zone), alt: `Map of ${zone.name}`, class: 'card-img-top', loading: 'lazy' }));
     const body = el('div', { class: 'card-body p-2' });
     body.append(el('div', { class: 'fw-semibold team-name', 'data-testid': 'zone-name' }, zone.name), el('div', { class: 'small text-muted', 'data-testid': 'zone-progress' }));
     tile.append(body);
@@ -184,7 +187,7 @@ export function createZones({ container, onSubmitted }) {
     back.addEventListener('click', () => { location.hash = ''; });
 
     const mapButton = el('button', { type: 'button', class: 'map-button p-0 border-0 bg-transparent w-100', 'data-testid': 'map-open' });
-    mapButton.append(el('img', { src: `/maps/${zone.mapId}-thumb.webp`, alt: `Map of ${zone.name}. Tap to enlarge.`, class: 'rounded border' }));
+    mapButton.append(el('img', { src: mapThumb(zone), alt: `Map of ${zone.name}. Tap to enlarge.`, class: 'rounded border' }));
     mapButton.addEventListener('click', () => openMap(zone, mapButton));
 
     const header = el('div', { class: 'd-flex justify-content-between align-items-center mb-2' });

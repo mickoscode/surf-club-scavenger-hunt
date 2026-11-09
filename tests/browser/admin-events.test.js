@@ -2,22 +2,12 @@
 // and delete. Fixture games and generated pictures only. Elements by data-testid; results from data-* attributes and the
 // server's state, not wording.
 const assert = require('node:assert/strict');
-const zlib = require('node:zlib');
-const { browserSuite, until, adminPage, START } = require('./helpers.js');
+const { browserSuite, until, adminPage, png, START } = require('./helpers.js');
 
 const { withPage } = browserSuite();
 
 const $ = (testId) => `[data-testid="${testId}"]`;
 const overflow = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-
-// A real PNG picture (a solid colour), made here so the browser has something genuine to decode and shrink.
-function png(width, height, [r, g, b]) {
-  const crc = (buf) => { let c, n, table = []; for (n = 0; n < 256; n++) { c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; table[n] = c >>> 0; } let x = 0xffffffff; for (const byte of buf) x = table[(x ^ byte) & 0xff] ^ (x >>> 8); return (x ^ 0xffffffff) >>> 0; };
-  const chunk = (type, data) => { const body = Buffer.concat([Buffer.from(type), data]); const out = Buffer.alloc(body.length + 8); out.writeUInt32BE(data.length, 0); body.copy(out, 4); out.writeUInt32BE(crc(body), body.length + 4); return out; };
-  const header = Buffer.alloc(13); header.writeUInt32BE(width, 0); header.writeUInt32BE(height, 4); header[8] = 8; header[9] = 2;
-  const row = Buffer.concat([Buffer.from([0]), Buffer.from(Array.from({ length: width }, () => [r, g, b]).flat())]);
-  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', header), chunk('IDAT', zlib.deflateSync(Buffer.concat(Array.from({ length: height }, () => row)))), chunk('IEND', Buffer.alloc(0))]);
-}
 
 const GAME = {
   'zone 1': { 'zone-name': 'Reef', 'zone-map': 'docs/maps/reef.png', questions: [{ Q1: 'first?', type: 'string', answer: 'a', score: 10 }, { Q2: 'a photo', type: 'photo', score: 30 }] },
@@ -128,8 +118,8 @@ withPage('an event can be replaced, downloaded and deleted (after a confirmation
   await page.click(`${$('event')}[data-event="winter"] ${$('event-delete')}`);
   await page.click($('event-delete-yes'));
   await until(async () => (await site.events.names()).length === 1);
+  await until(async () => (await page.locator($('event')).count()) === 1); // the list catches up
   await page.waitForSelector($('event') + '[data-event="summer"]');
-  assert.equal(await page.locator($('event')).count(), 1);
 });
 
 withPage('with a passcode set the page shows only the login box until it is entered', { site: { passcode: true } }, async ({ site, page }) => {

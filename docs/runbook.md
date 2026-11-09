@@ -9,28 +9,32 @@ For the person running the game (the admin). What the site does is in `requireme
 | `/` (goes to `/view/`) | everyone | the scoreboard, and joining. This is the address and QR code you give out |
 | `/play/` | teams | the game (teams reach it from the scoreboard page) |
 | `/results/` | teams | each team's final results (only once you have published them) |
-| `/game-config/` | you | set up the game, remove teams, publish the final results, download and delete the data |
+| `/game-events/` | you | upload and manage the prepared games (events) |
+| `/game-config/` | you | choose the event that is live, set up the game, remove teams, publish the final results, download and delete the data |
 | `/game-score/` | you | score the photos |
 
-The two admin pages are protected by your **admin passcode**. Open either address and a login box appears; type the passcode (capitals, spaces and dashes don't matter) and you are in for **12 hours**, on that browser. **Log out** (top right) ends it sooner, and when 12 hours pass the box comes back by itself. After **10 wrong tries in 5 minutes** (counted across everybody) logging in is refused until those 5 minutes have passed, even for the right passcode, so if you are locked out just wait. Until the passcode has been set up the pages open without a login. Keep the passcode in your password manager; the page names are in this public repo, so the passcode is what protects the pages.
+The three admin pages are protected by your **admin passcode**. Open either address and a login box appears; type the passcode (capitals, spaces and dashes don't matter) and you are in for **12 hours**, on that browser. **Log out** (top right) ends it sooner, and when 12 hours pass the box comes back by itself. After **10 wrong tries in 5 minutes** (counted across everybody) logging in is refused until those 5 minutes have passed, even for the right passcode, so if you are locked out just wait. Until the passcode has been set up the pages open without a login. Keep the passcode in your password manager; the page names are in this public repo, so the passcode is what protects the pages.
 
 ---
 
-## 1. Weeks before: write the game
+## 1. Weeks before: prepare the game (an event)
 
-The game is two files in this repo, changed by pull request like everything else.
+A game is an **event**: a folder on your computer that you upload on `/game-events/`. It is stored privately (not in the public repository), so the real questions and answers are not on GitHub, and you can keep several events and switch between them. The files in the repo's `docs/` folder are only an example of the format: copy them as a starting point.
 
-1. **Questions and photo challenges: `docs/game-questions.json`.** The file in the repo may be **sample content**: replace it with your real game. Each zone has a name, a map image and any number of questions (there is no fixed 5). Photo challenges are questions too: a zone can have none, one or several. Per question:
+The event folder holds:
+1. **`game-questions.json`** (required). Each zone has a name, a map image and any number of questions (there is no fixed 5). Photo challenges are questions too: a zone can have none, one or several. Per question:
    - `type`: `"string"` (text), `"whole-number"`, `"decimal"` or `"photo"` (a photo challenge: the text says what to photograph, it has a `score` and no `answer`)
    - `answer` (not for photos): for text, one answer or a list of accepted answers (`["bike", "bicycle"]`), in **lower case**; for numbers, the value as text (`"42"`, `"2.5"`). Typos are accepted in text answers (none under 4 letters, one for 4 to 7, two for 8 or more); numbers must be exact.
    - `score`: points for a correct answer (for a photo challenge, its points when scored Full)
-   
-   Run `npm run validate:data` to check it; the `Game data` check does the same on the pull request and tells you exactly what is wrong. The format is in `requirements.md` ("game-questions.json format").
-2. **Maps: `docs/game-zones/`.** Replace or add PNG/JPEG images and point each zone's `zone-map` at its file. Keep each to a normal screenshot size: the build shrinks them for phones.
-3. **Instructions: `docs/player-instructions.md`.** Plain Markdown (headings, bullets, bold). It appears on the play page under "Instructions (tap to show/hide)".
-4. **Merge the pull request.** The deploy updates the live site, the questions and the instructions together. Check the **Deploy site** run is green (it ends with a smoke test of the live site).
 
-> The questions and answers are in a public repository, so anyone who looks can read them. That is accepted for this game; do not put anything in the file you would not want read.
+   The format is in `requirements.md` ("game-questions.json format"). The upload checks the file and tells you exactly what is wrong.
+2. **The map images** (PNG or JPEG), one for each zone, named in that zone's `zone-map` (the file name is what counts; they can be in a subfolder). Normal screenshots are fine: they are made smaller on your computer when uploaded.
+3. **`player-instructions.md`** (optional): plain Markdown (headings, bullets, bold). It appears on the play page under "Instructions (tap to show/hide)". An event without it has no instructions panel.
+4. **`game-config.json`** (optional): the settings (name, time zone, day, start, end, team names, join code, WhatsApp link) so they are already filled in when you choose the event. You can also set them on the configuration page.
+
+Then open `/game-events/`, type a name for the event (lower case letters, digits and hyphens), choose the folder and press **Upload**. The page lists every step; if anything fails the event is shown as **Incomplete** and cannot be used until you upload it again. To change an event later press **Replace** beside it and upload the whole folder again. **Download** gives you the event's questions, settings and instructions in one file (not the maps: keep your originals).
+
+> Real events are private. Only the example in `docs/` is public, so do not put your real game there.
 
 ## 2. Dress rehearsal (a week or two before)
 
@@ -38,15 +42,15 @@ Do the checklist in `rehearsal-checklist.md` with a few real phones, using the r
 
 ## 3. Setting up the real game (the day before or the morning of)
 
-1. Open `/game-config/`. If there is rehearsal data (teams), **download it, type `delete`, and delete it** (section "Player data"). Only possible before the game starts or after it ends.
-2. Set the **game name**, **time zone** (AWST for Perth), **game day**, **start** and **end** times, and press **Save**. The page confirms how many zones were loaded.
+1. Open `/game-config/`. If there is rehearsal data (teams), **download it, type `delete`, and delete it** (section "Player data"). Only possible before the game starts or after it ends, and **required before you can switch to a different event**.
+2. Choose the **Event** (the prepared game to make live). If it has saved settings they fill in; set or check the **game name**, **time zone** (AWST for Perth), **game day**, **start** and **end** times, and press **Save**. The page confirms how many zones were loaded. Saving also stores these settings back into the event.
 3. **WhatsApp group link (optional).** In WhatsApp open the group, Group info, **Invite to group via link**, **Copy link**, and paste it into **WhatsApp group link**. Press **Test link** to check it opens the right group, then **Save**. Teams that have joined then get links to the group: **Open WhatsApp group** under each photo challenge, and the word "WhatsApp" in the photo challenges and the instructions. Leave it empty and everything stays plain text. Spectators never see the link (it only goes to teams that have joined), and it is saved with the rest of the configuration, so set it **before** the game starts: it is locked while the game is in progress. Anyone you share the group link with can join the group, so a link you pasted by mistake can be reset in WhatsApp (Group info, Invite via link, Reset link) and replaced here after the game.
 4. **Team names.** The box **Teams have names** is ticked normally. Untick it if teams should not choose names: joining then asks for nothing, and every team is shown as **Team 7** (its number) on the scoreboard and everywhere else. Like the rest of the configuration it is locked once the game starts.
 5. **Code to join the game (optional).** To keep remote people out, type a short code (5 to 12 letters and digits, for example `SURF24`) into **Code to join the game**, and **tell it to the people at the event in person**, never in the WhatsApp group or online. New teams must then enter it with their team name; anyone who is already in is not asked again. It is saved and shown back tidy, in capitals, so you can read it out. Leave it empty for no code. Like the rest of the configuration it is locked once the game starts (a team that joins late needs it too).
 6. Check the status reads "before the game" and the zone count is what you expect.
 
 Things to know:
-- Saving **takes a copy of the questions as they are on the site at that moment**. If you change the questions or maps later (a new pull request), **press Save again** before the game starts, or the game keeps the old copy.
+- Saving **takes a copy of the event as it is stored at that moment**. If you upload changes to the event later, **press Save again** before the game starts, or the game keeps the old copy.
 - The start and end are **in the time zone you chose**. The site's own clock decides everything (not anyone's phone), and the end is exact: an answer a second late is refused.
 - Once the game has started you can **not** change the configuration or delete data (the page is locked). You can still remove a team.
 
@@ -88,7 +92,7 @@ Things to know:
 | I cannot log in to an admin page | "That passcode is not right": check you are using the passcode for this site (case, spaces and dashes don't matter). "Too many wrong tries": wait the 5 minutes it says. Lost the passcode: on your computer run `node scripts/admin-passcode.js`, put the new hash in the HCP Terraform variable `admin_passcode_hash` (replacing the old one), approve the Terraform apply, and log in with the new passcode (this also ends every old session) |
 | An admin page suddenly shows the login box again | Your 12-hour session ended (or you logged out on another tab). Log in again: the page carries on where it was |
 | **Save** says the WhatsApp link is wrong | Only the group's invite link is accepted, which starts with `https://chat.whatsapp.com/`. Copy it again from WhatsApp (not a link to a person's chat) or leave the field empty |
-| **Save** lists problems in the game file | Nothing was saved. The list says what to fix in `docs/game-questions.json`; fix it by pull request, merge, then Save again |
+| **Save** lists problems in the event's questions | Nothing was saved. The list says what to fix in `game-questions.json`; fix it, upload the event again (**Replace** on `/game-events/`), then Save again |
 | **Publish final results** is greyed out | The game has not ended yet (it is only possible after the end time), or the "I have applied all scores" box is not ticked |
 | The scoring page says scores are locked | The final results are published. Press **Return to provisional** on `/game-config/` to change a score, then publish again |
 | A team says its Results page only shows a link | Results are not published yet (the page says so), or that phone has no team: it was removed, or the browser data was cleared. A phone without a team never sees results |

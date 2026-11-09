@@ -45,6 +45,11 @@
         <h2 class="h5">Game</h2>
         <form data-testid="config-form" novalidate>
           <div class="mb-3">
+            <label class="form-label" for="config-event">Event</label>
+            <select class="form-select" id="config-event" name="event" data-testid="config-event"></select>
+            <div class="form-text">The stored game to make live (its questions, maps and instructions). <a href="/game-events/">Upload or manage events</a>. Another event can only replace the live one while there are no teams: download and delete the player data first.</div>
+          </div>
+          <div class="mb-3">
             <label class="form-label" for="config-name">Game name</label>
             <input class="form-control" id="config-name" name="name" type="text" maxlength="80" data-testid="config-name">
           </div>

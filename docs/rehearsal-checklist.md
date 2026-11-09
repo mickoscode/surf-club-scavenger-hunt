@@ -5,7 +5,7 @@ Do this a week or two before the real game, on the real site, with **at least th
 Allow about 30 minutes. Tick as you go; write down anything odd.
 
 ## Before you start
-- [ ] The real questions, photo challenges, maps and instructions are merged and **Deploy site** is green (`runbook.md`, section 1)
+- [ ] The event (real questions, photo challenges, maps and instructions) is uploaded on `/game-events/`, shows as **Ready**, and is chosen on `/game-config/` (`runbook.md`, sections 1 and 3)
 - [ ] WhatsApp group exists with the helpers who will act as teams
 - [ ] On the laptop: `/game-config/` and `/game-score/` ask for the admin passcode; log in on each (a wrong passcode is refused, the right one lets you in), and check **Log out** brings the login box back
 
