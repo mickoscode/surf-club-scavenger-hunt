@@ -82,10 +82,10 @@ resource "aws_iam_role_policy" "lambda" {
         },
         {
           # Activating an event copies its maps into the site under event-maps/ (a path the deploy leaves alone).
-          Sid       = "ListEventMapsOnSite"
-          Effect    = "Allow"
-          Action    = ["s3:ListBucket"]
-          Resource  = aws_s3_bucket.site.arn
+          Sid      = "ListEventMapsOnSite"
+          Effect   = "Allow"
+          Action   = ["s3:ListBucket"]
+          Resource = aws_s3_bucket.site.arn
           Condition = {
             StringLike = { "s3:prefix" = ["event-maps/*"] }
           }
