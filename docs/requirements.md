@@ -109,7 +109,7 @@ Each zone will have:
 ### Joining
 
 Players click 'join' to enter the game. They must enter a "team name", and the website will allocate them a unique team number (small integer starting at 1, shared & visible) and a unique player-id (random, hidden). The player can then reference their team number when submitting photos.
-The form for joining has only 1 input field "Enter Team Name:"
+The form for joining has 1 input field "Enter Team Name:", plus a second field "Code to join the game:" only when the admin has set a join code (see "Join code").
 One join = one team = one device. There is no second device, no per-player scoring, and no way to recover a lost session (see "Parked").
 Team name rules: unique (ignoring upper/lower case), 1 to 30 characters, and rejected if it fails a basic profanity filter (the team names are shown publicly, to children).
 As there is no login or authentication, a simple web session mechanism must be used to remember the player has joined, and to link player data to their player-id.
@@ -143,6 +143,18 @@ When a correct answer is submitted, the team score total should be updated, whic
 The Photo challenge form should display the description, along with a button named 'photo sent to whatsapp'. 
 Each question and photo challenge can be submitted only once, so the form should be disabled (and visibly marked as done) when submitted.
 A form is marked done only after the server has confirmed the submission. If the network fails the player can try again; if the same form is somehow sent twice, the first one received counts.
+
+### Join code
+
+The admin can set an optional code to join the game, so that only people at the event can join: the code is told to the players in person (never posted online), and anyone without it is refused.
+- **Optional**: with no code set, joining works exactly as before and the join form has no code field.
+- **Format**: 5 to 12 letters and digits. The admin chooses it. Case, spaces and dashes are ignored when it is typed (so "surf-24A" and "SURF24a" are the same code), like the admin passcode. Any other character is refused when the configuration is saved. An empty field means no code.
+- **Joining with a code set**: the join form asks for the code as well as the team name. A wrong or missing code is refused with a clear message ("That code is not right") and nothing is created: the team name is not used up, and the form keeps what was typed. A correct code joins as usual.
+- **Who needs it**: only a new team joining. A browser that has already joined is not asked again (it keeps its team, as today), and nobody has to enter it to view the scoreboard. A team the admin removes has to enter the code to join again. Joining stays possible during the game (a late team needs the code too).
+- **Secrecy**: the code is a shared secret, not a password. It is kept with the game configuration and is shown only to the admin (on the configuration page, so it can be read out). Public information (the game and scoreboard) says only WHETHER a code is needed, never the code itself, and no public response contains it (a test scans for it). It is part of the configuration, so it is set before the game starts and, like the rest of the configuration, cannot be changed while the game is active.
+- **Guessing**: there is no lockout (a lockout would let someone remote stop real players joining). At 5 or more letters and digits the code cannot realistically be guessed at the API's request limit.
+- **Load test**: the load test reads the code through its admin session and uses it to join its test teams, so it needs nothing extra.
+- Saving a new configuration with a different code does not affect teams that have already joined.
 
 ### WhatsApp group link
 
@@ -203,8 +215,9 @@ game-timezone (timezone): Australian time zone dropdown; default = AWST Australi
 game-day (date): yyyy-mm-dd
 game-start (datetime): <game-day> hh:mm:00
 game-end (datetime): <game-day> hh:mm:00   (must be > game-start)
+join-code (optional): the code a new team must enter to join (see "Join code"), 5 to 12 letters and digits, shown to the admin on the page; empty means no code.
 whatsapp-link (optional): the invite link of the WhatsApp group the teams send photos to, e.g. https://chat.whatsapp.com/AbCdEf123. Only links of that form are accepted. Leave it empty and everything simply says "WhatsApp" as plain text, as before. The page has a "Test link" next to the field.
-Saving the config also loads the zones and questions from game-questions.json (see above). It is not possible while the game is active, so the WhatsApp link is also set and tested before the game starts.
+Saving the config also loads the zones and questions from game-questions.json (see above). It is not possible while the game is active, so the join code and the WhatsApp link are also set (and the link tested) before the game starts.
 
 The page also lists the teams, with a 'remove' button for each (with confirmation), for moderating team names. Removing a team deletes its data. This is allowed at any time, including while the game is active.
 
