@@ -11,6 +11,7 @@ const EVENT_PROBLEM = {
   'players-exist': 'Another event cannot replace a game that has teams. Download and delete the player data first, then try again.',
   'event-incomplete': 'That event is missing map images. Upload it again on the Events page.',
   'unknown-event': 'That event no longer exists.',
+  'event-required': 'Choose the event to make live first. Upload one on the Events page if there is none.',
   'events-unavailable': 'Events are not available on this site yet.',
 };
 const FIELD_PROBLEM = {
@@ -68,7 +69,7 @@ function renderEvents(list, active) {
   events = list.events;
   const chosen = eventChosen ? eventSelect.value : (active ?? '');
   eventSelect.replaceChildren(
-    el('option', { value: '' }, 'Game file in the repository (the older way)'),
+    el('option', { value: '' }, events.length ? 'Choose an event' : 'No events yet: upload one first'),
     ...events.map((e) => { const o = el('option', { value: e.name }, `${e.name}${e.complete ? '' : ' (incomplete: see the Events page)'}`); if (!e.complete) o.disabled = true; return o; }),
   );
   eventSelect.value = events.some((e) => e.name === chosen && e.complete) ? chosen : '';
@@ -175,9 +176,16 @@ form.addEventListener('submit', async (event) => {
   const problems = $('config-problems');
   const success = $('config-success');
   error.hidden = problems.hidden = success.hidden = true;
+  if (!eventSelect.value) { // nothing to load the game from
+    error.dataset.error = 'event-required';
+    error.dataset.fields = '';
+    error.textContent = EVENT_PROBLEM['event-required'];
+    error.hidden = false;
+    return;
+  }
   const res = await putJson('/api/admin/config', { ...Object.fromEntries(Object.entries(fields).map(([name, input]) => [name, input.value])), teamNames: teamNamesBox.checked, event: eventSelect.value });
   if (res.ok) {
-    success.textContent = `Saved. ${res.body.zoneCount} zone${res.body.zoneCount === 1 ? '' : 's'} loaded from ${res.body.event ? `the event ${res.body.event}` : 'the game file'}.`;
+    success.textContent = `Saved. ${res.body.zoneCount} zone${res.body.zoneCount === 1 ? '' : 's'} loaded from the event ${res.body.event}.`;
     success.hidden = false;
     await refresh();
     return;
@@ -187,7 +195,6 @@ form.addEventListener('submit', async (event) => {
   error.dataset.fields = (res.body?.fields ?? []).join(' ');
   error.textContent = {
     'invalid-config': (res.body?.fields ?? []).map((f) => FIELD_PROBLEM[f] ?? f).join(' '),
-    'invalid-game-data': 'The game file (docs/game-questions.json) has problems, so nothing was saved:',
     'invalid-event': 'The questions of that event have problems, so nothing was saved:',
     ...EVENT_PROBLEM,
     'game-active': 'The game is in progress, so it cannot be changed.',

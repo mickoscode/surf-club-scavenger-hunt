@@ -12,10 +12,9 @@ const zones = createZones({ container: $('zones'), onSubmitted: refresh });
 let started = false;
 let shownTeam = null;
 let lastTeamNames = true;
-let shownInstructions; // the instructions text last put on the page (undefined: the built-in ones are still there)
+let shownInstructions; // the instructions text last put on the page (undefined: none yet, and the panel stays hidden)
 
-// The instructions of the event the game was loaded from (text; empty means none), or null when it has none of its own and the
-// page keeps its built-in instructions.
+// The instructions of the event the game was loaded from (text; empty means none).
 function renderInstructions(text) {
   if (typeof text !== 'string' || text === shownInstructions) return;
   shownInstructions = text;

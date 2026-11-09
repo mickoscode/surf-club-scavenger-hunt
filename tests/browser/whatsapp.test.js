@@ -1,7 +1,7 @@
 // The WhatsApp group link in real Chromium: set on the config page, linked from the play page and the scoring page, given only to
 // a team with a session. Fixture game with a photo challenge that mentions WhatsApp (zone 1) and one that does not (zone 2).
 const assert = require('node:assert/strict');
-const { browserSuite, signIn, GAME, START } = require('./helpers.js');
+const { chooseEvent, browserSuite, signIn, GAME, START } = require('./helpers.js');
 
 const { withPage } = browserSuite();
 
@@ -136,6 +136,7 @@ withPage('the config page sets, checks and clears the link, and refuses a wrong 
   await page.fill($('config-day'), '2026-11-14');
   await page.fill($('config-start'), '10:00');
   await page.fill($('config-end'), '12:00');
+  await chooseEvent(page, site);
 
   await page.fill(field, 'https://example.org/not-whatsapp'); // a wrong one is refused by name, and nothing is saved
   await page.click($('config-save'));

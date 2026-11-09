@@ -71,10 +71,11 @@ test('saving the config loads the game file, validates both, and is refused whil
   assert.equal((await admin.put('/api/admin/config', CONFIG)).status, 200);
 });
 
-test('a broken game file is reported to the admin and does not replace the current game', async () => {
-  const env = setup({ game: { 'zone 1': { 'zone-name': 'X' } } });
-  const res = await env.admin().put('/api/admin/config', CONFIG);
-  assert.deepEqual([res.status, res.body.error], [422, 'invalid-game-data']);
+test('a stored event that was damaged (edited in the bucket by hand) is reported to the admin and does not replace the current game', async () => {
+  const env = setup({ now: START - 60_000 });
+  await env.blobs.put('hand/game-questions.json', Buffer.from(JSON.stringify({ 'zone 1': { 'zone-name': 'X' } })));
+  const res = await env.admin().put('/api/admin/config', { ...CONFIG, event: 'hand' });
+  assert.deepEqual([res.status, res.body.error], [422, 'invalid-event']);
   assert.ok(res.body.problems.length > 0);
   assert.equal(await env.store.getGame(), null);
 });

@@ -15,9 +15,9 @@ const MESSAGES = {
 };
 const GENERIC_ERROR = 'Something went wrong. Please try again.';
 
-// A zone loaded from an event has its map addresses; one loaded from the repository's game file has the built-in maps.
-const mapThumb = (zone) => zone.map?.thumb ?? `/maps/${zone.mapId}-thumb.webp`;
-const mapFull = (zone) => zone.map?.full ?? `/maps/${zone.mapId}.webp`;
+// Each zone of an event has its map addresses (copied to the site under /event-maps/ when the event is made live).
+const mapThumb = (zone) => zone.map.thumb;
+const mapFull = (zone) => zone.map.full;
 const answerKey = (zone, question) => `${zone.key}#${question.id}`; // a question's (or photo challenge's) key in /api/me's done lists
 
 export function createZones({ container, onSubmitted }) {

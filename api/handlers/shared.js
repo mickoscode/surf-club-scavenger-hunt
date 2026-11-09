@@ -1,10 +1,9 @@
 'use strict';
-// Builds the app for a Lambda function: DynamoDB store, real clock, game file next to the code.
+// Builds the app for a Lambda function: DynamoDB store, real clock, and (admin only) the events buckets.
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb');
 const { createApp } = require('../app/app');
 const { createDynamoStore } = require('../store/dynamo');
-const { loadGameData } = require('../app/game-file');
 const { fromLambdaEvent, toLambdaResponse } = require('../app/lambda');
 const { createEvents } = require('../lib/events');
 const { createS3Blobs } = require('../store/blobs');
@@ -32,7 +31,6 @@ function createHandler(role) {
         client: DynamoDBDocumentClient.from(new DynamoDBClient({}), { marshallOptions: { removeUndefinedValues: true } }),
         tableName: process.env.TABLE_NAME,
       }),
-      loadGameData,
       adminPasscodeHash: process.env.ADMIN_PASSCODE_HASH ?? '', // only the admin function is given it (terraform/lambda.tf)
     });
     return toLambdaResponse(await app.handle(fromLambdaEvent(event)));

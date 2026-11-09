@@ -81,7 +81,7 @@ withPage('the map opens full size and closing it returns to the zone questions',
 
   await page.click(`${panel('zone 1')} ${$('map-open')}`);
   await page.waitForSelector(`${$('map-overlay')}:not([hidden])`);
-  await page.waitForFunction(() => { const i = document.querySelector('[data-testid="map-full"]'); return i.complete && i.naturalWidth > 400; }); // the full-size image
+  await page.waitForFunction(() => { const i = document.querySelector('[data-testid="map-full"]'); return i.complete && i.naturalWidth > 0; }); // the full-size image loaded
   await page.click($('map-close'));
   assert.equal(await page.locator($('map-overlay')).isHidden(), true);
   assert.equal(await page.locator(panel('zone 1')).isVisible(), true);

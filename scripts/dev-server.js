@@ -13,7 +13,6 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createApp } = require('../api/app/app');
 const { createMemoryStore } = require('../api/store/memory');
-const { loadGameData } = require('../api/app/game-file');
 const { createMemoryBlobs } = require('../api/store/blobs');
 const { createEvents } = require('../api/lib/events');
 
@@ -24,8 +23,8 @@ const MIME = {
 };
 
 // events: the events store (api/lib/events.js), or none; the admin app is the only one given it, as in AWS.
-function createApiHandler({ store = createMemoryStore(), now = Date.now, loadGame = loadGameData, cookieSecure = false, intercept, events = null, adminPasscodeHash = process.env.ADMIN_PASSCODE_HASH ?? '' } = {}) {
-  const shared = { store, now, loadGameData: loadGame, cookieSecure };
+function createApiHandler({ store = createMemoryStore(), now = Date.now, cookieSecure = false, intercept, events = null, adminPasscodeHash = process.env.ADMIN_PASSCODE_HASH ?? '' } = {}) {
+  const shared = { store, now, cookieSecure };
   const publicApp = createApp({ ...shared, role: 'public' });
   const adminApp = createApp({ ...shared, role: 'admin', adminPasscodeHash, events });
 

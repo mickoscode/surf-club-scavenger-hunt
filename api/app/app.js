@@ -18,7 +18,7 @@ const { placeOf } = require('../lib/results');
 const { buildResults } = require('../lib/results');
 const { normaliseWhatsappUrl } = require('../lib/whatsapp');
 const { verifyPasscode, createSession, verifySession, SESSION_MS } = require('../lib/passcode');
-const { validateGameData, mapId } = require('../lib/gamedata');
+const { mapId } = require('../lib/gamedata');
 
 const PLAYER_ID = /^[0-9a-f]{32}$/;
 const QUESTION_ID = /^Q\d+$/;
@@ -48,7 +48,6 @@ function createApp({
   store,
   now = Date.now,
   newId = () => crypto.randomBytes(16).toString('hex'),
-  loadGameData,
   role,
   cookieSecure = true,
   events = null, // the events store (api/lib/events.js), or null where events are not available (the public function)
@@ -264,34 +263,28 @@ function createApp({
       });
     },
 
-    // Saving also loads (takes a copy of) the zones and questions from game-questions.json.
+    // Saving loads the game: a copy of the chosen stored event (its questions, instructions and maps) is made, so the live game
+    // never reads the events bucket again. The saved values are also written back to the event.
     'PUT /api/admin/config': async (request) => {
       const body = readJson(request);
       const { status } = await snapshot();
       if (!can(status, 'configure')) throw new HttpError(409, 'game-active');
       const config = buildConfig(body);
-      let game;
-      let event = null; // what the game was loaded from, when it came from an event
-      if (body.event !== undefined && body.event !== null && body.event !== '') {
-        if (!events) throw new HttpError(409, 'events-unavailable');
-        if (!isEventName(body.event) || !(await events.exists(body.event))) throw new HttpError(400, 'unknown-event');
-        // Another event means another set of questions, so it cannot replace a game that has players (download and delete the data first).
-        const current = (await store.getGame())?.event?.name ?? null;
-        if (current !== body.event && (await store.listTeams()).length > 0) throw new HttpError(409, 'players-exist');
-        const loaded = await events.activate(body.event);
-        if (!loaded.ok) throw new HttpError(422, loaded.error === 'maps-missing' ? 'event-incomplete' : 'invalid-event', { problems: loaded.problems, missing: loaded.missing });
-        game = loaded.game;
-        event = { name: body.event, instructions: loaded.instructions, maps: loaded.maps };
-        await events.putConfig(body.event, config); // the stored event always matches what was last used
-      } else {
-        game = loadGameData();
-        const problems = validateGameData(game, { checkMaps: false });
-        if (problems.length) throw new HttpError(422, 'invalid-game-data', { problems });
-      }
+      if (!events) throw new HttpError(409, 'events-unavailable');
+      if (typeof body.event !== 'string' || body.event === '') throw new HttpError(400, 'event-required');
+      if (!isEventName(body.event) || !(await events.exists(body.event))) throw new HttpError(400, 'unknown-event');
+      // Another event means another set of questions, so it cannot replace a game that has players (download and delete the data first).
+      const current = (await store.getGame())?.event?.name ?? null;
+      if (current !== body.event && (await store.listTeams()).length > 0) throw new HttpError(409, 'players-exist');
+      const loaded = await events.activate(body.event);
+      if (!loaded.ok) throw new HttpError(422, loaded.error === 'maps-missing' ? 'event-incomplete' : 'invalid-event', { problems: loaded.problems, missing: loaded.missing });
+      const game = loaded.game;
+      const event = { name: body.event, instructions: loaded.instructions, maps: loaded.maps };
+      await events.putConfig(body.event, config); // the stored event always matches what was last used
       const t = now();
       await store.saveGame({ config, game, event, configuredAt: t });
       await store.unpublishResults(); // a new configuration starts a new game: the results are provisional again
-      return respond(200, { config, event: event?.name ?? null, zoneCount: Object.keys(game).length, status: gameStatus(config, t) });
+      return respond(200, { config, event: event.name, zoneCount: Object.keys(game).length, status: gameStatus(config, t) });
     },
 
     // ---- events: games prepared in the private events bucket (docs/requirements.md, "Events")

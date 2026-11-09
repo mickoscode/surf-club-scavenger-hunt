@@ -9,7 +9,7 @@ import { planUpload, suggestName } from './event-files.js';
 import { shrinkImage } from './image-shrink.js';
 
 const EVENT_NAME = /^[a-z0-9][a-z0-9-]{0,39}$/;
-const THUMB = { width: 320, quality: 0.75 }; // the same sizes as the site's own maps (scripts/build-maps.js)
+const THUMB = { width: 320, quality: 0.75 }; // thumbnail for the zone tile, picture for the full-size view
 const FULL = { width: 1400, quality: 0.8 };
 
 let chosen = []; // the files the admin picked

@@ -3,7 +3,7 @@
 // server's state, not wording.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { browserSuite, until, START, END } = require('./helpers.js');
+const { browserSuite, until, chooseEvent, START, END } = require('./helpers.js');
 
 const { withPage } = browserSuite();
 
@@ -14,7 +14,8 @@ const open = async (page, site) => {
   await page.waitForSelector(`${$('game-status')}:not([data-status="loading"])`);
 };
 const status = (page) => page.locator($('game-status')).getAttribute('data-status');
-const fill = async (page, { day = '2026-11-14', start = '10:00', end = '12:00' } = {}) => {
+const fill = async (page, site, { day = '2026-11-14', start = '10:00', end = '12:00' } = {}) => {
+  await chooseEvent(page, site); // a game is loaded from an event, so one must be chosen
   await page.fill($('config-day'), day);
   await page.fill($('config-start'), start);
   await page.fill($('config-end'), end);
@@ -27,14 +28,14 @@ withPage('a new game is set up from the page: defaults, then saved with its zone
   assert.equal(await page.inputValue($('config-timezone')), 'Australia/Perth'); // AWST by default
   assert.ok((await page.locator(`${$('config-timezone')} option`).count()) >= 7);
 
-  await fill(page);
+  await fill(page, site);
   await page.fill($('config-name'), 'Autumn hunt');
   await page.click($('config-save'));
   await page.waitForSelector(`${$('config-success')}:not([hidden])`);
   await page.waitForSelector(`${$('game-status')}[data-status="pre"]`);
   const saved = await site.api.config();
   assert.deepEqual(saved.config, { name: 'Autumn hunt', timeZone: 'Australia/Perth', day: '2026-11-14', start: '10:00', end: '12:00', teamNames: true });
-  assert.equal(saved.zoneCount, 2); // the zones were loaded from the game file
+  assert.equal(saved.zoneCount, 2); // the zones were loaded from the event
 
   await page.reload();
   await page.waitForSelector(`${$('game-status')}[data-status="pre"]`);
@@ -45,7 +46,7 @@ withPage('a new game is set up from the page: defaults, then saved with its zone
 
 withPage('a configuration the server refuses is explained and nothing is saved', { site: { now: START - 3_600_000 } }, async ({ site, page }) => {
   await open(page, site);
-  await fill(page, { start: '10:00', end: '09:00' });
+  await fill(page, site, { start: '10:00', end: '09:00' });
   await page.click($('config-save'));
   await page.waitForSelector(`${$('config-error')}:not([hidden])`);
   const error = page.locator($('config-error'));
@@ -56,16 +57,6 @@ withPage('a configuration the server refuses is explained and nothing is saved',
   await page.fill($('config-day'), ''); // and a missing day
   await page.click($('config-save'));
   await until(async () => (await error.getAttribute('data-fields')).includes('day'));
-});
-
-withPage('a problem in the game file is shown to the admin and nothing is saved', { site: { now: START - 3_600_000, game: { 'zone 1': { 'zone-name': 'Broken' } } } }, async ({ site, page }) => {
-  await open(page, site);
-  await fill(page);
-  await page.click($('config-save'));
-  await page.waitForSelector(`${$('config-problems')}:not([hidden])`);
-  assert.equal(await page.locator($('config-error')).getAttribute('data-error'), 'invalid-game-data');
-  assert.ok((await page.locator(`${$('config-problems')} li`).count()) > 0);
-  assert.equal((await site.api.config()).config, null);
 });
 
 withPage('while the game is in progress the configuration and the data cannot be changed', {}, async ({ site, page }) => {
@@ -158,7 +149,7 @@ withPage('on a phone the config page fits, even with long team names', { page: {
 withPage('the "teams have names" setting is on by default, can be turned off and saved, and is locked while the game is in progress', { site: { now: START - 3_600_000 } }, async ({ site, page }) => {
   await open(page, site);
   assert.equal(await page.locator($('config-team-names')).isChecked(), true);
-  await fill(page);
+  await fill(page, site);
   await page.uncheck($('config-team-names'));
   await page.click($('config-save'));
   await page.waitForSelector($('config-success'));
@@ -174,7 +165,7 @@ withPage('the "teams have names" setting is on by default, can be turned off and
 
 withPage('the join code is set on the page, shown back to the admin tidy, refused when invalid, and removable', { site: { now: START - 3_600_000 } }, async ({ site, page }) => {
   await open(page, site);
-  await fill(page);
+  await fill(page, site);
   await page.fill($('config-join-code'), 'ab');
   await page.click($('config-save'));
   await page.waitForSelector($('config-error'));

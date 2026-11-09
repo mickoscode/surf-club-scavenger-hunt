@@ -5,7 +5,7 @@ name: Web PR checks
 #   Validate site: builds the site and runs the unit tests (when the frontend, backend code or tests change)
 #   Browser tests: the pages in real Chromium under the real Content-Security-Policy (when the frontend, backend or tests change)
 #   API tests:     the store contract against DynamoDB Local (when the backend code or its tests change)
-#   Game data:     checks the structure of docs/game-questions.json (when the game data or its validator changes)
+#   Game data:     checks the structure of the example game docs/game-questions.json (when it or its validator changes)
 # Jobs are skipped (not absent) when their files are unchanged, so both can be required checks.
 on:
   pull_request:
@@ -42,7 +42,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
-          if grep -qE '^(web/|api/|tests/|scripts/|docs/(player-instructions\.md$|game-zones/)|package(-lock)?\.json$|terraform/(cloudfront\.tf|rewrite\.js)$|\.github/workflows/(web-pr|deploy)\.yml$)' <<< "$changed"; then
+          if grep -qE '^(web/|api/|tests/|scripts/|package(-lock)?\.json$|terraform/(cloudfront\.tf|rewrite\.js)$|\.github/workflows/(web-pr|deploy)\.yml$)' <<< "$changed"; then
             echo "web=true" >> "$GITHUB_OUTPUT"
           else
             echo "web=false" >> "$GITHUB_OUTPUT"
@@ -103,7 +103,7 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Validate docs/game-questions.json
+      - name: Validate the example game docs/game-questions.json
         run: node scripts/validate-game-data.js
 
   # The same contract tests run against the in-memory store (in "Validate site") and against the real
