@@ -25,6 +25,7 @@ let shownTeams = null;
 
 const form = $('config-form');
 const fields = { name: $('config-name'), timeZone: $('config-timezone'), day: $('config-day'), start: $('config-start'), end: $('config-end'), whatsappUrl: $('config-whatsapp') };
+const teamNamesBox = $('config-team-names'); // a checkbox: whether teams have names
 
 function fillForm({ config, defaults, timeZones }) {
   fields.timeZone.replaceChildren(...timeZones.map((z) => el('option', { value: z.id }, z.label)));
@@ -34,6 +35,7 @@ function fillForm({ config, defaults, timeZones }) {
   fields.start.value = config?.start ?? '';
   fields.end.value = config?.end ?? '';
   fields.whatsappUrl.value = config?.whatsappUrl ?? '';
+  teamNamesBox.checked = config?.teamNames !== false; // on unless the saved configuration says false
   updateTestLink();
 }
 
@@ -55,7 +57,7 @@ function renderStatus(info, teamCount) {
   $('status-detail').textContent = `${zones} · ${teamCount} team${teamCount === 1 ? '' : 's'}`;
   const active = status === 'active';
   $('active-notice').hidden = !active;
-  for (const input of [...Object.values(fields), $('config-save')]) input.disabled = active;
+  for (const input of [...Object.values(fields), teamNamesBox, $('config-save')]) input.disabled = active;
   results = { published: info.results.published, unscored: info.unscoredPhotos };
   renderPublish();
   renderDeleteSection();
@@ -135,7 +137,7 @@ form.addEventListener('submit', async (event) => {
   const problems = $('config-problems');
   const success = $('config-success');
   error.hidden = problems.hidden = success.hidden = true;
-  const res = await putJson('/api/admin/config', Object.fromEntries(Object.entries(fields).map(([name, input]) => [name, input.value])));
+  const res = await putJson('/api/admin/config', { ...Object.fromEntries(Object.entries(fields).map(([name, input]) => [name, input.value])), teamNames: teamNamesBox.checked });
   if (res.ok) {
     success.textContent = `Saved. ${res.body.zoneCount} zone${res.body.zoneCount === 1 ? '' : 's'} loaded from the game file.`;
     success.hidden = false;

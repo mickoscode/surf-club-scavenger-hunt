@@ -17,31 +17,27 @@ const GENERIC_ERROR = 'Something went wrong. Please try again.';
 export function createMeArea({ container, onJoined }) {
   let shown = null;
 
-  function buildJoin() {
+  // teamNames: whether teams have names (a game setting). Without names there is nothing to type, so the Join button joins.
+  function buildJoin(teamNames) {
     const button = el('button', { type: 'button', class: 'btn btn-primary btn-lg w-100', 'data-testid': 'join-button' }, 'Join');
 
     const form = el('form', { class: 'mt-3', 'data-testid': 'join-form', novalidate: '' });
     form.hidden = true;
-    form.append(
-      el('label', { for: 'team-name', class: 'form-label fw-semibold' }, 'Enter Team Name:'),
-      el('input', { id: 'team-name', name: 'teamName', type: 'text', maxlength: '30', autocomplete: 'off', class: 'form-control form-control-lg', 'data-testid': 'team-name-input' }),
-    );
+    if (teamNames) {
+      form.append(
+        el('label', { for: 'team-name', class: 'form-label fw-semibold' }, 'Enter Team Name:'),
+        el('input', { id: 'team-name', name: 'teamName', type: 'text', maxlength: '30', autocomplete: 'off', class: 'form-control form-control-lg', 'data-testid': 'team-name-input' }),
+      );
+    }
     const submit = el('button', { type: 'submit', class: 'btn btn-success btn-lg w-100 mt-3', 'data-testid': 'join-submit' }, 'Join game');
     const error = el('p', { class: 'text-danger mt-2 mb-0', role: 'alert', 'data-testid': 'join-error' });
     error.hidden = true;
     form.append(submit, error);
 
-    button.addEventListener('click', () => {
-      form.hidden = false;
-      button.hidden = true;
-      form.querySelector('input').focus();
-    });
-
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
+    const send = async () => {
       submit.disabled = true;
       error.hidden = true;
-      const res = await postJson('/api/join', { name: form.querySelector('input').value });
+      const res = await postJson('/api/join', { name: form.querySelector('input')?.value ?? '' });
       if (res.ok) {
         await onJoined();
         return;
@@ -51,7 +47,22 @@ export function createMeArea({ container, onJoined }) {
       error.textContent = ERROR_TEXT[code] ?? GENERIC_ERROR;
       error.hidden = false;
       submit.disabled = false;
+      button.disabled = false;
+    };
+
+    button.addEventListener('click', () => {
+      if (!teamNames) { // nothing to fill in: join straight away (an error then shows in the form below the button)
+        button.disabled = true;
+        form.hidden = false;
+        submit.hidden = true;
+        send();
+        return;
+      }
+      form.hidden = false;
+      button.hidden = true;
+      form.querySelector('input').focus();
     });
+    form.addEventListener('submit', (event) => { event.preventDefault(); send(); });
 
     return [button, form];
   }
@@ -64,12 +75,12 @@ export function createMeArea({ container, onJoined }) {
   }
 
   return {
-    // team: { number, name } or null; canJoin: whether joining is open right now.
-    render({ team, canJoin, gameOver = false }) {
-      const next = team ? (gameOver ? 'results' : 'play') : canJoin ? 'join' : 'none';
+    // team: { number, name } or null; canJoin: whether joining is open right now; teamNames: whether teams have names.
+    render({ team, canJoin, gameOver = false, teamNames = true }) {
+      const next = team ? (gameOver ? 'results' : 'play') : canJoin ? `join-${teamNames}` : 'none';
       if (next === shown) return;
       shown = next;
-      container.replaceChildren(...(team ? buildLink(gameOver) : canJoin ? buildJoin() : []));
+      container.replaceChildren(...(team ? buildLink(gameOver) : canJoin ? buildJoin(teamNames) : []));
     },
   };
 }

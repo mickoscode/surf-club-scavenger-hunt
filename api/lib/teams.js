@@ -36,12 +36,18 @@ function validateTeamName(raw, blocked = DEFAULT_BLOCKED) {
   return { ok: true, name, key: normaliseText(name) };
 }
 
-// Teams: [{ number, name, score }]. Highest score first, then team name A-Z (ignoring case), then number.
-function sortScoreboard(teams) {
+// Teams may have names or not: a game setting ("team names", on unless the configuration says false). With names off a team
+// is "Team <number>" everywhere, whatever name it may have stored.
+const teamNamesOn = (config) => config?.teamNames !== false;
+const teamLabel = (team, config) => (teamNamesOn(config) && team.name ? team.name : `Team ${team.number}`);
+
+// Teams: [{ number, name, score }]. Highest score first, then team name A-Z (ignoring case), then number; with team names
+// off, then by number.
+function sortScoreboard(teams, { namesOn = true } = {}) {
   return [...teams].sort((a, b) =>
     roundScore(b.score) - roundScore(a.score)
-    || a.name.localeCompare(b.name, 'en-AU', { sensitivity: 'base' })
+    || (namesOn ? a.name.localeCompare(b.name, 'en-AU', { sensitivity: 'base' }) : 0)
     || a.number - b.number);
 }
 
-module.exports = { MAX_NAME_LENGTH, DEFAULT_BLOCKED, validateTeamName, sortScoreboard };
+module.exports = { MAX_NAME_LENGTH, DEFAULT_BLOCKED, validateTeamName, sortScoreboard, teamNamesOn, teamLabel };

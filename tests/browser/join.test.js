@@ -148,3 +148,19 @@ withPage('the session cookie cannot be read by page scripts', {}, async ({ site,
   assert.equal(cookie.sameSite, 'Strict');
 });
 
+
+// ------------------------------------------------------------------------------------------------ team names switched off
+
+withPage('with team names off the Join button joins at once, with no name to type, and the team is Team <number>', {}, async ({ site, page }) => {
+  await site.api.configure({ teamNames: false });
+  await page.goto(`${site.url}/view/?refresh=500`);
+  await page.waitForSelector($('join-button'));
+  await page.click($('join-button'));
+  await page.waitForSelector($('play-link'));
+  assert.equal(await page.locator($('team-name-input')).count(), 0); // no name was ever asked for
+  await page.waitForSelector(`${$('scoreboard-row')}[data-mine="true"]`);
+  assert.equal(await page.locator($('scoreboard-row')).first().locator('td').nth(1).textContent(), 'Team 1');
+  await page.click($('play-link'));
+  await page.waitForSelector(`${$('team-number')}[data-team-number="1"]`);
+  assert.equal(await page.locator($('team-name')).isHidden(), true); // only "Team 1" is shown, not a second name
+});

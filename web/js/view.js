@@ -9,6 +9,7 @@ import { createMeArea } from './me-area.js';
 const clock = createClock();
 let started = false; // set once the first scoreboard has arrived: before that, nothing is known about the game
 let me = null; // { number, name, score } once this device has joined
+let teamNames = true; // whether teams have names (a game setting): without, there is no name to type when joining
 let meAsked = false; // /api/me cannot be shared between people, so a visitor with no team asks only once, not every refresh
 
 const meArea = createMeArea({ container: $('me-area'), onJoined: () => refresh(true) });
@@ -17,7 +18,7 @@ const canJoin = () => ['pre', 'active'].includes(clock.phase());
 function renderMeArea() {
   // From the moment the game is over the Play button is a Results button, even before the results are published (the results
   // page then says they are not ready yet).
-  if (started) meArea.render({ team: me, canJoin: canJoin(), gameOver: clock.phase() === 'post' || clock.published() });
+  if (started) meArea.render({ team: me, canJoin: canJoin(), gameOver: clock.phase() === 'post' || clock.published(), teamNames });
 }
 
 function renderScoreboard(teams, questionTotal) {
@@ -64,6 +65,7 @@ async function refresh(forceMe = false) {
   $('load-error').hidden = board.ok;
   if (!board.ok) return; // keep showing what we have; the next refresh tries again
   clock.update(board.body.game);
+  teamNames = board.body.game.teamNames !== false;
   if (mine?.ok) { me = mine.body.team; meAsked = true; }
   started = true;
   renderScoreboard(board.body.teams, board.body.questionTotal);

@@ -33,7 +33,7 @@ withPage('a new game is set up from the page: defaults, then saved with its zone
   await page.waitForSelector(`${$('config-success')}:not([hidden])`);
   await page.waitForSelector(`${$('game-status')}[data-status="pre"]`);
   const saved = await site.api.config();
-  assert.deepEqual(saved.config, { name: 'Autumn hunt', timeZone: 'Australia/Perth', day: '2026-11-14', start: '10:00', end: '12:00' });
+  assert.deepEqual(saved.config, { name: 'Autumn hunt', timeZone: 'Australia/Perth', day: '2026-11-14', start: '10:00', end: '12:00', teamNames: true });
   assert.equal(saved.zoneCount, 2); // the zones were loaded from the game file
 
   await page.reload();
@@ -153,4 +153,21 @@ withPage('on a phone the config page fits, even with long team names', { page: {
   await open(page, site);
   await until(async () => (await page.locator($('team-item')).count()) === 2);
   assert.ok((await overflow(page)) <= 0, 'the page is wider than the screen');
+});
+
+withPage('the "teams have names" setting is on by default, can be turned off and saved, and is locked while the game is in progress', { site: { now: START - 3_600_000 } }, async ({ site, page }) => {
+  await open(page, site);
+  assert.equal(await page.locator($('config-team-names')).isChecked(), true);
+  await fill(page);
+  await page.uncheck($('config-team-names'));
+  await page.click($('config-save'));
+  await page.waitForSelector($('config-success'));
+  assert.equal((await site.api.config()).config.teamNames, false);
+  await page.reload();
+  await page.waitForSelector(`${$('game-status')}:not([data-status="loading"])`);
+  assert.equal(await page.locator($('config-team-names')).isChecked(), false); // remembered
+
+  site.clock.now = START + 60_000; // the game is now in progress
+  await until(async () => (await status(page)) === 'active');
+  assert.equal(await page.locator($('config-team-names')).isDisabled(), true);
 });
