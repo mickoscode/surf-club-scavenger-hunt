@@ -6,7 +6,7 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 
 | Path | What it is |
 |---|---|
-| `web/` | The site itself: `index.html` (sends people to `/view/`), `view/` (scoreboard, join, Play link), `play/` (team, countdown, instructions, zone tiles and question/photo forms), `results/` (a team's place and answer breakdown once the final results are published), `game-config/` and `game-score/` (the admin pages, behind the admin passcode), `404.html`, `css/site.css`, `js/` (ES modules, no framework), `favicon.svg` |
+| `web/` | The site itself: `index.html` (sends people to `/view/`), `view/` (scoreboard, join, Play link), `play/` (team, countdown, instructions, zone tiles and question/photo forms), `results/` (a team's place and answer breakdown once the final results are published), `game-config/`, `game-events/` and `game-score/` (the admin pages, behind the admin passcode), `404.html`, `css/site.css`, `js/` (ES modules, no framework), `favicon.svg` |
 | `api/app/`, `api/handlers/` | The API: routes and rules (`app/`) and the two Lambda entry points (`handlers/`). Reference: `docs/api.md`. |
 | `api/store/` | The data layer: one `store` interface with an in-memory version (local development and tests) and a DynamoDB version (the data model is described at the top of `dynamo.js`) |
 | `api/lib/` | Backend game logic as pure functions (timing, answer checking, scoring, team names, scoreboard order). No dependencies, no AWS. |
@@ -44,7 +44,7 @@ Mobile first: write styles for phones in `web/css/site.css` and add `@media (min
 - Runs in HCP Terraform (org `mickoscode`, workspace `surf-club-scavenger-hunt`), in the same AWS account as `surf-club-signin`, region `ap-southeast-2`.
 - The bucket is private. Only this CloudFront distribution can read it (Origin Access Control).
 - `/api/*` on the same address goes to API Gateway and two Lambda functions (`public` and `admin`, least-privilege roles) backed by one DynamoDB table. Terraform creates the functions with a placeholder (they answer 503 `not-deployed`); the deploy workflow pushes the real code, so a change to `api/` or the questions never needs a Terraform apply.
-- The admin pages (`/game-config/*`, `/game-score/*`) are served with `X-Robots-Tag: noindex`, and are protected by an admin passcode: only its one-way hash is stored (HCP variable `admin_passcode_hash`), see `docs/setup.md`.
+- The admin pages (`/game-config/*`, `/game-events/*`, `/game-score/*`) are served with `X-Robots-Tag: noindex`, and are protected by an admin passcode: only its one-way hash is stored (HCP variable `admin_passcode_hash`), see `docs/setup.md`.
 - The API accepts 50 requests a second sustained with a burst of 200 (see "Request limits and cost" in `docs/requirements.md`).
 - GitHub Actions deploys with OIDC and a role limited to this repo's `main` branch and this bucket; no AWS keys are stored in GitHub.
 - No custom domain yet: the site is served from the `*.cloudfront.net` address in the `site_url` output. Set `domain_name` in `terraform/tfvars/prod.tfvars` to switch (see `docs/setup.md`).

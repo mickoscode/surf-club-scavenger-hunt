@@ -112,3 +112,27 @@ test('pages only ever link to a WhatsApp group invite, whatever the server says'
     assert.equal(safeWhatsAppUrl(bad), null, String(bad));
   }
 });
+
+// ------------------------------------------------------------------------------------------------ choosing an event's files
+
+test('the files chosen for an event are matched to the game file: data files by name, maps by the name in each zone', async () => {
+  const { planUpload, mapIdOf, suggestName } = await load('event-files.js');
+  const file = (name, rel) => ({ name, webkitRelativePath: rel ?? `Summer Hunt 2026/${name}` });
+  const files = [file('game-questions.json'), file('player-instructions.md'), file('Reef.PNG', 'Summer Hunt 2026/pictures/Reef.PNG'), file('notes.txt')];
+  const game = { 'zone 1': { 'zone-map': 'docs/game-zones/reef.png' }, 'zone 2': { 'zone-map': 'dunes.jpg' } };
+  const plan = planUpload(files, game);
+  assert.deepEqual([plan.questions.name, plan.instructions.name, plan.config], ['game-questions.json', 'player-instructions.md', null]);
+  assert.deepEqual(plan.zones.map((z) => [z.key, z.mapId, z.file?.name ?? null]), [['zone 1', 'zone-1', 'Reef.PNG'], ['zone 2', 'zone-2', null]]); // any folder, any capitals
+  assert.deepEqual(plan.missingMaps, ['dunes.jpg']);
+  assert.equal(planUpload([], game).questions, null);
+  assert.deepEqual(planUpload(files, null).zones, []); // before the game file has been read
+  assert.equal(mapIdOf(' zone  12 '), 'zone-12');
+  assert.equal(suggestName(files), 'summer-hunt-2026');
+  assert.equal(suggestName([{ name: 'a.json' }]), '');
+});
+
+test('the browser makes the same map ids as the server', async () => {
+  const { mapIdOf } = await load('event-files.js');
+  const { mapId } = require('../../api/lib/gamedata.js');
+  for (const key of ['zone 1', 'zone  2', 'zone 10']) assert.equal(mapIdOf(key), mapId(key));
+});

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Events - admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/site.css">
+  <script type="module" src="/js/events-page.js"></script>
+</head>
+<body class="d-flex flex-column min-vh-100">
+  <main class="container py-4">
+    <div class="mx-auto narrow">
+      <!-- Shown instead of the page until the admin passcode has been entered (see js/admin-auth.js). -->
+      <section class="card card-body" data-testid="login-panel" hidden>
+        <h1 class="h4">Admin login</h1>
+        <form data-testid="login-form" novalidate>
+          <!-- for password managers: the login is one account -->
+          <input type="text" name="username" value="admin" autocomplete="username" class="visually-hidden" tabindex="-1" aria-hidden="true" readonly>
+          <label class="form-label" for="passcode">Admin passcode</label>
+          <input class="form-control form-control-lg mb-3" id="passcode" name="password" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" data-testid="passcode-input">
+          <button class="btn btn-primary w-100" type="submit" data-testid="login-button">Log in</button>
+          <p class="text-danger mt-2 mb-0" role="alert" data-testid="login-error" hidden></p>
+        </form>
+      </section>
+
+      <div data-testid="admin-content" hidden>
+        <p class="text-end mb-2"><button class="btn btn-outline-secondary btn-sm" type="button" data-testid="logout-button" hidden>Log out</button></p>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h1 class="h3 mb-0">Events</h1>
+          <a href="/game-config/" data-testid="config-page-link">Game configuration</a>
+        </div>
+
+        <p class="alert alert-warning" data-testid="load-error" hidden>Could not load. Trying again...</p>
+        <p class="alert alert-warning" data-testid="unavailable-notice" hidden>Events are not available on this site yet.</p>
+
+        <section class="card card-body mb-4">
+          <h2 class="h5">Stored events</h2>
+          <p class="small text-muted">A stored event is a whole game: its settings, questions, maps and instructions. Choose which one is live on the game configuration page.</p>
+          <p class="text-muted mb-0" data-testid="no-events" hidden>No events yet. Upload one below.</p>
+          <ul class="list-group" data-testid="events-list"></ul>
+        </section>
+
+        <section class="card card-body mb-4">
+          <h2 class="h5" data-testid="upload-heading">Upload an event</h2>
+          <p class="small text-muted">Choose the event's folder: <code>game-questions.json</code>, the map images it names, and optionally <code>player-instructions.md</code> and <code>game-config.json</code>. Uploading to a name that already exists replaces its questions, maps and instructions. Maps are made smaller on this computer before they are uploaded.</p>
+          <form data-testid="upload-form" novalidate>
+            <div class="mb-3">
+              <label class="form-label" for="event-name">Event name</label>
+              <input class="form-control" id="event-name" name="eventName" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" data-testid="event-name">
+              <div class="form-text">Lower case letters, digits and hyphens, up to 40 characters (for example <code>sorrento-2026</code>).</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="event-folder">Event folder</label>
+              <input class="form-control" id="event-folder" type="file" webkitdirectory multiple data-testid="event-folder">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="event-files">Or choose the files one by one</label>
+              <input class="form-control" id="event-files" type="file" multiple data-testid="event-files">
+            </div>
+            <button class="btn btn-primary" type="submit" data-testid="upload-button">Upload</button>
+          </form>
+          <ol class="list-unstyled small mt-3 mb-0" data-testid="upload-progress"></ol>
+          <p class="mt-2 mb-0" role="status" data-testid="upload-result" hidden></p>
+          <ul class="small text-danger mt-2 mb-0" data-testid="upload-problems" hidden></ul>
+        </section>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
