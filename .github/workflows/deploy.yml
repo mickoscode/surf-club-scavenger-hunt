@@ -101,10 +101,11 @@ jobs:
             aws lambda wait function-updated --function-name "$fn"
           done
 
-      # dist/ is the whole bucket, so one sync (with --delete) is enough. "no-cache" makes browsers re-check a
-      # file (a cheap ETag request) instead of reusing a possibly stale copy.
+      # dist/ is the whole bucket except event-maps/, which the admin function writes when an event is activated: --exclude
+      # keeps --delete from removing them. "no-cache" makes browsers re-check a file (a cheap ETag request) instead of
+      # reusing a possibly stale copy.
       - name: Sync dist to S3
-        run: aws s3 sync ./dist/ "s3://$BUCKET" --delete --cache-control "no-cache"
+        run: aws s3 sync ./dist/ "s3://$BUCKET" --delete --exclude "event-maps/*" --cache-control "no-cache"
 
       - name: Invalidate CloudFront cache
         run: aws cloudfront create-invalidation --distribution-id "$CF_DISTRIBUTION_ID" --paths "/*"
