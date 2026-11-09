@@ -20,20 +20,24 @@ function renderMeArea() {
   if (started) meArea.render({ team: me, canJoin: canJoin(), gameOver: clock.phase() === 'post' || clock.published() });
 }
 
-function renderScoreboard(teams) {
+function renderScoreboard(teams, questionTotal) {
   const rows = teams.map((team) => {
     const mine = me?.number === team.number;
     const row = document.createElement('tr');
     row.dataset.testid = 'scoreboard-row';
     row.dataset.teamNumber = String(team.number);
     row.dataset.score = String(team.score);
+    row.dataset.rank = String(team.rank);
+    row.dataset.done = String(team.done);
+    row.dataset.total = String(questionTotal);
     if (mine) {
       row.dataset.mine = 'true';
       row.className = 'table-primary';
     }
     const cells = [
-      [String(team.number), 'text-muted'],
+      [String(team.rank), 'text-muted'], // the team's place: teams on the same score share one
       [team.name, 'team-name'],
+      [`${team.done}/${questionTotal}`, 'text-end text-nowrap'],
       [formatScore(team.score), 'text-end fw-semibold'],
     ];
     for (const [text, classes] of cells) {
@@ -62,7 +66,7 @@ async function refresh(forceMe = false) {
   clock.update(board.body.game);
   if (mine?.ok) { me = mine.body.team; meAsked = true; }
   started = true;
-  renderScoreboard(board.body.teams);
+  renderScoreboard(board.body.teams, board.body.questionTotal);
   clock.render();
   renderMeArea();
 }

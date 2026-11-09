@@ -359,7 +359,7 @@ As built: `.github/workflows/load-test.yml` runs `scripts/load-test.js` (code in
 
 Where the finished site is more specific than the text above (details settled while building; the code and `docs/api.md` are the reference):
 
-- **Scoreboard**: three columns (team number, team name, score); the player's own row is highlighted; scores show as whole numbers or with one decimal place only when needed.
+- **Scoreboard**: four columns headed rank, name, q done and score. rank is the place (teams on the same score share one: 1, 1, 3), q done is `attempted/total` (questions and photo challenges, right or wrong), and there is no team number column; the player's own row is highlighted; scores show as whole numbers or with one decimal place only when needed. The server works out rank and q done; `/api/scoreboard` sends `rank` and `done` for each team and `questionTotal` for the game.
 - **Countdown**: "N min" until the last 5 minutes, then "m:ss"; before the start it counts to the start. It uses the server's clock. The status text and the countdown share one line on `/view/` and `/play/`.
 - **Team line on `/play/`**: "Team 7" (large, bold, blue) and the name (smaller, dark grey) on one baseline; a name too long for the line wraps below the number. The view page shows no separate team name: the team's own row in the scoreboard is highlighted.
 - **Statuses**: the game is `unconfigured`, `pre`, `active` or `post`; the end is inclusive and exact (no grace period).
