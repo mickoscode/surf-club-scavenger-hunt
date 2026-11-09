@@ -1,6 +1,6 @@
 'use strict';
 // The API. Two roles share this code but are deployed as separate Lambda functions with separate permissions:
-//   public: join, play, scoreboard (everyone)         admin: config, scoring, teams, export/delete (no login: see docs)
+//   public: join, play, scoreboard (everyone)         admin: config, scoring, teams, export/delete (behind the admin passcode)
 // Status codes: application errors never use 403 or 404, because CloudFront (terraform/cloudfront.tf) replaces ANY 403/404
 // from ANY origin with the site's 404 page. Wrong state (not joinable, game active, ...) is 409, unknown references 400.
 // Everything is decided here on the server: timing, answer checking, scoring. The browser never receives an

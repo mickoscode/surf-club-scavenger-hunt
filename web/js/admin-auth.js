@@ -1,7 +1,7 @@
 // Login for the two admin pages. Once an admin passcode is set, a page shows ONLY a login box until the passcode has been
 // entered (the pages are ordinary public files with nothing secret in them; the admin API is what is protected). It also
 // copes with the session ending while a page is open (12 hours): the login box comes back and the page carries on after it.
-// Until a passcode is set the pages open straight away, as before. Rules: docs/requirements.md, "Admin passcode".
+// Until a passcode is set the pages open straight away. Rules: docs/requirements.md, "Admin passcode".
 import { getJson, postJson, setUnauthorizedHandler } from './api.js';
 import { $ } from './dom.js';
 

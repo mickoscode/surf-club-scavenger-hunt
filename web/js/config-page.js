@@ -1,5 +1,5 @@
 // The /game-config/ admin page: the game's configuration, the teams (remove one), and the player data (download, delete).
-// There is no login: the address is simply not shared (docs/requirements.md). Names and messages are set as text only.
+// Behind the admin passcode (web/js/admin-auth.js). Names and messages are set as text only.
 import { getJson, putJson, postJson, deleteJson } from './api.js';
 import { $, el, refreshInterval } from './dom.js';
 import { formatScore } from './format.js';

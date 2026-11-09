@@ -2,7 +2,7 @@
 
 For the person running the game (the admin). What the site does is in `requirements.md`; this is what **you** do, in order. A dress rehearsal checklist is in `rehearsal-checklist.md`.
 
-**The addresses** (all on the site's own address, the `site_url` shown by the Terraform run or `https://d39sfolumy790h.cloudfront.net` today):
+**The addresses** (all on the site's own address: the `site_url` shown by the Terraform run, for example `https://d123abc.cloudfront.net`):
 
 | Address | Who | What |
 |---|---|---|
@@ -20,7 +20,7 @@ The two admin pages are protected by your **admin passcode**. Open either addres
 
 The game is two files in this repo, changed by pull request like everything else.
 
-1. **Questions and photo challenges: `docs/game-questions.json`.** The current content is **sample content**: replace it. Each zone has a name, a map image, a photo challenge with its points, and any number of questions (there is no fixed 5). Per question:
+1. **Questions and photo challenges: `docs/game-questions.json`.** The file in the repo may be **sample content**: replace it with your real game. Each zone has a name, a map image, a photo challenge with its points, and any number of questions (there is no fixed 5). Per question:
    - `type`: `"string"` (text), `"whole-number"` or `"decimal"`
    - `answer`: for text, one answer or a list of accepted answers (`["bike", "bicycle"]`), in **lower case**; for numbers, the value as text (`"42"`, `"2.5"`). Typos are accepted in text answers (none under 4 letters, one for 4 to 7, two for 8 or more); numbers must be exact.
    - `score`: points for a correct answer
@@ -112,5 +112,5 @@ Cost: the report shows an estimate. A run of a few minutes costs a few cents; a 
 - **One phone per team.** Joining gives a team its number and a private session in that browser (kept 30 days). There is no login and no second device.
 - **Answers are final.** Each question and photo can be submitted once. After submitting, the page shows only "Done": never what was typed, never whether it was right (only the score tells) until you publish the final results, when each team sees its own answers and the official ones.
 - **Capacity.** Built for fewer than 50 teams plus spectators. The API allows 50 requests a second in total (burst 200); the scoreboard and game state are shared between viewers for a few seconds, and a visitor who has not joined does not poll for their team. If a big crowd ever shows "Could not refresh", raise `api_throttle_rate_limit` / `api_throttle_burst_limit` in `terraform/tfvars/prod.tfvars` (a Terraform apply).
-- **Cost.** On-demand pricing everywhere: a game like this costs cents. There is no budget alarm in this repo.
+- **Cost.** On-demand pricing everywhere: a game like this costs cents. There is no budget alarm in this repo: the account-wide monthly budget alert in the `surf-club-signin` repo covers this site too.
 - **Not built (parked):** restoring an old game from its download, recovering a lost session.

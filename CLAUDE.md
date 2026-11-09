@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Website for the Sorrento SLS Youth Scavenger Hunt 2026/27: a static site (`web/`) in a private S3 bucket behind CloudFront, Terraform in `terraform/`, GitHub Actions for CI/CD. Same AWS account as `surf-club-signin` (account `722937635825`, `ap-southeast-2`). Currently a coming-soon page only. See `README.md` for layout and `docs/setup.md` for one-time setup.
+Website for the Sorrento SLS Youth Scavenger Hunt 2026/27: a static site (`web/`) in a private S3 bucket behind CloudFront, Terraform in `terraform/`, GitHub Actions for CI/CD. Same AWS account as `surf-club-signin` (account `722937635825`, `ap-southeast-2`). The site runs the scavenger hunt game (rules: `docs/requirements.md`). See `README.md` for layout and `docs/setup.md` for one-time setup.
 
 ## Running a game
 

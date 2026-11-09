@@ -1,36 +1,35 @@
 # surf-club-scavenger-hunt
 
-Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, [Bootstrap](https://getbootstrap.com/) 5 and a little JavaScript) hosted in a private S3 bucket behind CloudFront, with the infrastructure managed by Terraform and deployed by GitHub Actions. Currently a "coming soon" page.
+Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, [Bootstrap](https://getbootstrap.com/) 5 and a little JavaScript) hosted in a private S3 bucket behind CloudFront, with the infrastructure managed by Terraform and deployed by GitHub Actions. The site runs the game: players join as teams, answer questions and send photos by WhatsApp; the admin sets up, scores and publishes the final results (see `docs/runbook.md`).
 
 ## Layout
 
 | Path | What it is |
 |---|---|
-| `web/` | The site itself: `index.html` (sends people to `/view/`), `view/` (scoreboard, join, Play link), `play/` (team, countdown, instructions, zone tiles and question/photo forms), `results/` (a team's place and answer breakdown once the final results are published), `game-config/` and `game-score/` (the admin pages, no login: the addresses are simply not shared), `404.html`, `css/site.css`, `js/` (ES modules, no framework), `favicon.svg` |
+| `web/` | The site itself: `index.html` (sends people to `/view/`), `view/` (scoreboard, join, Play link), `play/` (team, countdown, instructions, zone tiles and question/photo forms), `results/` (a team's place and answer breakdown once the final results are published), `game-config/` and `game-score/` (the admin pages, behind the admin passcode), `404.html`, `css/site.css`, `js/` (ES modules, no framework), `favicon.svg` |
 | `api/app/`, `api/handlers/` | The API: routes and rules (`app/`) and the two Lambda entry points (`handlers/`). Reference: `docs/api.md`. |
 | `api/store/` | The data layer: one `store` interface with an in-memory version (local development and tests) and a DynamoDB version (the data model is described at the top of `dynamo.js`) |
-| `api/lib/` | Backend game logic as pure functions (timing, answer checking, scoring, team names, scoreboard order). No dependencies, no AWS: the Lambda handlers that use it come in a later PR. |
+| `api/lib/` | Backend game logic as pure functions (timing, answer checking, scoring, team names, scoreboard order). No dependencies, no AWS. |
 | `scripts/build.sh` | Assembles `dist/` = `web/` + the Bootstrap CSS from `node_modules` (the exact contents of the bucket) |
-| `tests/unit/` | Unit tests (`npm test`): the built pages against the Content-Security-Policy, the page code that must agree with the server (`web/js`), the rewrite function, and the game-data validator |
-| `tests/api/` | The store contract tests (the same tests run against the in-memory store always, and against DynamoDB Local in CI) and the API behaviour tests (`app-*.test.js`: in-memory store, controllable clock) |
 | `scripts/build-maps.js` | Build step: turns each zone's map PNG (about 1 MB each) into a small thumbnail and a full-size WebP in `dist/maps` (about 100 KB each), named with the zone's `mapId` |
 | `scripts/render-instructions.js` | Build step: renders `docs/player-instructions.md` into the play page (raw HTML in it is shown as text) |
 | `scripts/admin-passcode.js` | Run on your own computer: makes the admin passcode and its hash (only the hash is stored, as the HCP variable `admin_passcode_hash`) |
-| `scripts/package-backend.sh`, `scripts/smoke-test.js`, `scripts/dev-server.js` | Package the backend for Lambda; smoke-test a deployed site (`npm run smoke -- <url>`); serve the site and API locally with the in-memory store (`npm run dev`) |
-| `tests/browser/` | The pages in real Chromium (Playwright) served with the real Content-Security-Policy (`npm run test:browser`), including `full-game.test.js`: a whole game from set-up to clean-up with an admin, two teams and a spectator |
-| `scripts/load-test.js`, `scripts/loadtest/` | The load test (run from the **Load test** workflow, see `docs/runbook.md`): simulated teams and spectators, a report with charts and a verdict |
 | `scripts/validate-game-data.js` | Checks the structure of `docs/game-questions.json` (`npm run validate:data`) |
-| `docs/` | Game design (`requirements.md`, `api.md`), game content (`game-questions.json`, `game-zones/`, `player-instructions.md`), **how to run a game (`runbook.md`, `rehearsal-checklist.md`)** and one-time setup (`setup.md`) |
+| `scripts/package-backend.sh`, `scripts/smoke-test.js`, `scripts/dev-server.js` | Package the backend for Lambda; smoke-test a deployed site (`npm run smoke -- <url>`); serve the site and API locally with the in-memory store (`npm run dev`) |
+| `scripts/load-test.js`, `scripts/loadtest/` | The load test (run from the **Load test** workflow, see `docs/runbook.md`): simulated teams and spectators, a report with charts and a verdict |
+| `tests/unit/` | Unit tests (`npm test`): the built pages against the Content-Security-Policy, the page code that must agree with the server (`web/js`), the rewrite function, and the game-data validator |
+| `tests/api/` | The store contract tests (the same tests run against the in-memory store always, and against DynamoDB Local in CI) and the API behaviour tests (`app-*.test.js`: in-memory store, controllable clock) |
+| `tests/browser/` | The pages in real Chromium (Playwright) served with the real Content-Security-Policy (`npm run test:browser`), including `full-game.test.js`: a whole game from set-up to clean-up with an admin, two teams and a spectator |
+| `docs/` | Game design (`requirements.md`, `api.md`), game content (`game-questions.json`, `game-zones/`, `player-instructions.md`), **how to run a game (`runbook.md`, `rehearsal-checklist.md`)** and one-time setup (`setup.md`: GitHub, HCP Terraform, AWS, the admin passcode) |
 | `terraform/` | S3 bucket, CloudFront (HTTPS, security headers, page rewrites, `/api/*` to the API, optional custom domain), DynamoDB table, two Lambda functions behind an API Gateway HTTP API, and the GitHub deploy role |
 | `.github/workflows/` | CI/CD, see below |
-| `docs/setup.md` | One-time GitHub / HCP Terraform / AWS setup, and what to do after the first apply |
 
 ## Develop
 
 ```sh
 npm ci            # installs Bootstrap and the test tools
 npm run build     # builds dist/
-npm test          # unit tests, including a build check of dist/
+npm test          # unit tests, the API tests (in-memory store) and the load test's own tests (about a minute)
 npm run validate:data   # checks docs/game-questions.json
 DYNAMODB_ENDPOINT=http://localhost:8000 npm run test:api   # also test the DynamoDB store (start DynamoDB Local first: docker run --rm -p 8000:8000 amazon/dynamodb-local)
 npx playwright install chromium   # once, for the browser tests
@@ -45,7 +44,8 @@ Mobile first: write styles for phones in `web/css/site.css` and add `@media (min
 - Runs in HCP Terraform (org `mickoscode`, workspace `surf-club-scavenger-hunt`), in the same AWS account as `surf-club-signin`, region `ap-southeast-2`.
 - The bucket is private. Only this CloudFront distribution can read it (Origin Access Control).
 - `/api/*` on the same address goes to API Gateway and two Lambda functions (`public` and `admin`, least-privilege roles) backed by one DynamoDB table. Terraform creates the functions with a placeholder (they answer 503 `not-deployed`); the deploy workflow pushes the real code, so a change to `api/` or the questions never needs a Terraform apply.
-- The admin pages (`/game-config/*`, `/game-score/*`) are served with `X-Robots-Tag: noindex`.
+- The admin pages (`/game-config/*`, `/game-score/*`) are served with `X-Robots-Tag: noindex`, and are protected by an admin passcode: only its one-way hash is stored (HCP variable `admin_passcode_hash`), see `docs/setup.md`.
+- The API accepts 50 requests a second sustained with a burst of 200 (see "Request limits and cost" in `docs/requirements.md`).
 - GitHub Actions deploys with OIDC and a role limited to this repo's `main` branch and this bucket; no AWS keys are stored in GitHub.
 - No custom domain yet: the site is served from the `*.cloudfront.net` address in the `site_url` output. Set `domain_name` in `terraform/tfvars/prod.tfvars` to switch (see `docs/setup.md`).
 
