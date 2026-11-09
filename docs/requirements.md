@@ -55,23 +55,23 @@ is-game-active (calculation): true/false - this is calculated as needed (as defi
 
 ### Zones and questions are loaded when the config is saved
 
-When the admin saves the game configuration, the game loads (takes a copy of) the zones, questions, photo challenges and maps of the chosen event as they are stored at that moment. The game must work with whatever the event contains: for example a game may have 4 zones, 8 questions in a zone, or a zone with no photo challenge. Nothing in the website assumes 5 zones or 5 questions.
+When the admin saves the game configuration, the game loads (takes a copy of) the zones, questions, photo challenges, instructions and maps of the chosen event as they are stored at that moment. The game must work with whatever the event contains: for example a game may have 4 zones, 8 questions in a zone, or a zone with no photo challenge. Nothing in the website assumes 5 zones or 5 questions.
 Uploading a change to an event does not affect the live game until the config is saved again (which is only possible when the game is not active). Questions that are not in the current copy do not exist for players.
 
 ### Events
 
 An event is one complete game: its configuration, questions, photo challenges and maps. Many events can be stored; exactly one is active (the live game) at a time. This lets the admin prepare several games and switch the site between them (a demo for one audience, another for a different audience, then the real event).
-- **Storage**: a private S3 bucket (`<aws-account-id>-scavenger-events`) with one folder per event: `<event>/game-config.json`, `<event>/game-questions.json` and `<event>/game-zones/*`. The bucket is not public, is encrypted, and keeps old versions of files so a bad edit can be undone. Only the admin function can read or write it. Players and the public function never touch it.
+- **Storage**: a private S3 bucket (`<aws-account-id>-scavenger-events`) with one folder per event: `<event>/game-config.json`, `<event>/game-questions.json`, `<event>/player-instructions.md` and `<event>/game-zones/*`. The bucket is not public, is encrypted, and keeps old versions of files so a bad edit can be undone. Only the admin function can read or write it. Players and the public function never touch it.
 - **Event name**: 1 to 40 characters: lower case letters, digits and hyphens. It is the folder name and is only for the admin.
-- **Activating**: choosing an event on the config page and saving copies its configuration, questions and maps into the live game. The saved configuration values are also written back to the event's `game-config.json`, so the stored event always matches what was last used. Maps are copied to the site under a path unique to that activation. Nothing in the live game reads the bucket after that.
+- **Activating**: choosing an event on the config page and saving copies its configuration, questions, instructions and maps into the live game. The saved configuration values are also written back to the event's `game-config.json`, so the stored event always matches what was last used. Maps are copied to the site under a path unique to that activation. Nothing in the live game reads the bucket after that.
 - **Switching events is refused while any player data exists** (teams, submissions). The admin downloads and deletes the data first using the existing controls. Saving the same event again keeps the teams, as today. As always, the configuration cannot be changed while the game is active.
 - **The events page** (`/game-events/`) lists the stored events (event name, game name, day, number of zones and questions, and which is active) and lets the admin:
-  - **Upload** a new event: type its name and choose its folder (the questions file and the map images, and optionally `game-config.json`). The page checks the questions file with the same rules as the server (the "Game data" rules), shrinks the maps in the browser (a small thumbnail and a full-size image for each) and uploads them. Nothing is stored unless everything is valid.
-  - **Replace** the questions or maps of an existing event by uploading again (there is no in-browser question editor).
+  - **Upload** a new event: type its name and choose its folder (the questions file, the map images, and optionally `player-instructions.md` and `game-config.json`). The page checks the questions file with the same rules as the server (the "Game data" rules), shrinks the maps in the browser (a small thumbnail and a full-size image for each) and uploads them. Nothing is stored unless everything is valid.
+  - **Replace** the questions, maps or instructions of an existing event by uploading again (there is no in-browser editor for them).
   - **Download** an event (its files).
   - **Delete** an event, after a confirmation. The active event cannot be deleted.
 - **Limits**: the questions file at most 256 KB, each map image at most 500 KB after shrinking, at most 20 zones per event and 100 events. Images must really be images (checked by content, not by name), and the server builds every storage path itself from the validated event name, never from a path supplied by the browser.
-- **docs/**: nothing in the live game reads `docs/`. `docs/game-questions.json` and `docs/game-zones/` stay as an example of the format; the "Game data" check validates the example so the documented format stays correct. To start, the admin can upload the example as an event.
+- **docs/**: nothing in the live game reads `docs/`. `docs/game-questions.json`, `docs/game-zones/` and `docs/player-instructions.md` stay as an example of the format; the "Game data" check validates the example so the documented format stays correct. To start, the admin can upload the example as an event.
 - With no event active the game is `unconfigured`, exactly as a new site is today.
 
 ### Typical Timeline
@@ -321,7 +321,11 @@ The game instructions must be displayed at the top of the play page.
 The heading "Instructions (tap to show/hide)" must be visible at all times.
 The instructions content should be hidden by default, but then revealed/hidden as the player taps the heading.
 
-Instructions content should be hard coded. It can be modified via a PR to the code repo, and does not require any website admin functionality. The instruction content to be hardcoded is in ./player-instructions.md
+Instructions content belongs to the event (see "Events"): it is the event's `player-instructions.md`, plain Markdown (headings, bullet lists, bold and italic text, paragraphs). It is stored with the event, copied into the live game when the event is activated, and shown on the play page. There is no code change or deploy to change it.
+- Everything in the file is shown as text: raw HTML or links written in it are never run or followed, and the page renders the Markdown itself with a small safe renderer (no HTML is ever built from the text). The word "WhatsApp" is linked as described in "WhatsApp group link".
+- The file is at most 20 KB, valid text, and optional: an event without it has no Instructions panel on the play page.
+- The instructions are public information, like the rest of the game's name and zones: they are part of the game information the page asks for, visible before the game starts (as today), not only to teams.
+- `docs/player-instructions.md` stays as an example of the format; nothing in the live game reads it.
 
 ## Viewer Requirements
 
