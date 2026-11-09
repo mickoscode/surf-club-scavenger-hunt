@@ -11,16 +11,14 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 | `api/store/` | The data layer: one `store` interface with an in-memory version (local development and tests) and a DynamoDB version (the data model is described at the top of `dynamo.js`) |
 | `api/lib/` | Backend game logic as pure functions (timing, answer checking, scoring, team names, scoreboard order). No dependencies, no AWS. |
 | `scripts/build.sh` | Assembles `dist/` = `web/` + the Bootstrap CSS from `node_modules` (the exact contents of the bucket) |
-| `scripts/build-maps.js` | Build step: turns each zone's map PNG (about 1 MB each) into a small thumbnail and a full-size WebP in `dist/maps` (about 100 KB each), named with the zone's `mapId` |
-| `scripts/render-instructions.js` | Build step: renders `docs/player-instructions.md` into the play page (raw HTML in it is shown as text) |
 | `scripts/admin-passcode.js` | Run on your own computer: makes the admin passcode and its hash (only the hash is stored, as the HCP variable `admin_passcode_hash`) |
-| `scripts/validate-game-data.js` | Checks the structure of `docs/game-questions.json` (`npm run validate:data`) |
+| `scripts/validate-game-data.js` | Checks the structure of an event's game file, by default the example `docs/game-questions.json` (`npm run validate:data`) |
 | `scripts/package-backend.sh`, `scripts/smoke-test.js`, `scripts/dev-server.js` | Package the backend for Lambda; smoke-test a deployed site (`npm run smoke -- <url>`); serve the site and API locally with the in-memory store (`npm run dev`) |
 | `scripts/load-test.js`, `scripts/loadtest/` | The load test (run from the **Load test** workflow, see `docs/runbook.md`): simulated teams and spectators, a report with charts and a verdict |
 | `tests/unit/` | Unit tests (`npm test`): the built pages against the Content-Security-Policy, the page code that must agree with the server (`web/js`), the rewrite function, and the game-data validator |
 | `tests/api/` | The store contract tests (the same tests run against the in-memory store always, and against DynamoDB Local in CI) and the API behaviour tests (`app-*.test.js`: in-memory store, controllable clock) |
 | `tests/browser/` | The pages in real Chromium (Playwright) served with the real Content-Security-Policy (`npm run test:browser`), including `full-game.test.js`: a whole game from set-up to clean-up with an admin, two teams and a spectator |
-| `docs/` | Game design (`requirements.md`, `api.md`), game content (`game-questions.json`, `game-zones/`, `player-instructions.md`), **how to run a game (`runbook.md`, `rehearsal-checklist.md`)** and one-time setup (`setup.md`: GitHub, HCP Terraform, AWS, the admin passcode) |
+| `docs/` | Game design (`requirements.md`, `api.md`), an example game to copy from (`game-questions.json`, `game-zones/`, `player-instructions.md`; nothing runs from it), **how to run a game (`runbook.md`, `rehearsal-checklist.md`)** and one-time setup (`setup.md`: GitHub, HCP Terraform, AWS, the admin passcode) |
 | `terraform/` | S3 bucket, CloudFront (HTTPS, security headers, page rewrites, `/api/*` to the API, optional custom domain), DynamoDB table, two Lambda functions behind an API Gateway HTTP API, and the GitHub deploy role |
 | `.github/workflows/` | CI/CD, see below |
 
@@ -30,7 +28,7 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 npm ci            # installs Bootstrap and the test tools
 npm run build     # builds dist/
 npm test          # unit tests, the API tests (in-memory store) and the load test's own tests (about a minute)
-npm run validate:data   # checks docs/game-questions.json
+npm run validate:data   # checks the example game file (docs/game-questions.json)
 DYNAMODB_ENDPOINT=http://localhost:8000 npm run test:api   # also test the DynamoDB store (start DynamoDB Local first: docker run --rm -p 8000:8000 amazon/dynamodb-local)
 npx playwright install chromium   # once, for the browser tests
 npm run test:browser              # the pages in real Chromium (skipped if Chromium is missing)
@@ -56,7 +54,7 @@ Mobile first: write styles for phones in `web/css/site.css` and add `@media (min
 | `web-pr.yml` | PR touching the frontend or tests | `npm test` (build + CSP checks + unit tests). Required check: `Validate site` |
 | `web-pr.yml` | PR touching the frontend, backend or tests | The pages in real Chromium. Required check: `Browser tests` |
 | `web-pr.yml` | PR touching `api/` or `tests/api/` | The store contract tests against DynamoDB Local. Required check: `API tests` |
-| `web-pr.yml` | PR touching `docs/game-questions.json` or the maps | Structure check of the game file. Required check: `Game data` |
+| `web-pr.yml` | PR touching the example `docs/game-questions.json`, its maps or the validator | Structure check of the example game file. Required check: `Game data` |
 | `terraform-pr.yml` | PR touching `terraform/` | fmt, validate, tflint, Trivy security scan, speculative plan posted as a PR comment |
 | `terraform-apply.yml` | push to `main` touching `terraform/` | checks, plan, then an apply that waits for manual approval in the `terraform-production` environment |
 | `load-test.yml` | manual only | sends a simulated crowd to the live site and publishes a report (summary and downloadable HTML); refuses to run if real teams exist |
@@ -64,6 +62,6 @@ Mobile first: write styles for phones in `web/css/site.css` and add `@media (min
 | `terraform-drift.yml` | weekly | plan only; fails if live AWS differs from `main` |
 | `delete-merged-branch.yml` | PR merged | deletes the PR's branch |
 
-The backend is deployed by `deploy.yml`, not by Terraform: merging a change to `api/` or to `docs/game-questions.json` updates the live game (no apply approval needed). If the smoke test fails, nothing is rolled back: fix forward, or revert the PR and re-run **Deploy site**.
+The backend is deployed by `deploy.yml`, not by Terraform: merging a change to `api/` updates the live backend (no apply approval needed). If the smoke test fails, nothing is rolled back: fix forward, or revert the PR and re-run **Deploy site**.
 
 Dependabot proposes weekly updates for GitHub Actions, Terraform providers and Bootstrap. Merging to `main` deploys to production.

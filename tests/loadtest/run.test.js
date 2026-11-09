@@ -7,6 +7,8 @@ const os = require('node:os');
 const path = require('node:path');
 const { createSiteServer } = require('../../scripts/dev-server.js');
 const { createMemoryStore } = require('../../api/store/memory.js');
+const { createMemoryBlobs } = require('../../api/store/blobs.js');
+const { createEvents } = require('../../api/lib/events.js');
 const { hashPasscode } = require('../../api/lib/passcode.js');
 const { GAME, CONFIG, START } = require('../api/helpers.js');
 const { main, parseArgs, validateParams } = require('../../scripts/loadtest/cli.js');
@@ -34,7 +36,9 @@ async function startSite({ now = START + 60_000, intercept, passcode = false } =
   const clock = { now };
   const adminPasscodeHash = passcode ? await hashPasscode(PASSCODE, { cost: { N: 1024, r: 8, p: 1 } }) : '';
   const store = createMemoryStore();
-  const server = createSiteServer({ store, now: () => clock.now, loadGame: () => structuredClone(GAME), distDir, intercept, adminPasscodeHash });
+  // The game is stored as an event, as a real one is; saving the configuration (below) loads the game from it.
+  const events = createEvents({ blobs: createMemoryBlobs(), siteBlobs: createMemoryBlobs(), newId: () => Math.random().toString(16).slice(2, 10) });
+  const server = createSiteServer({ store, now: () => clock.now, distDir, intercept, adminPasscodeHash, events });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}`;
   const api = async (method, p, body, cookie) => {
@@ -43,7 +47,19 @@ async function startSite({ now = START + 60_000, intercept, passcode = false } =
   };
   let adminCookie;
   if (passcode) adminCookie = (await api('POST', '/api/admin/login', { passcode: PASSCODE })).cookie;
-  const admin = (method, p, body) => api(method, p, body, adminCookie);
+  let prepared = false;
+  const admin = async (method, p, body) => {
+    if (method === 'PUT' && p === '/api/admin/config' && body.event === undefined) { // the fixture event, made once
+      if (!prepared) {
+        const picture = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WEBPVP8 '), Buffer.alloc(20)]).toString('base64');
+        assert.equal((await events.putQuestions('fixture', structuredClone(GAME), Buffer.byteLength(JSON.stringify(GAME)))).ok, true);
+        for (const zone of Object.keys(GAME)) assert.equal((await events.putMap('fixture', zone.replace(/\s+/g, '-'), { thumb: picture, full: picture })).ok, true);
+        prepared = true;
+      }
+      body = { ...body, event: 'fixture' };
+    }
+    return api(method, p, body, adminCookie);
+  };
   return { url, clock, api, admin, configure: () => admin('PUT', '/api/admin/config', CONFIG), teams: async () => (await admin('GET', '/api/admin/teams')).json.teams, close: () => new Promise((r) => server.close(r)) };
 }
 

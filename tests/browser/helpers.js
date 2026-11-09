@@ -32,7 +32,8 @@ async function launchBrowser() {
 }
 
 // What a "player" or the admin does to the API directly (to set the scene), with their own cookie.
-function apiClient(url, passcode = null) {
+// prepareEvent(): stores the fixture game as an event (once) and returns its name; configure() makes it the live game.
+function apiClient(url, passcode = null, prepareEvent = async () => undefined) {
   const call = async (method, p, body, cookie) => {
     const res = await fetch(url + p, {
       method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: body === undefined ? undefined : JSON.stringify(body),
@@ -57,7 +58,7 @@ function apiClient(url, passcode = null) {
 
   return {
     configure: async (over = {}) => {
-      const res = await admin('PUT', '/api/admin/config', { ...CONFIG, ...over });
+      const res = await admin('PUT', '/api/admin/config', { ...CONFIG, event: await prepareEvent(), ...over });
       if (res.status !== 200) throw new Error(`configure failed: ${JSON.stringify(res.body)}`);
     },
     removeTeam: (number) => admin('DELETE', `/api/admin/teams/${number}`, undefined),
@@ -92,7 +93,10 @@ const PHOTO_Q = { 'zone 1': 'Q4', 'zone 2': 'Q2' };
 const TEST_PASSCODE = 'k7m2q-xd93p-wn4tr-h8jcf';
 
 // passcode: true gives the site an admin passcode (TEST_PASSCODE, with a cheap hash so tests stay fast); the default is no passcode.
-async function startSite({ now = START + 60_000, intercept, game = GAME, passcode = false } = {}) {
+// The instructions every fixture event has unless a test says otherwise (it mentions WhatsApp, which the pages turn into a link).
+const FIXTURE_INSTRUCTIONS = '# Rules\n- Send photos to WhatsApp with your team number\n  - no number, no points\n\n# Hints\n- play the zones in any order';
+
+async function startSite({ now = START + 60_000, intercept, game = GAME, passcode = false, instructions = FIXTURE_INSTRUCTIONS } = {}) {
   ensureBuilt();
   const clock = { now };
   const adminPasscodeHash = passcode ? await hashPasscode(TEST_PASSCODE, { cost: { N: 1024, r: 8, p: 1 } }) : '';
@@ -100,10 +104,30 @@ async function startSite({ now = START + 60_000, intercept, game = GAME, passcod
   const [blobs, siteBlobs] = [createMemoryBlobs(), createMemoryBlobs()];
   let activations = 0;
   const events = createEvents({ blobs, siteBlobs, newId: () => `act${++activations}` });
-  const server = createSiteServer({ store: createMemoryStore(), now: () => clock.now, loadGame: () => structuredClone(game), intercept, adminPasscodeHash, events, siteBlobs });
+  const server = createSiteServer({ store: createMemoryStore(), now: () => clock.now, intercept, adminPasscodeHash, events, siteBlobs });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}`;
-  return { url, clock, events, blobs, siteBlobs, passcode: passcode ? TEST_PASSCODE : null, api: apiClient(url, passcode ? TEST_PASSCODE : null), close: () => new Promise((resolve) => server.close(resolve)) };
+  // The fixture game is stored as an event, as a real game is (with real pictures, so the pages can show its maps).
+  let prepared = null;
+  const prepareEvent = async () => {
+    prepared ??= (async () => {
+      const picture = png(40, 30, [20, 100, 180]).toString('base64');
+      const ok = (r) => { if (!r.ok) throw new Error(`could not prepare the fixture event: ${JSON.stringify(r)}`); };
+      ok(await events.putQuestions('fixture', structuredClone(game), Buffer.byteLength(JSON.stringify(game))));
+      for (const zone of Object.keys(game)) ok(await events.putMap('fixture', zone.replace(/\s+/g, '-'), { thumb: picture, full: picture }));
+      if (instructions) ok(await events.putInstructions('fixture', instructions));
+      return 'fixture';
+    })();
+    return prepared;
+  };
+  return { url, clock, events, blobs, siteBlobs, prepareEvent, passcode: passcode ? TEST_PASSCODE : null, api: apiClient(url, passcode ? TEST_PASSCODE : null, prepareEvent), close: () => new Promise((resolve) => server.close(resolve)) };
+}
+
+// On the config page: makes the fixture event (the game the site was started with) the one to save.
+async function chooseEvent(page, site) {
+  await site.prepareEvent();
+  await page.waitForSelector('[data-testid="config-event"] option[value="fixture"]', { state: 'attached' });
+  await page.selectOption('[data-testid="config-event"]', 'fixture');
 }
 
 // Makes this browser belong to a team that joined through the API, as if it had joined on the page.
@@ -186,4 +210,4 @@ function png(width, height, [r, g, b]) {
   return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', header), chunk('IDAT', zlib.deflateSync(Buffer.concat(Array.from({ length: height }, () => row)))), chunk('IEND', Buffer.alloc(0))]);
 }
 
-module.exports = { png, launchBrowser, startSite, openPage, browserSuite, signIn, adminPage, until, TEST_PASSCODE, GAME, CONFIG, START, END };
+module.exports = { png, chooseEvent, launchBrowser, startSite, openPage, browserSuite, signIn, adminPage, until, TEST_PASSCODE, GAME, CONFIG, START, END };

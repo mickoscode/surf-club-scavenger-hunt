@@ -20,11 +20,10 @@ test('the site has a home page, a scoreboard page, a play page, a results page a
   for (const page of ['index.html', 'view/index.html', 'play/index.html', 'results/index.html', '404.html']) assert.ok(pages().includes(page), page);
 });
 
-test('the play page carries the instructions, built in from the Markdown file (and the placeholder is gone)', () => {
+test('the play page has an Instructions panel that is hidden until an event gives it text', () => {
   const html = fs.readFileSync(path.join(dist, 'play', 'index.html'), 'utf8');
-  assert.ok(!html.includes('<!--instructions-->'), 'the placeholder is still there');
-  const inside = /<div class="instructions[^"]*">([\s\S]*?)<\/div>/.exec(html);
-  assert.ok(inside && inside[1].includes('<li>'), 'the instructions are empty');
+  assert.match(html, /<details[^>]*data-testid="instructions"[^>]*\shidden/);
+  assert.match(html, /<div class="instructions[^"]*"><\/div>/); // empty: the page draws the event's instructions into it
 });
 
 test('every local stylesheet, script and icon a page references is in dist', () => {
@@ -51,18 +50,6 @@ test('every module a script imports is in dist (a missing one is a blank page in
     }
   }
   assert.equal(fs.existsSync(path.join(dist, 'js', 'package.json')), false); // only for Node; not deployed
-});
-
-test('every zone of the game file has a thumbnail and a full-size map that are small enough for mobile data', () => {
-  const { mapId } = require('../../api/lib/gamedata.js');
-  const game = JSON.parse(fs.readFileSync(path.join(root, 'docs', 'game-questions.json'), 'utf8'));
-  for (const zoneKey of Object.keys(game)) {
-    const thumb = path.join(dist, 'maps', `${mapId(zoneKey)}-thumb.webp`);
-    const full = path.join(dist, 'maps', `${mapId(zoneKey)}.webp`);
-    assert.ok(fs.existsSync(thumb) && fs.existsSync(full), `${zoneKey}: map images missing`);
-    assert.ok(fs.statSync(thumb).size < 60 * 1024, `${zoneKey}: the thumbnail is over 60 KB`);
-    assert.ok(fs.statSync(full).size < 300 * 1024, `${zoneKey}: the full-size map is over 300 KB`);
-  }
 });
 
 test('all three admin pages exist and tell search engines not to index them', () => {

@@ -14,7 +14,7 @@ test('the routes of each function are exactly the ones API Gateway is given in t
     return [...body.matchAll(/"((?:GET|POST|PUT|DELETE) [^"]+)"/g)].map((m) => m[1].replace(/\{(\w+)\}/g, ':$1')).sort();
   };
   for (const role of ['public', 'admin']) {
-    const app = createApp({ store: createMemoryStore(), role, loadGameData: () => ({}) });
+    const app = createApp({ store: createMemoryStore(), role });
     assert.deepEqual([...app.routes].sort(), block(role), `the ${role} function's routes differ from terraform/api-gateway.tf`);
   }
 });

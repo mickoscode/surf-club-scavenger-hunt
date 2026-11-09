@@ -69,7 +69,7 @@ A stored event is a folder in a private bucket (`<event>/game-config.json`, `gam
 
 ## The game file
 
-When the admin saves the config, the backend takes a copy of the game file and stores it with the config; the running game uses that copy. Where the file comes from: `GAME_QUESTIONS_FILE`, else `game-questions.json` next to the code (`scripts/package-backend.sh` puts a copy of `docs/game-questions.json` into the Lambda package, so every deploy carries the current questions), else `docs/game-questions.json` (local development).
+A game is an event's `game-questions.json` (format: `docs/requirements.md`, "game-questions.json format"). When the admin saves the config the backend takes a copy of the chosen event's game and stores it with the config; the running game uses that copy, so it never reads the events bucket. The file `docs/game-questions.json` in the repository is only an example of the format.
 
 ## Data
 

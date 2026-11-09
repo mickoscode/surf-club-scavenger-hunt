@@ -83,9 +83,10 @@ test('results list every photo challenge of a zone separately from its questions
   assert.equal(results.total, 10);
 });
 
-test('a game file with the old single photo fields is refused when the admin saves the configuration', async () => {
+test('an event with the old single photo fields is refused when the admin saves the configuration', async () => {
   const old = { 'zone 1': { 'zone-name': 'Old', 'zone-map': 'a.png', 'photo-challenge': 'x', 'photo-score': 5, questions: [{ Q1: 'q?', type: 'string', answer: 'a', score: 5 }] } };
-  const env = setup({ game: old });
-  const res = await env.admin().put('/api/admin/config', { name: 'Test game', timeZone: 'Australia/Perth', day: '2026-11-14', start: '10:00', end: '12:00' });
-  assert.deepEqual([res.status, res.body.error], [422, 'invalid-game-data']);
+  const env = setup();
+  await env.blobs.put('old/game-questions.json', Buffer.from(JSON.stringify(old))); // as if uploaded before the format changed
+  const res = await env.admin().put('/api/admin/config', { name: 'Test game', timeZone: 'Australia/Perth', day: '2026-11-14', start: '10:00', end: '12:00', event: 'old' });
+  assert.deepEqual([res.status, res.body.error], [422, 'invalid-event']);
 });

@@ -166,7 +166,7 @@ test('every event route needs the admin session, and the public function has non
 test('without an events store (events not available) the routes say so and activating by event is refused', async () => {
   const { createApp } = require('../../api/app/app.js');
   const { createMemoryStore } = require('../../api/store/memory.js');
-  const app = createApp({ store: createMemoryStore(), role: 'admin', loadGameData: () => GAME, now: () => START - 1 });
+  const app = createApp({ store: createMemoryStore(), role: 'admin', now: () => START - 1 });
   const call = (method, path, body) => app.handle({ method, path, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : null });
   assert.deepEqual((await call('GET', '/api/admin/events')).body, { available: false, active: null, events: [] });
   assert.equal((await call('PUT', '/api/admin/events/summer/questions', GAME)).body.error, 'events-unavailable');
@@ -181,10 +181,11 @@ test('the questions file can be as large as allowed but no larger', async () => 
   assert.equal((await admin.put('/api/admin/events/big/questions', padded)).status, 413);
 });
 
-test('a configuration saved without an event still loads the repository game file, as before', async () => {
+test('the configuration cannot be saved without choosing an event', async () => {
   const env = setup({ now: START - 60_000 });
-  const res = await env.admin().put('/api/admin/config', CONFIG);
-  assert.deepEqual([res.status, res.body.event, res.body.zoneCount], [200, null, 2]);
-  env.clock.now = END - 1;
-  assert.equal((await env.player().get('/api/game')).body.instructions, null); // no event: the page keeps its built-in instructions
+  const res = await env.admin().put('/api/admin/config', { ...CONFIG, event: '' });
+  assert.deepEqual([res.status, res.body.error], [400, 'event-required']);
+  assert.equal((await env.admin().get('/api/admin/config')).body.config, null);
+  const missing = await env.admin().put('/api/admin/config', { ...CONFIG, event: null });
+  assert.equal(missing.body.error, 'event-required');
 });

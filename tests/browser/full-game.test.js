@@ -8,7 +8,7 @@
 // Q3 decimal 5 (2.5), photo 30; zone 2 "Bravo": Q1 text 10 (secret two), photo 25.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { browserSuite, openPage, adminPage, until, START, END } = require('./helpers.js');
+const { browserSuite, openPage, adminPage, chooseEvent, until, START, END } = require('./helpers.js');
 
 const { withPage } = browserSuite();
 
@@ -51,6 +51,7 @@ for (const passcode of [false, true]) withPage(`a whole game: set up, join, play
   await admin.fill($('config-day'), '2026-11-14');
   await admin.fill($('config-start'), '10:00');
   await admin.fill($('config-end'), '12:00');
+  await chooseEvent(admin, site);
   await admin.click($('config-save'));
   await admin.waitForSelector(`${$('game-status')}[data-status="pre"]`);
 

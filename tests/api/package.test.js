@@ -11,7 +11,7 @@ const path = require('node:path');
 
 const root = path.join(__dirname, '..', '..');
 
-test('the packaged backend is self-contained: both handlers load and the game file is found and valid', () => {
+test('the packaged backend is self-contained: both handlers load and the events store can be built', () => {
   const built = spawnSync('bash', ['scripts/package-backend.sh'], { cwd: root, encoding: 'utf8' });
   assert.equal(built.status, 0, built.stderr);
 
@@ -22,11 +22,9 @@ test('the packaged backend is self-contained: both handlers load and the game fi
   const script = `
     const { handler: publicHandler } = require('./handlers/public.js');
     const { handler: adminHandler } = require('./handlers/admin.js');
-    const { loadGameData } = require('./app/game-file.js');
-    const { validateGameData } = require('./lib/gamedata.js');
-    const problems = validateGameData(loadGameData(), { checkMaps: false });
+    const { createEventsFromEnvironment } = require('./handlers/shared.js');
     if (typeof publicHandler !== 'function' || typeof adminHandler !== 'function') throw new Error('handlers missing');
-    if (problems.length) throw new Error(problems.join('; '));
+    if (createEventsFromEnvironment({ EVENTS_BUCKET: 'e', SITE_BUCKET: 's' }) === null) throw new Error('events store missing'); // the S3 client is found
   `;
   const run = spawnSync(process.execPath, ['-e', script], {
     cwd: lambdaRoot, encoding: 'utf8', env: { ...process.env, NODE_PATH: path.join(root, 'node_modules') },
@@ -35,9 +33,9 @@ test('the packaged backend is self-contained: both handlers load and the game fi
   assert.equal(run.status, 0, run.stderr);
 });
 
-test('the package holds the runtime code and the game file, and nothing else', () => {
+test('the package holds the runtime code and nothing else', () => {
   const entries = fs.readdirSync(path.join(root, 'build', 'backend')).sort();
-  assert.deepEqual(entries, ['app', 'game-questions.json', 'handlers', 'lib', 'store']);
+  assert.deepEqual(entries, ['app', 'handlers', 'lib', 'store']);
   const files = fs.readdirSync(path.join(root, 'build', 'backend'), { recursive: true });
   assert.equal(files.filter((f) => /\.test\.js$|node_modules|package\.json/.test(f)).length, 0);
 });

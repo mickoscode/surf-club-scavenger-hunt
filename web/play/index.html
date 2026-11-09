@@ -30,9 +30,10 @@
     <div class="mx-auto narrow">
       <p class="alert alert-warning text-center" data-testid="load-error" hidden>Could not refresh. Trying again...</p>
 
-      <details class="border rounded bg-white p-3 mb-3" data-testid="instructions">
+      <!-- The event's instructions are drawn into the box below (js/markdown.js); there is no panel when it has none. -->
+      <details class="border rounded bg-white p-3 mb-3" data-testid="instructions" hidden>
         <summary class="fw-semibold" data-testid="instructions-heading">Instructions (tap to show/hide)</summary>
-        <div class="instructions mt-2"><!--instructions--></div>
+        <div class="instructions mt-2"></div>
       </details>
 
       <p class="text-center text-muted" data-testid="play-message" hidden></p>
