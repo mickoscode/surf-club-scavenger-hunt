@@ -13,6 +13,7 @@ const { questionPoints, isDecision } = require('../lib/scoring');
 const { validateTeamName, sortScoreboard, teamNamesOn, teamLabel } = require('../lib/teams');
 const { countQuestions, countDone } = require('../lib/progress');
 const { normaliseJoinCode, matchesJoinCode } = require('../lib/joincode');
+const { isEventName, LIMITS: EVENT_LIMITS } = require('../lib/events');
 const { placeOf } = require('../lib/results');
 const { buildResults } = require('../lib/results');
 const { normaliseWhatsappUrl } = require('../lib/whatsapp');
@@ -35,10 +36,11 @@ const findPhoto = (zone, id) => { const q = findQuestion(zone, id); return q && 
 const findZone = (game, key) => (typeof key === 'string' && game && Object.hasOwn(game, key) ? game[key] : undefined);
 
 // The zones as players may see them: no answers, ever.
-const publicZones = (game) => Object.entries(game).map(([key, zone]) => ({
+const publicZones = (game, maps = {}) => Object.entries(game).map(([key, zone]) => ({
   key,
   name: zone['zone-name'],
   mapId: mapId(key),
+  ...(maps[key] ? { map: maps[key] } : {}), // an event's maps: { thumb, full } addresses on the site
   questions: zone.questions.map((q) => ({ id: questionId(q), text: q[questionId(q)], type: q.type, score: q.score })),
 }));
 
@@ -49,6 +51,7 @@ function createApp({
   loadGameData,
   role,
   cookieSecure = true,
+  events = null, // the events store (api/lib/events.js), or null where events are not available (the public function)
   adminPasscodeHash = '', // the hash of the admin passcode; empty = no passcode set yet, the admin stays open (rollout only)
 }) {
   if (role !== 'public' && role !== 'admin') throw new Error('role must be "public" or "admin"');
@@ -78,6 +81,38 @@ function createApp({
   // A team as the pages show it: with team names off its name is "Team <number>" (config: the saved game configuration).
   const summary = (team, config) => ({ number: team.number, name: teamLabel(team, config), score: team.score });
 
+  // The configuration values from a request body, checked and tidied (throws 400 invalid-config).
+  function buildConfig(body) {
+    // The WhatsApp link is optional: left out of the saved configuration when empty, and stored in its plain form.
+    const link = body.whatsappUrl === undefined || body.whatsappUrl === null ? '' : String(body.whatsappUrl).trim();
+    const config = {
+      name: typeof body.name === 'string' && body.name.trim() ? body.name.trim() : DEFAULT_GAME_NAME,
+      timeZone: body.timeZone ?? DEFAULT_TIME_ZONE,
+      day: body.day, start: body.start, end: body.end,
+      ...(link ? { whatsappUrl: link } : {}),
+      teamNames: body.teamNames === undefined ? true : body.teamNames, // on unless the admin turns it off
+      ...(body.joinCode === undefined || body.joinCode === null || String(body.joinCode).trim() === '' ? {} : { joinCode: body.joinCode }), // optional; empty means no code (anything else is validated)
+    };
+    const fields = validateConfig(config);
+    if (fields.length) throw new HttpError(400, 'invalid-config', { fields });
+    if (config.whatsappUrl) config.whatsappUrl = normaliseWhatsappUrl(config.whatsappUrl).url;
+    if (config.joinCode) config.joinCode = normaliseJoinCode(config.joinCode).code; // stored tidy, in capitals, as the admin reads it out
+    return config;
+  }
+
+  const requireEvents = () => { if (!events) throw new HttpError(409, 'events-unavailable'); };
+  const validName = (name) => { if (!isEventName(name)) throw new HttpError(400, 'invalid-event-name'); };
+  // An event's summary, or 400 unknown-event (never 404: CloudFront would replace it).
+  async function eventSummary(name) {
+    requireEvents(); validName(name);
+    if (!(await events.exists(name))) throw new HttpError(400, 'unknown-event');
+    return events.summary(name);
+  }
+  const eventResult = (result) => {
+    if (!result.ok) throw new HttpError(result.error === 'file-too-large' ? 413 : result.error === 'invalid-game-data' ? 422 : 400, result.error, { problems: result.problems, part: result.part });
+    return respond(200, { saved: true });
+  };
+
   // ---------------------------------------------------------------- public routes
   const publicRoutes = {
     'GET /api/health': async () => respond(200, { ok: true }),
@@ -85,8 +120,9 @@ function createApp({
     'GET /api/game': async () => {
       const { saved, info, status } = await snapshot();
       // Questions are only sent while the game is active, so nobody can read them before the start.
-      const zones = status === 'active' ? publicZones(saved.game) : [];
-      return respond(200, { game: await gameSummary(saved, info), zones }, CACHEABLE);
+      const zones = status === 'active' ? publicZones(saved.game, saved.event?.maps) : [];
+      // The instructions are public information (shown before the game starts too); null for a game not loaded from an event.
+      return respond(200, { game: await gameSummary(saved, info), zones, instructions: saved?.event ? saved.event.instructions : null }, CACHEABLE);
     },
 
     'GET /api/scoreboard': async () => {
@@ -215,6 +251,8 @@ function createApp({
       return respond(200, {
         config: saved?.config ?? null,
         configuredAt: saved?.configuredAt ?? null,
+        event: saved?.event?.name ?? null, // the event the live game was loaded from (null for a game loaded from the repository's file)
+        eventsAvailable: Boolean(events),
         status,
         zoneCount: saved ? Object.keys(saved.game).length : 0,
         teamCount: teams.length,
@@ -231,27 +269,81 @@ function createApp({
       const body = readJson(request);
       const { status } = await snapshot();
       if (!can(status, 'configure')) throw new HttpError(409, 'game-active');
-      // The WhatsApp link is optional: left out of the saved configuration when empty, and stored in its plain form.
-      const link = body.whatsappUrl === undefined || body.whatsappUrl === null ? '' : String(body.whatsappUrl).trim();
-      const config = {
-        name: typeof body.name === 'string' && body.name.trim() ? body.name.trim() : DEFAULT_GAME_NAME,
-        timeZone: body.timeZone ?? DEFAULT_TIME_ZONE,
-        day: body.day, start: body.start, end: body.end,
-        ...(link ? { whatsappUrl: link } : {}),
-        teamNames: body.teamNames === undefined ? true : body.teamNames, // on unless the admin turns it off
-        ...(body.joinCode === undefined || body.joinCode === null || String(body.joinCode).trim() === '' ? {} : { joinCode: body.joinCode }), // optional; empty means no code (anything else is validated)
-      };
-      const fields = validateConfig(config);
-      if (fields.length) throw new HttpError(400, 'invalid-config', { fields });
-      if (config.whatsappUrl) config.whatsappUrl = normaliseWhatsappUrl(config.whatsappUrl).url;
-      if (config.joinCode) config.joinCode = normaliseJoinCode(config.joinCode).code; // stored tidy, in capitals, as the admin reads it out
-      const game = loadGameData();
-      const problems = validateGameData(game, { checkMaps: false });
-      if (problems.length) throw new HttpError(422, 'invalid-game-data', { problems });
+      const config = buildConfig(body);
+      let game;
+      let event = null; // what the game was loaded from, when it came from an event
+      if (body.event !== undefined && body.event !== null && body.event !== '') {
+        if (!events) throw new HttpError(409, 'events-unavailable');
+        if (!isEventName(body.event) || !(await events.exists(body.event))) throw new HttpError(400, 'unknown-event');
+        // Another event means another set of questions, so it cannot replace a game that has players (download and delete the data first).
+        const current = (await store.getGame())?.event?.name ?? null;
+        if (current !== body.event && (await store.listTeams()).length > 0) throw new HttpError(409, 'players-exist');
+        const loaded = await events.activate(body.event);
+        if (!loaded.ok) throw new HttpError(422, loaded.error === 'maps-missing' ? 'event-incomplete' : 'invalid-event', { problems: loaded.problems, missing: loaded.missing });
+        game = loaded.game;
+        event = { name: body.event, instructions: loaded.instructions, maps: loaded.maps };
+        await events.putConfig(body.event, config); // the stored event always matches what was last used
+      } else {
+        game = loadGameData();
+        const problems = validateGameData(game, { checkMaps: false });
+        if (problems.length) throw new HttpError(422, 'invalid-game-data', { problems });
+      }
       const t = now();
-      await store.saveGame({ config, game, configuredAt: t });
+      await store.saveGame({ config, game, event, configuredAt: t });
       await store.unpublishResults(); // a new configuration starts a new game: the results are provisional again
-      return respond(200, { config, zoneCount: Object.keys(game).length, status: gameStatus(config, t) });
+      return respond(200, { config, event: event?.name ?? null, zoneCount: Object.keys(game).length, status: gameStatus(config, t) });
+    },
+
+    // ---- events: games prepared in the private events bucket (docs/requirements.md, "Events")
+    'GET /api/admin/events': async () => {
+      const { saved } = await snapshot();
+      if (!events) return respond(200, { available: false, active: null, events: [] });
+      const list = [];
+      for (const name of await events.names()) list.push(await events.summary(name));
+      return respond(200, { available: true, active: saved?.event?.name ?? null, events: list });
+    },
+
+    'GET /api/admin/events/:name': async (request, params) => respond(200, await eventSummary(params.name)),
+
+    'GET /api/admin/events/:name/download': async (request, params) => {
+      await eventSummary(params.name);
+      return respond(200, await events.download(params.name), { 'content-disposition': `attachment; filename="event-${params.name}.json"` });
+    },
+
+    // The game file itself is the request body (the zones and questions as the admin wrote them).
+    'PUT /api/admin/events/:name/questions': async (request, params) => {
+      requireEvents(); validName(params.name);
+      const body = readJson(request, EVENT_LIMITS.questionsBytes);
+      return eventResult(await events.putQuestions(params.name, body, Buffer.byteLength(request.body ?? '')));
+    },
+
+    'PUT /api/admin/events/:name/instructions': async (request, params) => {
+      requireEvents(); validName(params.name);
+      await eventSummary(params.name);
+      return eventResult(await events.putInstructions(params.name, readJson(request, EVENT_LIMITS.instructionsBytes + 1024).text));
+    },
+
+    // One zone's map as the browser shrank it: { thumb, full } as base64. :map is the zone's map id ("zone-1").
+    'PUT /api/admin/events/:name/maps/:map': async (request, params) => {
+      requireEvents(); validName(params.name);
+      await eventSummary(params.name);
+      const body = readJson(request, 2 * Math.ceil((EVENT_LIMITS.imageBytes * 4) / 3) + 1024);
+      return eventResult(await events.putMap(params.name, params.map, body));
+    },
+
+    'PUT /api/admin/events/:name/config': async (request, params) => {
+      requireEvents(); validName(params.name);
+      const config = buildConfig(readJson(request));
+      await events.putConfig(params.name, config);
+      return respond(200, { config });
+    },
+
+    'DELETE /api/admin/events/:name': async (request, params) => {
+      requireEvents(); validName(params.name);
+      await eventSummary(params.name);
+      if ((await store.getGame())?.event?.name === params.name) throw new HttpError(409, 'event-active'); // the live game is loaded from it
+      await events.remove(params.name);
+      return respond(200, { removed: true });
     },
 
     'GET /api/admin/teams': async () => {
@@ -365,7 +457,7 @@ function createApp({
     }
   }
 
-  return { handle };
+  return { handle, routes: Object.keys(role === 'public' ? publicRoutes : adminRoutes) };
 }
 
 module.exports = { createApp, publicZones };

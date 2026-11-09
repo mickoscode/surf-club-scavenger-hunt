@@ -68,7 +68,7 @@ An event is one complete game: its configuration, questions, photo challenges an
 - **The events page** (`/game-events/`) lists the stored events (event name, game name, day, number of zones and questions, and which is active) and lets the admin:
   - **Upload** a new event: type its name and choose its folder (the questions file, the map images, and optionally `player-instructions.md` and `game-config.json`). The page checks the questions file with the same rules as the server (the "Game data" rules), shrinks the maps in the browser (a small thumbnail and a full-size image for each) and uploads them. Nothing is stored unless everything is valid.
   - **Replace** the questions, maps or instructions of an existing event by uploading again (there is no in-browser editor for them).
-  - **Download** an event (its files).
+  - **Download** an event's configuration, questions and instructions as one file (the maps are not included: keep your original images).
   - **Delete** an event, after a confirmation. The active event cannot be deleted.
 - **Limits**: the questions file at most 256 KB, each map image at most 500 KB after shrinking, at most 20 zones per event and 100 events. Images must really be images (checked by content, not by name), and the server builds every storage path itself from the validated event name, never from a path supplied by the browser.
 - **docs/**: nothing in the live game reads `docs/`. `docs/game-questions.json`, `docs/game-zones/` and `docs/player-instructions.md` stay as an example of the format; the "Game data" check validates the example so the documented format stays correct. To start, the admin can upload the example as an event.

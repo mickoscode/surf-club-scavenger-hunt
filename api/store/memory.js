@@ -16,8 +16,8 @@ function createMemoryStore() {
 
   return {
     async getGame() { return copy(game); },
-    async saveGame({ config, game: snapshot, configuredAt = Date.now() }) {
-      game = copy({ config, game: snapshot, configuredAt });
+    async saveGame({ config, game: snapshot, event = null, configuredAt = Date.now() }) {
+      game = copy({ config, game: snapshot, event, configuredAt });
     },
 
     async createTeam({ playerId, name, key, joinedAt = Date.now() }) {
