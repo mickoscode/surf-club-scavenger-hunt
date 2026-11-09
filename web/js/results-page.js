@@ -55,7 +55,7 @@ function render(data) {
   $('result-zones').replaceChildren(...results.zones.map((zone) => {
     const section = el('section', { class: 'mb-4', 'data-testid': 'result-zone', 'data-zone': zone.key });
     const list = el('div', { class: 'list-group' });
-    list.append(...zone.questions.map(questionCard), photoCard(zone.photo));
+    list.append(...zone.questions.map(questionCard), ...zone.photos.map(photoCard));
     section.append(el('h2', { class: 'h5 team-name' }, zone.name), list);
     return section;
   }));

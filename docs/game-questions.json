@@ -2,8 +2,6 @@
     "zone 1" : {
         "zone-name" : "SO Southside",
         "zone-map" : "docs/game-zones/hunt-zone-1.png",
-        "photo-challenge" : "DEMO: Pretend to.... Take a team photo in front of the Sorrento Surf Life Saving Club building - everyone's faces must be visible - upload to whatsapp",
-        "photo-score" : 30,
         "questions" : [
             {
                 "Q1" : "What two colours are the flags that mark the safe swimming area on a patrolled beach? (use 'and' between the colours)",
@@ -34,14 +32,17 @@
                 "type" : "whole-number",
                 "answer" : "42",
                 "score" : 20
+            },
+            {
+                "Q6" : "DEMO: Pretend to.... Take a team photo in front of the Sorrento Surf Life Saving Club building - everyone's faces must be visible - upload to whatsapp",
+                "type" : "photo",
+                "score" : 30
             }
         ]
     },
     "zone 2" : {
         "zone-name" : "Sorrento Beach Park",
         "zone-map" : "docs/game-zones/hunt-zone-2.png",
-        "photo-challenge" : "DEMO: Pretend to.... Take a team photo on the Sorrento Beach Promenade path - faces must be visible - upload to whatsapp",
-        "photo-score" : 30,
         "questions" : [
             {
                 "Q1" : "What word follows 'Sorrento Beach' on the green tree marker at the top of your map?",
@@ -72,14 +73,17 @@
                 "type" : "whole-number",
                 "answer" : "120",
                 "score" : 20
+            },
+            {
+                "Q6" : "DEMO: Pretend to.... Take a team photo on the Sorrento Beach Promenade path - faces must be visible - upload to whatsapp",
+                "type" : "photo",
+                "score" : 30
             }
         ]
     },
     "zone 3" : {
         "zone-name" : "AQWA",
         "zone-map" : "docs/game-zones/hunt-zone-3.png",
-        "photo-challenge" : "DEMO: Pretend to.... Take a team photo with a boat behind you - faces must be visible - upload to whatsapp",
-        "photo-score" : 30,
         "questions" : [
             {
                 "Q1" : "AQWA is the Aquarium of Western ______?",
@@ -110,14 +114,17 @@
                 "type" : "string",
                 "answer" : "pup",
                 "score" : 20
+            },
+            {
+                "Q6" : "DEMO: Pretend to.... Take a team photo with a boat behind you - faces must be visible - upload to whatsapp",
+                "type" : "photo",
+                "score" : 30
             }
         ]
     },
     "zone 4" : {
         "zone-name" : "Marina HQ",
         "zone-map" : "docs/game-zones/hunt-zone-4.png",
-        "photo-challenge" : "DEMO: Pretend to.... Take a team photo on the boardwalk - faces must be visible - upload to whatsapp",
-        "photo-score" : 30,
         "questions" : [
             {
                 "Q1" : "What type of lifting bridge is shown on the left of your map? Complete the name: ______ Bridge",
@@ -148,14 +155,17 @@
                 "type" : "string",
                 "answer" : "boardwalk",
                 "score" : 20
+            },
+            {
+                "Q6" : "DEMO: Pretend to.... Take a team photo on the boardwalk - faces must be visible - upload to whatsapp",
+                "type" : "photo",
+                "score" : 30
             }
         ]
     },
     "zone 5" : {
         "zone-name" : "Marina Beach Park",
         "zone-map" : "docs/game-zones/hunt-zone-5.png",
-        "photo-challenge" : "DEMO: Pretend to.... Take a team photo standing on the round paved compass area in the park - faces must be visible - upload to whatsapp",
-        "photo-score" : 30,
         "questions" : [
             {
                 "Q1" : "Complete the name of the beach at the top of your map: Hillarys Boat Harbour - ______ Beach",
@@ -186,6 +196,11 @@
                 "type" : "decimal",
                 "answer" : "2.5",
                 "score" : 20
+            },
+            {
+                "Q6" : "DEMO: Pretend to.... Take a team photo standing on the round paved compass area in the park - faces must be visible - upload to whatsapp",
+                "type" : "photo",
+                "score" : 30
             }
         ]
     }

@@ -7,7 +7,7 @@ const { photoPoints } = require('../../api/lib/scoring.js');
 
 const game = {
   config: { name: 'Test game', timeZone: 'Australia/Perth', day: '2026-11-14', start: '10:00', end: '12:00' },
-  game: { 'zone 1': { 'zone-name': 'One', 'photo-score': 30, questions: [{ Q1: 'q', type: 'string', answer: 'a', score: 10 }] } },
+  game: { 'zone 1': { 'zone-name': 'One', questions: [{ Q1: 'q', type: 'string', answer: 'a', score: 10 }, { Q2: 'photo', type: 'photo', score: 30 }] } },
 };
 const join = (store, n, name = `Team ${n}`) => store.createTeam({ playerId: `p${n}`, name, key: name.toLowerCase() });
 const answer = (correct, points) => ({ answerGiven: 'x', correct, points });
@@ -70,29 +70,29 @@ function runStoreContract(label, makeStore, options = {}) {
 
   t('answers and photos for an unknown team are refused', async (store) => {
     assert.deepEqual(await store.recordAnswer('nobody', 'zone 1', 'Q1', answer(true, 10)), { ok: false, error: 'no-team' });
-    assert.deepEqual(await store.recordPhotoSent('nobody', 'zone 1'), { ok: false, error: 'no-team' });
-    assert.deepEqual(await store.applyPhotoDecision('nobody', 'zone 1', { decision: 'full', photoScore: 30 }), { ok: false, error: 'no-team' });
+    assert.deepEqual(await store.recordPhotoSent('nobody', 'zone 1#Q2'), { ok: false, error: 'no-team' });
+    assert.deepEqual(await store.applyPhotoDecision('nobody', 'zone 1#Q2', { decision: 'full', photoScore: 30 }), { ok: false, error: 'no-team' });
   });
 
-  t('a photo can be sent once per zone and scored only after it was sent', async (store) => {
+  t('a photo challenge can be sent once and scored only after it was sent', async (store) => {
     await join(store, 1);
-    assert.deepEqual(await store.applyPhotoDecision('p1', 'zone 1', { decision: 'full', photoScore: 30 }), { ok: false, error: 'no-photo' });
-    assert.deepEqual(await store.recordPhotoSent('p1', 'zone 1', { at: 7 }), { ok: true });
-    assert.deepEqual(await store.recordPhotoSent('p1', 'zone 1'), { ok: false, error: 'already-submitted' });
-    assert.equal((await store.recordPhotoSent('p1', 'zone 2')).ok, true);
-    assert.equal((await store.getTeam('p1')).photos['zone 1'].sentAt, 7);
+    assert.deepEqual(await store.applyPhotoDecision('p1', 'zone 1#Q2', { decision: 'full', photoScore: 30 }), { ok: false, error: 'no-photo' });
+    assert.deepEqual(await store.recordPhotoSent('p1', 'zone 1#Q2', { at: 7 }), { ok: true });
+    assert.deepEqual(await store.recordPhotoSent('p1', 'zone 1#Q2'), { ok: false, error: 'already-submitted' });
+    assert.equal((await store.recordPhotoSent('p1', 'zone 2#Q2')).ok, true);
+    assert.equal((await store.getTeam('p1')).photos['zone 1#Q2'].sentAt, 7);
   });
 
   t('photo decisions replace each other and never double count', async (store) => {
     await join(store, 1);
     await store.recordAnswer('p1', 'zone 1', 'Q1', answer(true, 10));
-    await store.recordPhotoSent('p1', 'zone 1');
-    const apply = async (decision) => (await store.applyPhotoDecision('p1', 'zone 1', { decision, photoScore: 25 }));
+    await store.recordPhotoSent('p1', 'zone 1#Q2');
+    const apply = async (decision) => (await store.applyPhotoDecision('p1', 'zone 1#Q2', { decision, photoScore: 25 }));
     assert.deepEqual(await apply('full'), { ok: true, delta: 25, score: 35 });
     assert.deepEqual(await apply('full'), { ok: true, delta: 0, score: 35 }); // applied twice: no change
     assert.deepEqual(await apply('half'), { ok: true, delta: -12.5, score: 22.5 });
     assert.deepEqual(await apply('zero'), { ok: true, delta: -12.5, score: 10 });
-    const photo = (await store.getTeam('p1')).photos['zone 1'];
+    const photo = (await store.getTeam('p1')).photos['zone 1#Q2'];
     assert.equal(photo.decision, 'zero');
     assert.equal(photo.points, 0);
   });
@@ -100,12 +100,12 @@ function runStoreContract(label, makeStore, options = {}) {
   t('decisions applied at once leave the score matching the stored decision', async (store) => {
     await join(store, 1);
     await store.recordAnswer('p1', 'zone 1', 'Q1', answer(true, 10));
-    await store.recordPhotoSent('p1', 'zone 1');
+    await store.recordPhotoSent('p1', 'zone 1#Q2');
     const results = await Promise.all(['full', 'half', 'zero', 'full'].map((decision) =>
-      store.applyPhotoDecision('p1', 'zone 1', { decision, photoScore: 30 })));
+      store.applyPhotoDecision('p1', 'zone 1#Q2', { decision, photoScore: 30 })));
     assert.ok(results.every((r) => r.ok));
     const team = await store.getTeam('p1');
-    assert.equal(team.score, 10 + photoPoints(30, team.photos['zone 1'].decision));
+    assert.equal(team.score, 10 + photoPoints(30, team.photos['zone 1#Q2'].decision));
   });
 
   t('lists every team with its score', async (store) => {

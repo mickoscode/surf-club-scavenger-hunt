@@ -135,16 +135,16 @@ async function runLoad({ baseUrl, params, fetchImpl = fetch, random = Math.rando
         const zones = game.json?.zones ?? []; // only sent while the game is in progress
         if (params.mode !== 'full' || zones.length === 0 || random() >= answerChance) continue;
 
-        const next = zones.flatMap((zone) => zone.questions.map((q) => ({ zone, q }))).find(({ zone, q }) => !answered.has(`${zone.key}#${q.id}`));
+        const next = zones.flatMap((zone) => zone.questions.filter((q) => q.type !== 'photo').map((q) => ({ zone, q }))).find(({ zone, q }) => !answered.has(`${zone.key}#${q.id}`));
         if (next) {
           answered.add(`${next.zone.key}#${next.q.id}`);
           await http('POST /api/answer', 'POST', '/api/answer', { cookie, body: { zone: next.zone.key, question: next.q.id, answer: answerFor(next.q.type) } });
         }
         if (answered.size % 4 === 0 && next) { // a photo now and then
-          const zone = zones.find((z) => !photoSent.has(z.key));
-          if (zone) {
-            photoSent.add(zone.key);
-            await http('POST /api/photo', 'POST', '/api/photo', { cookie, body: { zone: zone.key } });
+          const photo = zones.flatMap((z) => z.questions.filter((q) => q.type === 'photo').map((q) => ({ zone: z, q }))).find(({ zone, q }) => !photoSent.has(`${zone.key}#${q.id}`));
+          if (photo) { // a zone may have several photo challenges, or none
+            photoSent.add(`${photo.zone.key}#${photo.q.id}`);
+            await http('POST /api/photo', 'POST', '/api/photo', { cookie, body: { zone: photo.zone.key, question: photo.q.id } });
           }
         }
       }

@@ -5,13 +5,14 @@ const { buildResults, placeOf } = require('../../api/lib/results.js');
 
 const game = {
   'zone 1': {
-    'zone-name': 'Alpha', 'photo-challenge': 'photo one', 'photo-score': 30,
+    'zone-name': 'Alpha',
     questions: [
       { Q1: 'first?', type: 'string', answer: ['red', 'crimson'], score: 10 },
       { Q2: 'number?', type: 'whole-number', answer: '42', score: 20 },
+      { Q3: 'photo one', type: 'photo', score: 30 },
     ],
   },
-  'zone 2': { 'zone-name': 'Bravo', 'photo-challenge': 'photo two', 'photo-score': 25, questions: [{ Q1: 'second?', type: 'string', answer: 'blue', score: 5 }] },
+  'zone 2': { 'zone-name': 'Bravo', questions: [{ Q1: 'second?', type: 'string', answer: 'blue', score: 5 }, { Q2: 'photo two', type: 'photo', score: 25 }] },
 };
 const team = (number, score, subs = {}, photos = {}) => ({ playerId: `p${number}`, number, name: `Team ${number}`, score, subs, photos });
 
@@ -44,17 +45,17 @@ test('a wrong answer is shown as wrong with 0 points earned', () => {
 
 test('a photo is not submitted, submitted but not scored, or scored full, half or zero', () => {
   const photos = {
-    'zone 1': { sentAt: 1, decision: 'half', points: 15, appliedAt: 2 },
-    'zone 2': { sentAt: 1 }, // sent, never scored
+    'zone 1#Q3': { sentAt: 1, decision: 'half', points: 15, appliedAt: 2 },
+    'zone 2#Q2': { sentAt: 1 }, // sent, never scored
   };
-  const [one, two] = buildResults({ team: team(1, 15, {}, photos), teams: [], game }).zones.map((z) => z.photo);
-  assert.deepEqual(one, { challenge: 'photo one', points: 30, submitted: true, scored: true, decision: 'half', percent: 50, earned: 15 });
-  assert.deepEqual(two, { challenge: 'photo two', points: 25, submitted: true, scored: false, decision: null, percent: 0, earned: 0 });
+  const [one, two] = buildResults({ team: team(1, 15, {}, photos), teams: [], game }).zones.map((z) => z.photos[0]);
+  assert.deepEqual(one, { id: 'Q3', challenge: 'photo one', points: 30, submitted: true, scored: true, decision: 'half', percent: 50, earned: 15 });
+  assert.deepEqual(two, { id: 'Q2', challenge: 'photo two', points: 25, submitted: true, scored: false, decision: null, percent: 0, earned: 0 });
 
-  const none = buildResults({ team: team(1, 0), teams: [], game }).zones[0].photo;
-  assert.deepEqual(none, { challenge: 'photo one', points: 30, submitted: false, scored: false, decision: null, percent: null, earned: 0 });
-  const full = buildResults({ team: team(1, 30, {}, { 'zone 1': { sentAt: 1, decision: 'full', points: 30 } }), teams: [], game }).zones[0].photo;
-  const zero = buildResults({ team: team(1, 0, {}, { 'zone 1': { sentAt: 1, decision: 'zero', points: 0 } }), teams: [], game }).zones[0].photo;
+  const none = buildResults({ team: team(1, 0), teams: [], game }).zones[0].photos[0];
+  assert.deepEqual(none, { id: 'Q3', challenge: 'photo one', points: 30, submitted: false, scored: false, decision: null, percent: null, earned: 0 });
+  const full = buildResults({ team: team(1, 30, {}, { 'zone 1#Q3': { sentAt: 1, decision: 'full', points: 30 } }), teams: [], game }).zones[0].photos[0];
+  const zero = buildResults({ team: team(1, 0, {}, { 'zone 1#Q3': { sentAt: 1, decision: 'zero', points: 0 } }), teams: [], game }).zones[0].photos[0];
   assert.deepEqual([full.percent, zero.percent, zero.scored], [100, 0, true]); // a scored zero is different from not scored
 });
 

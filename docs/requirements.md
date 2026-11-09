@@ -120,8 +120,7 @@ The game zones, questions and maps are uploaded by the admin on the events page;
 Each zone will have:
 - zone-name (string): e.g. "Southside"
 - zone-map (image): png or jpeg format (the Google Maps images in docs/game-zones are approved for use)
-- questions to answer (5 in the default game; any number is supported)
-- photo challenges: none, one or several. Each has its own description of what needs to be captured in the photo (which must be submitted via whatsapp) and its own score (number)
+- questions to answer (5 in the default game; any number is supported), which include its photo challenges: none, one or several. A photo challenge is a question of type "photo": its text describes what needs to be captured in the photo (which must be submitted via whatsapp), and it has a score (number) but no answer
 
 ### Joining
 
@@ -206,15 +205,11 @@ Every question has a type (see "game-questions.json format"): string, whole-numb
 
 ### game-questions.json format
 
-Zones are keyed "zone 1", "zone 2", ... Each zone has: zone-name, zone-map (the image file in the event's game-zones folder), a list of photo challenges ("photos": may be empty, or left out) and a list of questions. Each photo challenge has:
-- "P1", "P2", ... : the description of what to photograph (the key is the photo challenge's id within the zone)
-- "score" : points for the photo challenge (a number)
-
-Each question has:
-- "Q1", "Q2", ... : the question text (the key is the question's id within the zone)
-- "type" : "string", "whole-number" or "decimal"
-- "answer" : for whole-number and decimal, a single value as a string, e.g. "42" or "2.5". For string, either one answer, e.g. "paris", or a list of accepted answers, e.g. ["bike", "bicycle"] (each one gets the same typo tolerance). Write answers in lower case.
-- "score" : points for a correct answer (a number)
+Zones are keyed "zone 1", "zone 2", ... Each zone has: zone-name, zone-map (the image file in the event's game-zones folder) and a list of questions. A photo challenge is one of the questions, with the type "photo": a zone may have none, one or several, in any position in the list. Each question has:
+- "Q1", "Q2", ... : the question text, or for a photo challenge the description of what to photograph (the key is the question's id within the zone)
+- "type" : "string", "whole-number", "decimal" or "photo"
+- "answer" : for whole-number and decimal, a single value as a string, e.g. "42" or "2.5". For string, either one answer, e.g. "paris", or a list of accepted answers, e.g. ["bike", "bicycle"] (each one gets the same typo tolerance). Write answers in lower case. A photo challenge has no answer (the admin scores the photo).
+- "score" : points for a correct answer, or for a photo challenge its full points (a number)
 
 ## General Requirements
 The site must be open to the public, so anyone can; view the live scoreboard, join the game and play the game. No authentication or account creation is required. 

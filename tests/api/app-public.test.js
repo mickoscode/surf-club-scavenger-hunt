@@ -122,23 +122,23 @@ test('unknown questions and zones, and missing sessions, are refused', async () 
   assert.equal((await answer(p, 'zone 1', 'Q9', 'x')).status, 400);
   assert.equal((await answer(p, '__proto__', 'Q1', 'x')).status, 400);
   assert.equal((await answer(env.player(), 'zone 1', 'Q2', '42')).status, 401);
-  assert.equal((await env.player().post('/api/photo', { zone: 'zone 1' })).status, 401);
+  assert.equal((await env.player().post('/api/photo', { zone: 'zone 1', question: 'Q4' })).status, 401);
 });
 
 test('/api/me lists what is done, not what was submitted', async () => {
   const { p } = await activeGame();
   await answer(p, 'zone 1', 'Q1', 'my private guess');
-  await p.post('/api/photo', { zone: 'zone 2' });
+  await p.post('/api/photo', { zone: 'zone 2', question: 'Q2' });
   const me = (await p.get('/api/me')).body;
-  assert.deepEqual(me.done, { answers: ['zone 1#Q1'], photos: ['zone 2'] });
+  assert.deepEqual(me.done, { answers: ['zone 1#Q1'], photos: ['zone 2#Q2'] });
   assert.doesNotMatch(JSON.stringify(me), /private guess/);
 });
 
-test('a photo is sent once per zone, and nothing scores until the admin applies a decision', async () => {
+test('a photo challenge is sent once, and nothing scores until the admin applies a decision', async () => {
   const { env, p } = await activeGame();
-  assert.deepEqual((await p.post('/api/photo', { zone: 'zone 1' })).body, { done: true });
-  assert.equal((await p.post('/api/photo', { zone: 'zone 1' })).status, 409);
-  assert.equal((await p.post('/api/photo', { zone: 'zone 7' })).status, 400);
+  assert.deepEqual((await p.post('/api/photo', { zone: 'zone 1', question: 'Q4' })).body, { done: true });
+  assert.equal((await p.post('/api/photo', { zone: 'zone 1', question: 'Q4' })).status, 409);
+  assert.equal((await p.post('/api/photo', { zone: 'zone 7', question: 'Q4' })).status, 400);
   assert.equal(await scoreOf(env, 'Sea Dogs'), 0);
 });
 

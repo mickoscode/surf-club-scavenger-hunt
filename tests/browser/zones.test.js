@@ -238,3 +238,35 @@ withPage('on a phone the tiles, a zone and the full-size map all fit the screen'
   await page.waitForFunction(() => { const i = document.querySelector('[data-testid="map-full"]'); return i.complete && i.naturalWidth > 0; });
   assert.ok((await overflow(page)) <= 0, 'the full-size map is wider than the screen');
 });
+
+// ------------------------------------------------------------------------------------------------ several photo challenges, or none
+
+const GAME_WITH_PHOTOS = {
+  'zone 1': {
+    'zone-name': 'Many', 'zone-map': 'a.png',
+    questions: [{ Q1: 'q one', type: 'string', answer: 'a', score: 5 }, { Q2: 'first photo', type: 'photo', score: 30 }, { Q3: 'second photo', type: 'photo', score: 10 }],
+  },
+  'zone 2': { 'zone-name': 'None', 'zone-map': 'b.png', questions: [{ Q1: 'q two', type: 'string', answer: 'b', score: 5 }] },
+};
+const photoForm = (zone, id) => `${panel(zone)} ${$('photo')}[data-question="${id}"]`;
+
+withPage('a zone with several photo challenges has a form for each, sent separately, and a zone with none has no photo form', { site: { game: GAME_WITH_PHOTOS } }, async (ctx) => {
+  const { page } = ctx;
+  await play(ctx);
+  assert.deepEqual(await page.locator(`${tile('zone 1')}`).evaluate((e) => [e.dataset.done, e.dataset.total]), ['0', '3']);
+  assert.deepEqual(await page.locator(`${tile('zone 2')}`).evaluate((e) => [e.dataset.done, e.dataset.total]), ['0', '1']); // no photo challenge
+  await open(page, 'zone 2');
+  assert.equal(await page.locator(`${panel('zone 2')} ${$('photo')}`).count(), 0);
+  await page.click(`${panel('zone 2')} ${$('zone-back')}`);
+
+  await open(page, 'zone 1');
+  assert.equal(await page.locator(`${panel('zone 1')} ${$('photo')}`).count(), 2);
+  assert.equal(await page.locator(`${photoForm('zone 1', 'Q2')} ${$('photo-challenge')}`).textContent(), 'first photo');
+  await page.click(`${photoForm('zone 1', 'Q3')} ${$('photo-submit')}`);
+  await page.waitForSelector(`${photoForm('zone 1', 'Q3')}[data-state="done"]`);
+  assert.equal(await page.locator(`${photoForm('zone 1', 'Q2')}`).getAttribute('data-state'), 'open'); // the other one is untouched
+  assert.deepEqual(await page.locator(`${tile('zone 1')}`).evaluate((e) => e.dataset.done), '1');
+  await page.reload();
+  await page.waitForSelector(`${photoForm('zone 1', 'Q3')}[data-state="done"]`); // still done after a reload
+  assert.equal(await page.locator(`${photoForm('zone 1', 'Q2')}`).getAttribute('data-state'), 'open');
+});

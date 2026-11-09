@@ -1,11 +1,12 @@
 'use strict';
-// A team's final results: its place, and a breakdown of every question and photo challenge with the official answers.
+// A team's final results: its place, and a breakdown of every question and photo challenge (photo challenges are questions of type "photo"; a zone may have several, or none) with the official answers.
 // Pure function; the API only calls it once the admin has published the final results and the caller has a team
 // session. Rules: docs/requirements.md ("Results page"). The names (yourAnswer, officialAnswers) deliberately avoid the
 // plain key "answer", which no public response may ever contain before publication (a test and the smoke test look for it).
 const { roundScore, decisionPercent } = require('./scoring');
 
 const QUESTION_ID = /^Q\d+$/;
+const isPhoto = (q) => q.type === 'photo';
 const questionId = (q) => Object.keys(q).find((k) => QUESTION_ID.test(k));
 
 // Teams with the same score share a place (1st, 1st, 3rd): the place is one more than the number of teams scoring higher.
@@ -30,12 +31,14 @@ function buildQuestion(zoneKey, q, team) {
 }
 
 // photo: not submitted -> submitted false; submitted but never scored -> scored false, 0%; scored -> 100, 50 or 0 per cent.
-function buildPhoto(zoneKey, zone, team) {
-  const sent = team.photos[zoneKey];
+function buildPhoto(zoneKey, photo, team) {
+  const id = questionId(photo);
+  const sent = team.photos[`${zoneKey}#${id}`];
   const decision = sent?.decision ?? null;
   return {
-    challenge: zone['photo-challenge'],
-    points: zone['photo-score'],
+    id,
+    challenge: photo[id],
+    points: photo.score,
     submitted: Boolean(sent),
     scored: decision !== null,
     decision,
@@ -53,8 +56,8 @@ function buildResults({ team, teams, game }) {
     zones: Object.entries(game).map(([zoneKey, zone]) => ({
       key: zoneKey,
       name: zone['zone-name'],
-      questions: zone.questions.map((q) => buildQuestion(zoneKey, q, team)),
-      photo: buildPhoto(zoneKey, zone, team),
+      questions: zone.questions.filter((q) => !isPhoto(q)).map((q) => buildQuestion(zoneKey, q, team)),
+      photos: zone.questions.filter(isPhoto).map((photo) => buildPhoto(zoneKey, photo, team)), // none, one or several
     })),
   };
 }

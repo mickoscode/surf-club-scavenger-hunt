@@ -11,10 +11,11 @@ const DECISIONS = ['full', 'half', 'zero'];
 const LABEL = { full: 'Full', half: 'Half', zero: 'Zero' };
 const FRACTION = { full: 1, half: 0.5, zero: 0 };
 
-const rows = new Map(); // "team|zone" -> list item. Kept between refreshes so what the admin has chosen is never lost.
+const rows = new Map(); // "team|zone|photo" -> list item. Kept between refreshes so what the admin has chosen is never lost.
 let canScore = false;
 let groupLink; // the WhatsApp group link last applied to the help text
 
+const rowKey = (photo) => `${photo.teamNumber}|${photo.zone}|${photo.question}`;
 const selected = (row) => row.querySelector('input[type="radio"]:checked')?.value ?? null;
 
 // Apply is only possible when scoring is open and a choice differs from what is already recorded.
@@ -24,19 +25,21 @@ function updateApply(row) {
 }
 
 function buildRow(photo) {
-  const key = `${photo.teamNumber}|${photo.zone}`;
-  const row = el('li', { class: 'list-group-item', 'data-testid': 'photo-row', 'data-team-number': String(photo.teamNumber), 'data-zone': photo.zone, 'data-state': 'pending', 'data-decision': '' });
+  const key = rowKey(photo);
+  const row = el('li', { class: 'list-group-item', 'data-testid': 'photo-row', 'data-team-number': String(photo.teamNumber), 'data-zone': photo.zone, 'data-photo': photo.question, 'data-state': 'pending', 'data-decision': '' });
   const form = el('form', { class: 'd-flex flex-wrap align-items-center gap-2', novalidate: '' });
   // The team is identified to the server by this hidden field, never by anything the admin types.
   form.append(
     el('input', { type: 'hidden', name: 'teamNumber', value: String(photo.teamNumber), 'data-testid': 'team-field' }),
     el('input', { type: 'hidden', name: 'zone', value: photo.zone, 'data-testid': 'zone-field' }),
+    el('input', { type: 'hidden', name: 'question', value: photo.question, 'data-testid': 'photo-field' }),
     el('strong', { 'data-testid': 'row-team' }, `Team ${photo.teamNumber}`),
     el('span', { class: 'flex-grow-1 team-name', 'data-testid': 'row-zone' }, photo.zoneName),
+    el('div', { class: 'w-100 small text-muted team-name', 'data-testid': 'row-challenge' }, photo.challenge), // which of the zone's photo challenges
   );
   const choices = el('div', { class: 'btn-group', role: 'group', 'aria-label': 'Score' });
   for (const decision of DECISIONS) {
-    const id = `d-${photo.teamNumber}-${photo.zone.replace(/\W/g, '-')}-${decision}`;
+    const id = `d-${photo.teamNumber}-${photo.zone.replace(/\W/g, '-')}-${photo.question}-${decision}`;
     const radio = el('input', { type: 'radio', class: 'btn-check', name: `decision-${key}`, id, value: decision, 'data-testid': `decision-${decision}` });
     radio.addEventListener('change', () => updateApply(row));
     choices.append(radio, el('label', { class: 'btn btn-outline-primary btn-sm', for: id }, `${LABEL[decision]} (${formatScore(photo.photoScore * FRACTION[decision])})`));
@@ -54,7 +57,7 @@ function buildRow(photo) {
     apply.disabled = true;
     const error = $('apply-error');
     error.hidden = true;
-    const res = await postJson('/api/admin/photos/apply', { teamNumber: photo.teamNumber, zone: photo.zone, decision });
+    const res = await postJson('/api/admin/photos/apply', { teamNumber: photo.teamNumber, zone: photo.zone, question: photo.question, decision });
     if (!res.ok) {
       const code = res.status === 0 ? 'network' : (res.body?.error ?? 'unknown');
       error.dataset.error = code;
@@ -100,10 +103,10 @@ async function refresh() {
   $('published-notice').hidden = !published;
 
   const photos = list.body.photos;
-  const keys = new Set(photos.map((p) => `${p.teamNumber}|${p.zone}`));
+  const keys = new Set(photos.map(rowKey));
   for (const [key, row] of rows) if (!keys.has(key)) { row.remove(); rows.delete(key); } // e.g. the team was removed
   for (const photo of photos) { // appending moves an existing row, so the server's order is shown without rebuilding
-    const key = `${photo.teamNumber}|${photo.zone}`;
+    const key = rowKey(photo);
     if (!rows.has(key)) rows.set(key, buildRow(photo));
     const row = rows.get(key);
     updateRow(row, photo);
