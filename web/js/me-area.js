@@ -25,16 +25,17 @@ export function createMeArea({ container, onJoined }) {
 
     const form = el('form', { class: 'mt-3', 'data-testid': 'join-form', novalidate: '' });
     form.hidden = true;
-    if (teamNames) {
-      form.append(
-        el('label', { for: 'team-name', class: 'form-label fw-semibold' }, 'Enter Team Name:'),
-        el('input', { id: 'team-name', name: 'teamName', type: 'text', maxlength: '30', autocomplete: 'off', class: 'form-control form-control-lg', 'data-testid': 'team-name-input' }),
-      );
-    }
+    // The join code (when there is one) comes first, then the team name (when teams have names).
     if (codeRequired) {
       form.append(
-        el('label', { for: 'join-code', class: `form-label fw-semibold${teamNames ? ' mt-3' : ''}` }, 'Code to join the game:'),
+        el('label', { for: 'join-code', class: 'form-label fw-semibold' }, 'Join Code:'),
         el('input', { id: 'join-code', name: 'joinCode', type: 'text', maxlength: '30', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', class: 'form-control form-control-lg', 'data-testid': 'join-code-input' }),
+      );
+    }
+    if (teamNames) {
+      form.append(
+        el('label', { for: 'team-name', class: `form-label fw-semibold${codeRequired ? ' mt-3' : ''}` }, 'Name for Your Team:'),
+        el('input', { id: 'team-name', name: 'teamName', type: 'text', maxlength: '30', autocomplete: 'off', class: 'form-control form-control-lg', 'data-testid': 'team-name-input' }),
       );
     }
     const submit = el('button', { type: 'submit', class: 'btn btn-success btn-lg w-100 mt-3', 'data-testid': 'join-submit' }, 'Join game');

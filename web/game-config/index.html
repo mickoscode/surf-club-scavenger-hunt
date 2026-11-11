@@ -45,9 +45,12 @@
         <h2 class="h5">Game</h2>
         <form data-testid="config-form" novalidate>
           <div class="mb-3">
-            <label class="form-label" for="config-event">Event</label>
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <label class="form-label mb-0" for="config-event">Event</label>
+              <button class="btn btn-outline-secondary btn-sm rounded-circle py-0 px-2" type="button" aria-label="What does this do?" aria-expanded="false" data-help-for="event-help-text" data-testid="event-help">?</button>
+            </div>
             <select class="form-select" id="config-event" name="event" data-testid="config-event"></select>
-            <div class="form-text">The stored game to make live (its questions, maps and instructions). <a href="/game-events/">Upload or manage events</a>. Another event can only replace the live one while there are no teams: download and delete the player data first.</div>
+            <div class="form-text" id="event-help-text" hidden>The stored game to make live (its questions, maps and instructions). Saving loads it into the live game. <a href="/game-events/">Upload or manage events</a>. Another event can only replace the live one while there are no teams: download and delete the player data first.</div>
           </div>
           <div class="mb-3">
             <label class="form-label" for="config-name">Game name</label>
@@ -73,23 +76,28 @@
           </div>
           <div class="form-check mb-3">
             <input class="form-check-input" id="config-team-names" name="teamNames" type="checkbox" checked data-testid="config-team-names">
-            <label class="form-check-label" for="config-team-names">Teams have names (turn off to show every team as &ldquo;Team 7&rdquo; and ask for no name when joining)</label>
+            <label class="form-check-label" for="config-team-names">Enable custom team names</label>
+            <button class="ms-1 btn btn-outline-secondary btn-sm rounded-circle py-0 px-2" type="button" aria-label="What does this do?" aria-expanded="false" data-help-for="team-names-help-text" data-testid="team-names-help">?</button>
+            <div class="form-text" id="team-names-help-text" data-testid="team-names-help-text" hidden>Turn this off to show every team as &ldquo;Team 7&rdquo; (its number) and to ask for no name when joining.</div>
           </div>
           <div class="mb-3">
-            <label class="form-label" for="config-join-code">Code to join the game (optional)</label>
-            <input class="form-control" id="config-join-code" name="joinCode" type="text" maxlength="30" autocomplete="off" autocapitalize="off" spellcheck="false" data-testid="config-join-code">
-            <div class="form-text">Tell this code to the people at the event in person. New teams must enter it to join. Leave it empty for no code.</div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label" for="config-whatsapp">WhatsApp group link (optional)</label>
-            <input class="form-control" id="config-whatsapp" name="whatsappUrl" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://chat.whatsapp.com/..." data-testid="config-whatsapp">
-            <div class="form-text">
-              The group's invite link. Teams that have joined get links to it; spectators never see it.
-              <a href="#" target="_blank" rel="noopener noreferrer" data-testid="whatsapp-test" hidden>Test link</a>
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <label class="form-label mb-0" for="config-join-code">Join code (optional)</label>
+              <button class="btn btn-outline-secondary btn-sm rounded-circle py-0 px-2" type="button" aria-label="What does this do?" aria-expanded="false" data-help-for="join-code-help-text" data-testid="join-code-help">?</button>
             </div>
+            <input class="form-control" id="config-join-code" name="joinCode" type="text" maxlength="30" autocomplete="off" autocapitalize="off" spellcheck="false" data-testid="config-join-code">
+            <div class="form-text" id="join-code-help-text" hidden>5 to 12 letters and digits. Tell this code to the people at the event in person: new teams must enter it to join. Leave it empty for no code.</div>
           </div>
-          <button class="btn btn-primary w-100" type="submit" data-testid="config-save">Save</button>
-          <p class="text-muted small mt-2 mb-0">Saving also loads the chosen event's zones, questions, maps and instructions.</p>
+          <div class="mb-3">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <label class="form-label mb-0" for="config-whatsapp">WhatsApp group link (optional)</label>
+              <button class="btn btn-outline-secondary btn-sm rounded-circle py-0 px-2" type="button" aria-label="What does this do?" aria-expanded="false" data-help-for="whatsapp-help-text" data-testid="whatsapp-help">?</button>
+            </div>
+            <input class="form-control" id="config-whatsapp" name="whatsappUrl" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://chat.whatsapp.com/..." data-testid="config-whatsapp">
+            <div class="form-text" id="whatsapp-help-text" hidden>The group's invite link. Teams that have joined get links to it; spectators never see it.</div>
+            <div class="form-text"><a href="#" target="_blank" rel="noopener noreferrer" data-testid="whatsapp-test" hidden>Test link</a></div>
+          </div>
+          <button class="btn btn-primary w-100" type="submit" data-testid="config-save">Save &amp; Load Game</button>
           <p class="text-danger mt-2 mb-0" role="alert" data-testid="config-error" hidden></p>
           <ul class="text-danger small mt-1 mb-0" data-testid="config-problems" hidden></ul>
           <p class="text-success mt-2 mb-0" role="status" data-testid="config-success" hidden></p>

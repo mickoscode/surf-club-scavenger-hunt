@@ -10,16 +10,16 @@ Allow about 30 minutes. Tick as you go; write down anything odd.
 - [ ] On the laptop: `/game-config/` and `/game-score/` ask for the admin passcode; log in on each (a wrong passcode is refused, the right one lets you in), and check **Log out** brings the login box back
 
 ## Set up a short test game
-- [ ] `/game-config/`: day = today, start a few minutes from now, end 30 minutes later, correct time zone. **Save**
+- [ ] `/game-config/`: day = today, start a few minutes from now, end 30 minutes later, correct time zone. **Save & Load Game**
 - [ ] The page reports the right number of zones; status "before the game"
-- [ ] Paste the WhatsApp group link, press **Test link** (it opens the right group on the laptop), **Save**
+- [ ] Paste the WhatsApp group link, press **Test link** (it opens the right group on the laptop), **Save & Load Game**
 - [ ] On a phone: open the site address (scan the QR code if you have one). It shows the scoreboard, a countdown to the start and a **Join** button
 
 ## Joining (before the start)
 - [ ] Each phone joins with a different team name; the **Play** button replaces the Join button and the team's own row in the scoreboard is highlighted
 - [ ] A name already taken is refused with a clear message; an empty name too
-- [ ] (If you will use a join code: set one in `/game-config/` and Save; the join form on a phone now also asks for the code; a wrong code is refused with a clear message and the name stays typed; the right one, in any capitals, joins; a phone that has already joined is not asked again)
-- [ ] (If you will run the game with team names off: untick **Teams have names**, Save, and check the Join button joins at once and every team is shown as "Team 1", "Team 2"... on the scoreboard, the play page and the results)
+- [ ] (If you will use a join code: set one in `/game-config/` and press **Save & Load Game**; the join form on a phone now also asks for the **Join Code:** first, then **Name for Your Team:**; a wrong code is refused with a clear message and the name stays typed; the right one, in any capitals, joins; a phone that has already joined is not asked again)
+- [ ] (If you will run the game with team names off: untick **Enable custom team names**, press **Save & Load Game**, and check the Join button joins at once and every team is shown as "Team 1", "Team 2"... on the scoreboard, the play page and the results)
 - [ ] Close the browser completely and reopen the site: still joined
 - [ ] The scoreboard on every phone shows all teams, updating within about 5 seconds
 - [ ] `/game-config/` lists the teams; remove one, confirm it disappears everywhere, and that the phone goes back to being able to join
@@ -54,7 +54,7 @@ Allow about 30 minutes. Tick as you go; write down anything odd.
 - [ ] The scoreboard is empty and says nothing about final results; the next team to join is **Team 1**
 
 ## Then the real game
-- [ ] Set up the real game (`runbook.md`, section 3). Remember: if you changed questions after the rehearsal's Save, **Save again**
+- [ ] Set up the real game (`runbook.md`, section 3). Remember: if you changed questions after the rehearsal's **Save & Load Game**, **Save & Load Game again**
 - [ ] Check once more that the status reads "before the game" and no teams are listed
 
 Anything that went wrong or looked confusing on a phone is worth fixing before the real day: note it and raise it.
