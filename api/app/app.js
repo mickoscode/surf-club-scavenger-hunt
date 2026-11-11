@@ -99,6 +99,12 @@ function createApp({
     return config;
   }
 
+  // While the game is in progress the configuration and the player data are locked. The admin can unlock a single action, for
+  // testing, by sending the word "override" with it (the page asks for it to be typed); every use is logged.
+  function overrideLock(body, action, status) {
+    if (typeof body.override !== 'string' || body.override.trim().toLowerCase() !== 'override') throw new HttpError(409, 'game-active');
+    console.log(JSON.stringify({ message: 'admin override of the game lock', action, status }));
+  }
   const requireEvents = () => { if (!events) throw new HttpError(409, 'events-unavailable'); };
   const validName = (name) => { if (!isEventName(name)) throw new HttpError(400, 'invalid-event-name'); };
   // An event's summary, or 400 unknown-event (never 404: CloudFront would replace it).
@@ -268,7 +274,7 @@ function createApp({
     'PUT /api/admin/config': async (request) => {
       const body = readJson(request);
       const { status } = await snapshot();
-      if (!can(status, 'configure')) throw new HttpError(409, 'game-active');
+      if (!can(status, 'configure')) overrideLock(body, 'configure', status);
       const config = buildConfig(body);
       if (!events) throw new HttpError(409, 'events-unavailable');
       if (typeof body.event !== 'string' || body.event === '') throw new HttpError(400, 'event-required');
@@ -417,7 +423,7 @@ function createApp({
     'POST /api/admin/delete-all': async (request) => {
       const body = readJson(request);
       const { status } = await snapshot();
-      if (!can(status, 'deleteData')) throw new HttpError(409, 'game-active');
+      if (!can(status, 'deleteData')) overrideLock(body, 'delete-all', status);
       if (body.confirm !== 'delete') throw new HttpError(400, 'confirmation-required');
       await store.deleteAllPlayerData();
       return respond(200, { deleted: true });

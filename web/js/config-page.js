@@ -27,7 +27,6 @@ const FIELD_PROBLEM = {
 };
 
 let status = 'loading';
-let downloaded = false; // the data must be downloaded before it can be deleted
 let confirming = null; // the number of the team whose removal is awaiting confirmation
 let formLoaded = false;
 let shownTeams = null;
@@ -95,9 +94,8 @@ function renderStatus(info, teamCount) {
   const zones = info.zoneCount > 0 ? `${info.zoneCount} zone${info.zoneCount === 1 ? '' : 's'} loaded` : 'no zones loaded';
   $('status-detail').textContent = `${zones} · ${teamCount} team${teamCount === 1 ? '' : 's'}${info.event ? ` · event ${info.event}` : ''}`;
   $('status-detail').dataset.event = info.event ?? '';
-  const active = status === 'active';
-  $('active-notice').hidden = !active;
-  for (const input of [...Object.values(fields), teamNamesBox, eventSelect, $('config-save')]) input.disabled = active;
+  $('active-notice').hidden = status !== 'active';
+  applyLock();
   results = { published: info.results.published, unscored: info.unscoredPhotos };
   renderPublish();
   renderDeleteSection();
@@ -126,14 +124,21 @@ function renderPublish() {
   $('unpublish-button').hidden = !published;
 }
 
+// While the game is in progress the configuration and the data are locked, unless the admin has typed the word override (for testing).
+const overrideTyped = () => $('override-confirm').value.trim().toLowerCase() === 'override';
+const lockedNow = () => status === 'active' && !overrideTyped();
+
+function applyLock() {
+  for (const input of [...Object.values(fields), teamNamesBox, eventSelect, $('config-save')]) input.disabled = lockedNow();
+  renderDeleteSection();
+}
+
 function renderDeleteSection() {
-  const active = status === 'active';
+  const locked = lockedNow();
   const typed = $('delete-confirm').value.trim().toLowerCase() === 'delete';
-  $('delete-confirm').disabled = active;
-  $('delete-button').disabled = active || !downloaded || !typed;
-  $('delete-notice').textContent = active
-    ? 'Not while the game is in progress.'
-    : downloaded ? '' : 'Download the data first (step 1) to enable the delete button.';
+  $('delete-confirm').disabled = locked;
+  $('delete-button').disabled = locked || !typed;
+  $('delete-notice').textContent = locked ? 'Not while the game is in progress.' : '';
 }
 
 function renderTeams(teams) {
@@ -185,7 +190,7 @@ form.addEventListener('submit', async (event) => {
     error.hidden = false;
     return;
   }
-  const res = await putJson('/api/admin/config', { ...Object.fromEntries(Object.entries(fields).map(([name, input]) => [name, input.value])), teamNames: teamNamesBox.checked, event: eventSelect.value });
+  const res = await putJson('/api/admin/config', { ...Object.fromEntries(Object.entries(fields).map(([name, input]) => [name, input.value])), teamNames: teamNamesBox.checked, event: eventSelect.value, ...(status === 'active' && overrideTyped() ? { override: 'override' } : {}) });
   if (res.ok) {
     success.textContent = `Saved. ${res.body.zoneCount} zone${res.body.zoneCount === 1 ? '' : 's'} loaded from the event ${res.body.event}.`;
     success.hidden = false;
@@ -231,17 +236,17 @@ $('unpublish-button').addEventListener('click', async () => {
   await refresh();
 });
 
-$('export-link').addEventListener('click', () => { downloaded = true; renderDeleteSection(); });
+$('override-confirm').addEventListener('input', applyLock);
 $('delete-confirm').addEventListener('input', renderDeleteSection);
 $('delete-button').addEventListener('click', async () => {
   const result = $('delete-result');
   $('delete-button').disabled = true;
-  const res = await postJson('/api/admin/delete-all', { confirm: 'delete' });
+  const res = await postJson('/api/admin/delete-all', { confirm: 'delete', ...(status === 'active' && overrideTyped() ? { override: 'override' } : {}) });
   result.hidden = false;
   result.className = res.ok ? 'text-success mt-2 mb-0' : 'text-danger mt-2 mb-0';
   result.dataset.error = res.ok ? '' : (res.body?.error ?? 'unknown');
   result.textContent = res.ok ? 'All player data deleted. The next game starts clean.' : 'Nothing was deleted. Please try again.';
-  if (res.ok) { downloaded = false; $('delete-confirm').value = ''; }
+  if (res.ok) $('delete-confirm').value = '';
   await refresh();
   renderDeleteSection();
 });

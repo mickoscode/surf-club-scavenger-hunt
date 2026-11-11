@@ -59,7 +59,9 @@ Requests with a body must be JSON sent as `Content-Type: application/json` and u
 | `POST /api/admin/results/publish` `{ confirm: true }` | Publishes the final results. Only once the game is over (`game-not-over`, 409, before that, including at the exact end time); `confirmation-required` (400) unless `confirm` is exactly `true`. Photos never scored count as 0%. Publishing again changes nothing. Returns `{ published: true, publishedAt }` |
 | `POST /api/admin/results/unpublish` | Back to provisional, at any time. Returns `{ published: false }` |
 | `GET /api/admin/export` | All data as a JSON download (includes each team's secret id and submitted answers: keep it private) |
-| `POST /api/admin/delete-all` `{ confirm: "delete" }` | Deletes all teams, submissions and numbering; keeps the game. `game-active` (409) while active |
+| `POST /api/admin/delete-all` `{ confirm: "delete", override? }` | Deletes all teams, submissions and numbering; keeps the game. `game-active` (409) while active, unless `override` is the word `override` (see below) |
+
+**Overriding the lock (for testing).** While the game is in progress, `PUT /api/admin/config` and `POST /api/admin/delete-all` answer `game-active` (409). Sending `override` set to the word `override` (any capitals) with the request lifts that one block; nothing else is skipped (an invalid configuration or a missing `confirm` is still refused), and every use is written to the function's log. The config page asks the admin to type the word.
 
 Admin routes identify a team by its **number** (the hidden form field on the scoring page), never by its secret id.
 
