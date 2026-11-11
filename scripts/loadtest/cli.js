@@ -15,13 +15,14 @@ const { fetchServerMetrics } = require('./cloudwatch.js');
 const { renderHtml, renderMarkdown } = require('./report.js');
 
 const LIMITS = { teams: 300, spectators: 1500, durationSeconds: 900, answersPerMinute: 12 };
+const MIN_DURATION_SECONDS = 10; // shorter runs say nothing (the tests of this tool pass a smaller minimum to stay quick)
 const DEFAULTS = { mode: 'full', teams: 50, spectators: 100, durationSeconds: 300, rampSeconds: 60, answersPerMinute: 2 };
 
 class Abort extends Error {}
 
 // ------------------------------------------------------------------------------------------------ the request
 
-function validateParams(input) {
+function validateParams(input, { minDurationSeconds = MIN_DURATION_SECONDS } = {}) {
   const params = { ...DEFAULTS, ...input };
   const problems = [];
   const whole = (name, min, max) => {
@@ -31,7 +32,7 @@ function validateParams(input) {
   if (!['full', 'spectators-only'].includes(params.mode)) problems.push(`mode must be "full" or "spectators-only" (got ${params.mode})`);
   whole('teams', 0, LIMITS.teams);
   whole('spectators', 0, LIMITS.spectators);
-  whole('durationSeconds', 10, LIMITS.durationSeconds);
+  whole('durationSeconds', minDurationSeconds, LIMITS.durationSeconds);
   whole('rampSeconds', 0, LIMITS.durationSeconds);
   whole('answersPerMinute', 0, LIMITS.answersPerMinute);
   if (params.rampSeconds > params.durationSeconds) problems.push('rampSeconds cannot be longer than durationSeconds');
@@ -41,7 +42,7 @@ function validateParams(input) {
   return params;
 }
 
-function parseArgs(argv, env = process.env) {
+function parseArgs(argv, env = process.env, options = {}) {
   const flags = {};
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -60,7 +61,7 @@ function parseArgs(argv, env = process.env) {
   if (!site) throw new Abort('No site to test: pass --site https://... or set SITE_URL.');
   return {
     site: site.replace(/\/+$/, '') + '/',
-    params: validateParams(input),
+    params: validateParams(input, options),
     out: flags.out ?? 'load-test-report',
     cloudwatch: flags.cloudwatch === 'true',
     metricsDelaySeconds: flags['metrics-delay'] === undefined ? 120 : Number(flags['metrics-delay']),
@@ -156,9 +157,9 @@ async function preflight({ client, params, passcode, log }) {
 
 // ------------------------------------------------------------------------------------------------ the whole run
 
-async function main({ argv = process.argv.slice(2), env = process.env, fetchImpl = fetch, runAws, log = (m) => console.log(m), sleep = (ms) => new Promise((r) => setTimeout(r, ms)), generate = runLoad } = {}) {
+async function main({ argv = process.argv.slice(2), env = process.env, fetchImpl = fetch, runAws, log = (m) => console.log(m), minDurationSeconds, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), generate = runLoad } = {}) {
   let options;
-  try { options = parseArgs(argv, env); } catch (e) { if (e instanceof Abort) { log(e.message); return 1; } throw e; }
+  try { options = parseArgs(argv, env, { minDurationSeconds }); } catch (e) { if (e instanceof Abort) { log(e.message); return 1; } throw e; }
   const { site, params, out, passcode } = options;
   const client = createClient(site, fetchImpl);
   const startedAt = new Date();

@@ -27,7 +27,8 @@ Website for the Sorrento SLS Youth Scavenger Hunt 2026/27. A static site (HTML, 
 ```sh
 npm ci            # installs Bootstrap and the test tools
 npm run build     # builds dist/
-npm test          # unit tests, the API tests (in-memory store) and the load test's own tests (about a minute)
+npm test          # unit tests and the API tests (in-memory store): the quick check
+npm run test:loadtest   # the load test tool's own tests (about 30 seconds; they run the tool against a local site)
 npm run validate:data   # checks the example game file (docs/game-questions.json)
 DYNAMODB_ENDPOINT=http://localhost:8000 npm run test:api   # also test the DynamoDB store (start DynamoDB Local first: docker run --rm -p 8000:8000 amazon/dynamodb-local)
 npx playwright install chromium   # once, for the browser tests
@@ -51,6 +52,7 @@ Mobile first: write styles for phones in `web/css/site.css` and add `@media (min
 
 | Workflow | Trigger | What it does |
 |---|---|---|
+| `web-pr.yml` | PR touching `api/` or the load test tool | The load test tool's tests (it removes teams from the live site, so its guards stay tested). Check: `Load test tool` |
 | `web-pr.yml` | PR touching the frontend or tests | `npm test` (build + CSP checks + unit tests). Required check: `Validate site` |
 | `web-pr.yml` | PR touching the frontend, backend or tests | The pages in real Chromium. Required check: `Browser tests` |
 | `web-pr.yml` | PR touching `api/` or `tests/api/` | The store contract tests against DynamoDB Local. Required check: `API tests` |
