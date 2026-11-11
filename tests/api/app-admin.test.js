@@ -188,3 +188,27 @@ test('the configuration accepts the two offered time zones and refuses any other
   const refused = await admin.put('/api/admin/config', { ...CONFIG, timeZone: 'Australia/Sydney' });
   assert.deepEqual([refused.status, refused.body.error, refused.body.fields], [400, 'invalid-config', ['timeZone']]);
 });
+
+test('during the game the lock is lifted for one action by sending the word override, and every use is logged', async () => {
+  const { env, p } = await activeGame(); // in progress, with one team
+  const admin = env.admin();
+  const logged = [];
+  const original = console.log;
+  console.log = (line) => logged.push(line);
+  try {
+    for (const override of [undefined, true, 'yes', 'overide', '']) {
+      assert.equal((await admin.put('/api/admin/config', { ...CONFIG, override })).body.error, 'game-active', String(override));
+      assert.equal((await admin.post('/api/admin/delete-all', { confirm: 'delete', override })).body.error, 'game-active', String(override));
+    }
+    assert.equal(logged.length, 0);
+    assert.equal((await admin.put('/api/admin/config', { ...CONFIG, name: 'Changed', override: ' Override ' })).status, 200);
+    assert.equal((await admin.get('/api/admin/config')).body.config.name, 'Changed');
+    // the override lifts only the lock: the other rules still apply
+    assert.equal((await admin.post('/api/admin/delete-all', { override: 'override' })).body.error, 'confirmation-required');
+    assert.equal((await admin.put('/api/admin/config', { ...CONFIG, day: 'not a day', override: 'override' })).body.error, 'invalid-config');
+    assert.equal((await admin.post('/api/admin/delete-all', { confirm: 'delete', override: 'override' })).status, 200);
+    assert.equal((await admin.get('/api/admin/teams')).body.teams.length, 0);
+  } finally { console.log = original; }
+  assert.deepEqual(logged.map((l) => JSON.parse(l).action), ['configure', 'delete-all', 'configure', 'delete-all']); // each use, including ones the other rules then refused
+  assert.equal((await p.get('/api/me')).body.team, null); // the player's team is gone
+});

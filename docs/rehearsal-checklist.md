@@ -50,7 +50,7 @@ Allow about 30 minutes. Tick as you go; write down anything odd.
 - [ ] Each team's results page: the place ("You finished 2nd of 3", a medal for 1st to 3rd), its total, every question with its own answer, right or wrong, and the official answer, and the photo percentages (try one team that sent no photo and one whose photo you never scored)
 - [ ] Someone who is not a team (a spectator's phone) opening the results address sees only the link back to the scoreboard
 - [ ] The scoring page is locked while published; **Return to provisional** unlocks it and the scoreboard says "provisional results:" again
-- [ ] `/game-config/`: **Download the player data** (open the file: teams, answers and scores are in it), type `delete`, delete
+- [ ] `/game-config/`: **Download the player data** if you want to keep it (open the file: teams, answers and scores are in it), type `delete`, delete
 - [ ] The scoreboard is empty and says nothing about final results; the next team to join is **Team 1**
 
 ## Then the real game

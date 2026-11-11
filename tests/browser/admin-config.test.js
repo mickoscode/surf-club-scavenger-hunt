@@ -93,7 +93,7 @@ withPage('teams are listed as text and can be removed, after confirming, even du
   assert.equal(await page.locator(item(1)).count(), 1);
 });
 
-withPage('player data must be downloaded and the word typed before it can be deleted, then the next game starts clean', {}, async ({ site, page }) => {
+withPage('player data needs the word typed before it can be deleted (downloading it first is optional), then the next game starts clean', {}, async ({ site, page }) => {
   site.clock.now = START - 1000;
   await site.api.configure();
   const team = await site.api.join('Sea Dogs');
@@ -103,8 +103,8 @@ withPage('player data must be downloaded and the word typed before it can be del
 
   const del = page.locator($('delete-button'));
   assert.equal(await del.isDisabled(), true);
-  await page.fill($('delete-confirm'), 'delete');
-  assert.equal(await del.isDisabled(), true); // typed, but the data was not downloaded yet
+  await page.fill($('delete-confirm'), 'dele');
+  assert.equal(await del.isDisabled(), true); // the wrong word
 
   const [download] = await Promise.all([page.waitForEvent('download'), page.click($('export-link'))]);
   const exported = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
@@ -120,7 +120,7 @@ withPage('player data must be downloaded and the word typed before it can be del
   assert.equal(await page.locator($('delete-result')).getAttribute('data-error'), '');
   await until(async () => (await page.locator($('team-item')).count()) === 0);
   assert.notEqual((await site.api.config()).config, null); // the game itself stays
-  assert.equal(await del.isDisabled(), true); // and it needs a new download before the next delete
+  assert.equal(await del.isDisabled(), true); // and the word must be typed again before the next delete
 
   site.clock.now = START - 1000; // a new game: team numbers start again at 1
   assert.equal((await site.api.join('Fresh')).number, 1);
@@ -205,3 +205,46 @@ for (const [path, wait] of [['/game-config/', 'game-status'], ['/game-events/', 
     }
   });
 }
+
+withPage('data can be deleted without downloading it first', {}, async ({ site, page }) => {
+  site.clock.now = START - 1000;
+  await site.api.configure();
+  await site.api.join('Sea Dogs');
+  site.clock.now = END + 1;
+  await open(page, site);
+  await page.fill($('delete-confirm'), 'delete'); // no download
+  await until(async () => !(await page.locator($('delete-button')).isDisabled()));
+  await page.click($('delete-button'));
+  await until(async () => (await page.locator($('team-item')).count()) === 0);
+  assert.equal((await site.api.admin('GET', '/api/admin/teams')).body.teams.length, 0);
+});
+
+withPage('typing override unlocks the configuration and the data during the game, and clearing it locks them again', {}, async ({ site, page }) => {
+  site.clock.now = START - 1000;
+  await site.api.configure();
+  await site.api.join('Sea Dogs');
+  site.clock.now = START + 1000;
+  await open(page, site);
+  assert.equal(await status(page), 'active');
+  assert.equal(await page.locator($('config-save')).isDisabled(), true);
+
+  await page.fill($('override-confirm'), 'overrid'); // not the word
+  assert.equal(await page.locator($('config-save')).isDisabled(), true);
+  await page.fill($('override-confirm'), 'override');
+  await until(async () => !(await page.locator($('config-save')).isDisabled()));
+  assert.equal(await page.locator($('config-name')).isDisabled(), false);
+
+  await page.fill($('config-name'), 'Changed in test'); // saving works while the game is in progress
+  await page.click($('config-save'));
+  await page.waitForSelector(`${$('config-success')}:not([hidden])`);
+  assert.equal((await site.api.config()).config.name, 'Changed in test');
+
+  await page.fill($('delete-confirm'), 'delete'); // so does deleting the data
+  await until(async () => !(await page.locator($('delete-button')).isDisabled()));
+  await page.click($('delete-button'));
+  await until(async () => (await page.locator($('team-item')).count()) === 0);
+
+  await page.fill($('override-confirm'), '');
+  await until(async () => await page.locator($('config-save')).isDisabled());
+  assert.equal(await page.locator($('delete-button')).isDisabled(), true);
+});
