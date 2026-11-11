@@ -6,6 +6,8 @@ name: Web PR checks
 #   Browser tests: the pages in real Chromium under the real Content-Security-Policy (when the frontend, backend or tests change)
 #   API tests:     the store contract against DynamoDB Local (when the backend code or its tests change)
 #   Game data:     checks the structure of the example game docs/game-questions.json (when it or its validator changes)
+#   Load test tool: the tests of the manually run load test, which can delete teams on the live site, so its guards are tested
+#                  (only when the tool or the API it drives changes: it is not part of npm test, so page changes never wait for it)
 # Jobs are skipped (not absent) when their files are unchanged, so both can be required checks.
 on:
   pull_request:
@@ -28,6 +30,7 @@ jobs:
       web: ${{ steps.diff.outputs.web }}
       data: ${{ steps.diff.outputs.data }}
       api: ${{ steps.diff.outputs.api }}
+      loadtest: ${{ steps.diff.outputs.loadtest }}
     steps:
       - name: Checkout repository code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,6 +54,11 @@ jobs:
             echo "api=true" >> "$GITHUB_OUTPUT"
           else
             echo "api=false" >> "$GITHUB_OUTPUT"
+          fi
+          if grep -qE '^(scripts/loadtest/|scripts/load-test\.js$|tests/loadtest/|api/|package(-lock)?\.json$|\.github/workflows/web-pr\.yml$)' <<< "$changed"; then
+            echo "loadtest=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "loadtest=false" >> "$GITHUB_OUTPUT"
           fi
           if grep -qE '^(docs/game-questions\.json$|docs/game-zones/|scripts/validate-game-data\.js$|api/lib/gamedata\.js$|tests/unit/game-data\.test\.js$|\.github/workflows/web-pr\.yml$)' <<< "$changed"; then
             echo "data=true" >> "$GITHUB_OUTPUT"
@@ -83,6 +91,32 @@ jobs:
       # Builds dist/ (the test does this too) and checks it against the Content-Security-Policy.
       - name: Build and test
         run: npm test
+
+  # The load test is run by hand, but it removes teams from the live site, so its safety guards (refuses with real teams, removes
+  # only its own, never changes the game) stay tested. It drives the real API routes, so an API change runs it too.
+  loadtest-tests:
+    name: Load test tool
+    needs: changes
+    if: needs.changes.outputs.loadtest == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Load test tool tests
+        run: npm run test:loadtest
 
   # Structure only (types, answer shapes, scores, map files exist), never the wording of questions.
   # Uses built-in Node modules only, so no npm install is needed.

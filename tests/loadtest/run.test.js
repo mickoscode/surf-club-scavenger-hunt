@@ -64,13 +64,14 @@ async function startSite({ now = START + 60_000, intercept, passcode = false } =
 }
 
 const outDir = () => fs.mkdtempSync(path.join(process.env.TMPDIR ?? os.tmpdir(), 'loadtest-'));
-const FAST = ['--duration', '10', '--ramp', '2', '--metrics-delay', '0'];
+// The shortest run these tests ask for: three seconds (the tool itself will not run for less than ten).
+const FAST = ['--duration', '3', '--ramp', '1', '--metrics-delay', '0'];
 async function run(site, extra = [], env = {}) {
   const out = outDir();
   const lines = [];
   const code = await main({
     argv: ['--site', site.url, ...FAST, '--out', out, ...extra], env,
-    log: (m) => lines.push(m), sleep: async () => {},
+    log: (m) => lines.push(m), sleep: async () => {}, minDurationSeconds: 3,
     generate: (o) => runLoad({ ...o, pollMs: 200 }),
   });
   const read = (f) => fs.readFileSync(path.join(out, f), 'utf8');
@@ -79,7 +80,7 @@ async function run(site, extra = [], env = {}) {
 
 test('parameters are validated and capped, and the site is required', () => {
   assert.equal(validateParams({}).teams, 50);
-  for (const bad of [{ teams: 301 }, { spectators: 1501 }, { durationSeconds: 901 }, { rampSeconds: 400, durationSeconds: 300 }, { answersPerMinute: 13 }, { teams: -1 }, { mode: 'nope' }, { teams: 0, spectators: 0 }, { mode: 'spectators-only', spectators: 0 }]) {
+  for (const bad of [{ teams: 301 }, { spectators: 1501 }, { durationSeconds: 901 }, { durationSeconds: 9 }, { rampSeconds: 400, durationSeconds: 300 }, { answersPerMinute: 13 }, { teams: -1 }, { mode: 'nope' }, { teams: 0, spectators: 0 }, { mode: 'spectators-only', spectators: 0 }]) {
     assert.throws(() => validateParams(bad), /Cannot run/, JSON.stringify(bad));
   }
   assert.throws(() => parseArgs([], {}), /No site/);
