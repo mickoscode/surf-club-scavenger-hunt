@@ -52,8 +52,8 @@ test('every module a script imports is in dist (a missing one is a blank page in
   assert.equal(fs.existsSync(path.join(dist, 'js', 'package.json')), false); // only for Node; not deployed
 });
 
-test('all three admin pages exist and tell search engines not to index them', () => {
-  for (const page of ['game-config/index.html', 'game-score/index.html', 'game-events/index.html']) {
+test('all four admin pages exist and tell search engines not to index them', () => {
+  for (const page of ['game-config/index.html', 'game-score/index.html', 'game-events/index.html', 'game-teams/index.html']) {
     const html = fs.readFileSync(path.join(dist, page), 'utf8');
     assert.match(html, /<meta name="robots" content="[^"]*noindex/, page);
   }

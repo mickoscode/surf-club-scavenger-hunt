@@ -27,10 +27,12 @@
       </section>
 
       <div data-testid="admin-content" hidden>
-      <p class="text-end mb-2"><button class="btn btn-outline-secondary btn-sm" type="button" data-testid="logout-button" hidden>Log out</button></p>
+      <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+        <nav aria-label="Admin pages"><ul class="nav nav-pills flex-wrap" data-testid="admin-nav"></ul></nav>
+        <button class="btn btn-outline-secondary btn-sm" type="button" data-testid="logout-button" hidden>Log out</button>
+      </div>
       <div class="d-flex justify-content-between align-items-center mb-2">
         <h1 class="h3 mb-0">Score photos</h1>
-        <a href="/game-config/" data-testid="config-page-link">Game configuration</a>
       </div>
       <p class="text-muted small" data-testid="scoring-help">Check each photo in the WhatsApp group (team number, and clearly which zone and challenge), then choose a score and press Apply. Photos not sent to WhatsApp, or without a team number, get nothing. Scores can be corrected: applying again replaces the previous decision.</p>
 

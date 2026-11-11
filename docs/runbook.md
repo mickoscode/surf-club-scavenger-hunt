@@ -10,10 +10,11 @@ For the person running the game (the admin). What the site does is in `requireme
 | `/play/` | teams | the game (teams reach it from the scoreboard page) |
 | `/results/` | teams | each team's final results (only once you have published them) |
 | `/game-events/` | you | upload and manage the prepared games (events) |
+| `/game-teams/` | you | the live scoreboard; tap a team to see everything it has submitted |
 | `/game-config/` | you | choose the event that is live, set up the game, remove teams, publish the final results, download and delete the data |
 | `/game-score/` | you | score the photos |
 
-The three admin pages are protected by your **admin passcode**. Open either address and a login box appears; type the passcode (capitals, spaces and dashes don't matter) and you are in for **12 hours**, on that browser. **Log out** (top right) ends it sooner, and when 12 hours pass the box comes back by itself. After **10 wrong tries in 5 minutes** (counted across everybody) logging in is refused until those 5 minutes have passed, even for the right passcode, so if you are locked out just wait. Until the passcode has been set up the pages open without a login. Keep the passcode in your password manager; the page names are in this public repo, so the passcode is what protects the pages.
+The four admin pages are protected by your **admin passcode**. Open either address and a login box appears; type the passcode (capitals, spaces and dashes don't matter) and you are in for **12 hours**, on that browser. **Log out** (top right) ends it sooner, and when 12 hours pass the box comes back by itself. After **10 wrong tries in 5 minutes** (counted across everybody) logging in is refused until those 5 minutes have passed, even for the right passcode, so if you are locked out just wait. Until the passcode has been set up the pages open without a login. Keep the passcode in your password manager; the page names are in this public repo, so the passcode is what protects the pages.
 
 ---
 
@@ -62,6 +63,7 @@ Things to know:
 
 ## 5. During the game
 
+- **Check on a team** on `/game-teams/`: it is the live scoreboard, and tapping a team shows every answer it has submitted, whether each was right, the official answers and its photos, exactly as the team will see it after the results are published. Every admin page has a menu at the top to move between them.
 - **Score as photos arrive** on `/game-score/` (it updates by itself). For each: check the photo in WhatsApp, choose **Full**, **Half** or **Zero**, press **Apply**. You can correct a decision by choosing another and applying again: it replaces, never adds. No photo in WhatsApp, no team number, or can't tell which zone: **Zero** (or leave it).
 - **A team name you do not like:** `/game-config/`, Teams, **Remove** (and confirm). The team's data goes with it and the name is free again; they can join under another name.
 - Watch the scoreboard on `/view/` if you like. Scores shown include only automatic answers and the photo decisions you have applied.

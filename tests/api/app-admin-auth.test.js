@@ -14,7 +14,7 @@ const login = (admin, passcode = PASSCODE) => admin.post('/api/admin/login', { p
 
 // Every admin route, with a body that would work if it were allowed.
 const ADMIN_CALLS = [
-  ['GET', '/api/admin/config'], ['PUT', '/api/admin/config', CONFIG], ['GET', '/api/admin/teams'], ['DELETE', '/api/admin/teams/1'],
+  ['GET', '/api/admin/config'], ['PUT', '/api/admin/config', CONFIG], ['GET', '/api/admin/teams'], ['GET', '/api/admin/teams/1/results'], ['DELETE', '/api/admin/teams/1'],
   ['GET', '/api/admin/photos'], ['POST', '/api/admin/photos/apply', { teamNumber: 1, zone: 'zone 1', question: 'Q4', decision: 'full' }],
   ['POST', '/api/admin/results/publish', { confirm: true }], ['POST', '/api/admin/results/unpublish', {}],
   ['GET', '/api/admin/export'], ['POST', '/api/admin/delete-all', { confirm: 'delete' }],

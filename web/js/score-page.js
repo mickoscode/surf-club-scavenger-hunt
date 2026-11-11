@@ -6,6 +6,8 @@ import { $, el, refreshInterval } from './dom.js';
 import { formatScore } from './format.js';
 import { applyWhatsAppLinks } from './whatsapp.js';
 import { guardAdminPage, isLocked } from './admin-auth.js';
+import { renderAdminNav } from './admin-nav.js';
+
 
 const DECISIONS = ['full', 'half', 'zero'];
 const LABEL = { full: 'Full', half: 'Half', zero: 'Zero' };
@@ -115,6 +117,7 @@ async function refresh() {
   $('no-photos').hidden = photos.length > 0;
 }
 
+renderAdminNav();
 guardAdminPage({
   start: () => { // the admin is allowed in: load the page and keep it fresh
     refresh();

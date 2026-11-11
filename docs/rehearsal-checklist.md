@@ -36,6 +36,10 @@ Allow about 30 minutes. Tick as you go; write down anything odd.
 - [ ] Press **Photo sent to WhatsApp** and really send a photo with the team number to the WhatsApp group
 - [ ] The countdown matches the end time you set (the game ends exactly then)
 
+## Checking on a team (admin)
+- [ ] `/game-teams/` shows the same scoreboard as the phones, updating by itself; tap a team: its answers appear as that team will see them later (right and wrong marked, official answers shown), and a new answer from its phone appears within a few seconds
+- [ ] Each admin page has the menu at the top (Teams, Scoring, Game, Events) and it takes you to the other pages
+
 ## Scoring (admin)
 - [ ] `/game-score/` lists the photos in the order they were pressed; match them with WhatsApp
 - [ ] Apply Full to one, Half to another; check the scoreboard (Half shows a decimal if the points are odd)
