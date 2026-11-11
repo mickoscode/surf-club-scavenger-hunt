@@ -28,7 +28,13 @@ The API's infrastructure (DynamoDB, two Lambda functions, API Gateway, the `/api
 
 ## Protect `main` (after the first pull request has run once)
 
-Settings > Rules > Rulesets > New branch ruleset, target `main`: require a pull request, block force pushes and deletion, and require status checks `Validate site`, `Browser tests`, `API tests`, `Game data`, `Terraform validate`, `Terraform security scan` and `Terraform plan`. The check names only appear in the picker after they have run once, which is why this comes after the first pull request. These jobs are skipped (not absent) when their folder is unchanged, so they can safely be required.
+Settings > Rules > Rulesets > New branch ruleset (enforcement **Active**), target the default branch (`main`):
+- **Require a pull request before merging**, with required approvals set to **0** (you are the only reviewer, and GitHub does not let you approve your own pull request). Leave the code owner and stale review options off.
+- **Block force pushes** and **Restrict deletions**.
+- **Require status checks to pass**: `Validate site`, `Browser tests`, `API tests`, `Game data`, `Load test tool`, `Terraform validate`, `Terraform security scan` and `Terraform plan`. Leave "Require branches to be up to date" off (it forces a re-run after every other merge). Do not require the two `Detect ... changes` jobs: they are helpers.
+- Leave the bypass list empty, so nothing (not even an admin) can push straight to `main`.
+
+The check names only appear in the picker after they have run once, which is why this comes after the first pull request. These jobs are skipped (not absent) when their files are unchanged, so they can safely be required.
 
 ## The events bucket
 
