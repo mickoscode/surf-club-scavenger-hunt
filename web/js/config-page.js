@@ -5,6 +5,8 @@ import { $, el, refreshInterval } from './dom.js';
 import { formatScore } from './format.js';
 import { safeWhatsAppUrl } from './whatsapp.js';
 import { guardAdminPage, isLocked } from './admin-auth.js';
+import { renderAdminNav } from './admin-nav.js';
+
 import { wireHelp } from './help.js';
 
 const STATUS_TEXT = { loading: 'loading', unconfigured: 'no game set up yet', pre: 'before the game', active: 'game in progress', post: 'game finished' };
@@ -251,6 +253,7 @@ $('delete-button').addEventListener('click', async () => {
   renderDeleteSection();
 });
 
+renderAdminNav();
 guardAdminPage({
   start: () => { // the admin is allowed in: load the page and keep it fresh
     refresh();

@@ -25,6 +25,8 @@ page: <cloudfront_url>/game-config/
 Used by Admin to choose the active event, edit its game config (name, time zone, day, start, end, team names on or off, join code, WhatsApp link), remove teams, and download/delete player data. Zones, questions and maps are NOT edited here: they are uploaded on the events page (see "Events").
 page: <cloudfront_url>/game-events/
 Used by Admin to upload, replace, download and delete events (see "Events").
+page: <cloudfront_url>/game-teams/
+Used by Admin to watch the live scoreboard and to check on a team (see "Teams page").
 Used by Admin to confirm all scores have been applied, by publishing the final results (a separate form on this page, see "Publishing the final results"). Publishing is what makes the results page show a player's final results and the answers to all questions, and turns the scoreboard's "provisional results:" into "final results:".
 page: <cloudfront_url>/game-score/
 Used by Admin to set scores for photo questions (submitted via separate whatsapp group). 
@@ -37,7 +39,7 @@ page: <cloudfront_url>/results/
 Used by players, once the admin has published the final results, to see how they finished and a detailed breakdown of their score: all the answers, which were correct and which were wrong, and the official answers (see "Results page"). The top of the page includes a link back to the view/scoreboard page, identical to the one on the play page.
 This page is not relevant to viewers. If a viewer visits this page (i.e. there is no active player session), they see only the link back to the view/scoreboard page.
 
-The three admin pages (/game-config/, /game-score/, /game-events/) are protected by the admin passcode, are not linked from anywhere and are marked noindex.
+The four admin pages (/game-teams/, /game-score/, /game-config/, /game-events/) are protected by the admin passcode, are not linked from any public page and are marked noindex. Every admin page has the same menu at the top (Teams, Scoring, Game, Events), marking the page you are on, to move between them.
 
 ## Game Configuration & Management
 
@@ -253,6 +255,15 @@ The page also lists the teams, with a 'remove' button for each (with confirmatio
 
 Admins should also be able to delete all player data from a previous game. This is allowed before the game starts and after it ends, never while it is active (unless the admin overrides the lock, see "Overriding the lock"). The data (teams, team numbers, submissions, scores) can be downloaded as a single json file first (optional: the admin may not want to keep it); the admin must type the word "delete" to confirm. Once confirmed, the data is deleted, so that the next upcoming game has no players and no scores, and team numbers start again at 1.
 
+### Teams page
+
+page: <cloudfront_url>/game-teams/
+
+The admin's view of the game while it is played (and afterwards).
+- **Live scoreboard**: the same table players and viewers see (rank, name, done, score; refreshing every 5 seconds), with the same provisional or final heading. It uses the same data as the public scoreboard, so the two always agree.
+- **A team's answers**: tapping a team's name shows everything that team has submitted, in exactly the form it will see on the results page once the results are published (its place and total, every question with its answer, whether it was right, the points, the official answer, and each photo challenge with its score), but available at any time, so the admin can check on a team during the game. The page's heading says whose it is ("Sea Dogs: 2nd of 12", and that it is provisional until the results are published). It refreshes too, so a team's new answers appear while the admin is watching. The address says which team (`#team-7`), so Back and reload work, and a removed team sends the admin back to the list.
+- Only the admin can see this: the player's own results route still sends nothing until the results are published. Team names are text, never markup.
+
 ### Publishing the final results
 
 A separate form on this page (not part of the configuration form) lets the admin confirm that every score has been applied and publish the final results.
@@ -378,5 +389,6 @@ Where the finished site is more specific than the text above (details settled wh
 - **Events page** (`/game-events/`): lists the stored events (ready or incomplete, and which is active) with Replace, Download and Delete (after a confirmation; not for the active event), and uploads one: the admin chooses the event folder (or its files one by one) and names it (suggested from the folder). The page reads `game-questions.json`, finds each zone's map by the file name in `zone-map` (in any subfolder, any capitals), and refuses before uploading anything when a map is missing. It then uploads the questions (the server checks them first), the instructions, each map (shrunk in the browser to a 320 px thumbnail and a 1400 px picture, WebP where the browser can make it) and finally the settings file. A failure part way leaves the event listed as incomplete, which cannot be activated; uploading again completes it. A bad settings file only warns.
 - **Choosing an event**: on `/game-config/` the **Event** list shows the stored events (an incomplete one is greyed out); an event must be chosen to save. Choosing an event fills the form from its saved settings; saving makes it the live game (its questions, instructions and maps are copied in) and stores the settings back into the event. A different event is refused while teams exist (the page says to download and delete the player data first); the list is locked while the game is in progress. Players get the event's maps from `/event-maps/...` and its instructions as text from `/api/game`, drawn by a small safe Markdown renderer (headings, bullets, numbered lists, bold, italic; raw HTML, links and images stay plain text).
 - **Overriding the lock (for testing)**: while the game is in progress the config page shows a box, "type override", beside the notice that the game is locked. Typing the word unlocks the configuration form and the player data controls (clearing it locks them again); the requests then carry `override: "override"`, which the server checks for itself, for saving the configuration and for deleting the player data only. Every use is logged. Nothing else is skipped: an invalid configuration, a missing "delete", and the rule against switching to another event while teams exist all still apply. It exists so that tests on the live site are not stuck with a game in progress; during a real game it would wipe the live game, so do not type it then.
+- **Teams page** (`/game-teams/`) and the admin menu: the scoreboard table and the results cards are the same code the public pages use (`scoreboard-table.js`, `results-view.js`), so the admin sees exactly what players see; `GET /api/admin/teams/:number/results` supplies a team's breakdown. The menu is built from one list in `admin-nav.js` and shown on all four admin pages, replacing the individual links between them.
 - **Not built (parked)**: restoring an old game from its download and recovering a lost session. See also "Accepted risk" above.
 

@@ -28,6 +28,7 @@ locals {
       "PUT /api/admin/events/{name}/maps/{map}",
       "GET /api/admin/teams",
       "DELETE /api/admin/teams/{number}",
+      "GET /api/admin/teams/{number}/results",
       "GET /api/admin/photos",
       "POST /api/admin/photos/apply",
       "POST /api/admin/results/publish",

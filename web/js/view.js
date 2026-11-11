@@ -2,7 +2,7 @@
 // Team names are only ever put on the page as text.
 import { getJson } from './api.js';
 import { $, refreshInterval } from './dom.js';
-import { formatScore } from './format.js';
+import { scoreboardRows } from './scoreboard-table.js';
 import { createClock } from './clock.js';
 import { createMeArea } from './me-area.js';
 
@@ -23,33 +23,7 @@ function renderMeArea() {
 }
 
 function renderScoreboard(teams, questionTotal) {
-  const rows = teams.map((team) => {
-    const mine = me?.number === team.number;
-    const row = document.createElement('tr');
-    row.dataset.testid = 'scoreboard-row';
-    row.dataset.teamNumber = String(team.number);
-    row.dataset.score = String(team.score);
-    row.dataset.rank = String(team.rank);
-    row.dataset.done = String(team.done);
-    row.dataset.total = String(questionTotal);
-    if (mine) {
-      row.dataset.mine = 'true';
-      row.className = 'table-primary';
-    }
-    const cells = [
-      [String(team.rank), 'text-muted'], // the team's place: teams on the same score share one
-      [team.name, 'team-name'],
-      [`${team.done}/${questionTotal}`, 'text-end text-nowrap'],
-      [formatScore(team.score), 'text-end fw-semibold'],
-    ];
-    for (const [text, classes] of cells) {
-      const cell = document.createElement('td');
-      cell.className = classes;
-      cell.textContent = text; // text, never markup
-      row.append(cell);
-    }
-    return row;
-  });
+  const rows = scoreboardRows(teams, questionTotal, { isMine: (team) => me?.number === team.number });
   $('scoreboard-body').replaceChildren(...rows);
   const heading = $('scoreboard-heading'); // "provisional results:" until the admin publishes, then "final results:"
   heading.dataset.published = String(clock.published());

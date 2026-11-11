@@ -53,6 +53,7 @@ Requests with a body must be JSON sent as `Content-Type: application/json` and u
 | `GET /api/admin/events/:name/download` | The event's config, questions and instructions as one JSON download (not the maps) |
 | `DELETE /api/admin/events/:name` | Deletes the event. `event-active` (409) for the one the live game was loaded from |
 | `GET /api/admin/teams` | `{ teams: [{ number, name, score }] }` |
+| `GET /api/admin/teams/:number/results` | `{ team, published, results }`: the team's breakdown exactly as `/api/results` gives it to the team once the results are published (place, total, every question with the team's answer, whether it was right, points and the official answers, and each photo challenge), but at any time, so the admin can check on a team during the game. `no-team` (400) for an unknown team, `no-game` (409) before a game is set up |
 | `DELETE /api/admin/teams/:number` | Removes a team and its data (any time) |
 | `GET /api/admin/photos` | `{ photos: [{ teamNumber, zone, zoneName, question, challenge, photoScore, sentAt, decision, appliedAt }] }`: not yet scored first (in the order sent), then scored (in the order scored) |
 | `POST /api/admin/photos/apply` `{ teamNumber, zone, question, decision }` | `question` is the id of the photo challenge. `decision` is `full`, `half` or `zero`. Re-applying replaces the previous decision, never adds. `not-scoring` (409) before the game starts, and `results-published` (409) while the final results are published (return to provisional to correct a score). Returns `{ delta, score }` |

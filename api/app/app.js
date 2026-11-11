@@ -351,6 +351,17 @@ function createApp({
       return respond(200, { teams });
     },
 
+    // One team's results as the player will see them (the same breakdown, with the official answers), at any time, so the admin can
+    // check on a team during the game. Admin only: the public results route sends nothing until the results are published.
+    'GET /api/admin/teams/:number/results': async (request, params) => {
+      const { saved, config } = await snapshot();
+      const team = await teamByNumber(Number(params.number));
+      if (!team) throw new HttpError(400, 'no-team');
+      if (!saved) throw new HttpError(409, 'no-game');
+      const teams = await store.listTeams();
+      return respond(200, { team: summary(team, config), published: (await store.getPublishedAt()) !== null, results: buildResults({ team, teams, game: saved.game }) });
+    },
+
     'DELETE /api/admin/teams/:number': async (request, params) => {
       const { status } = await snapshot();
       if (!can(status, 'removeTeam')) throw new HttpError(409, 'not-allowed');

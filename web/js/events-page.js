@@ -5,6 +5,8 @@
 import { getJson, putJson, deleteJson } from './api.js';
 import { $, el, refreshInterval } from './dom.js';
 import { guardAdminPage, isLocked } from './admin-auth.js';
+import { renderAdminNav } from './admin-nav.js';
+
 import { wireHelp } from './help.js';
 import { planUpload, suggestName } from './event-files.js';
 import { shrinkImage } from './image-shrink.js';
@@ -182,6 +184,7 @@ async function upload() {
 }
 form.addEventListener('submit', (event) => { event.preventDefault(); upload(); });
 
+renderAdminNav();
 guardAdminPage({
   start: () => {
     refresh();
