@@ -12,7 +12,7 @@
     "loadtest": "node scripts/load-test.js",
     "smoke": "node scripts/smoke-test.js",
     "dev": "npm run build && node scripts/dev-server.js",
-    "test:browser": "node --test --test-concurrency=1 \"tests/browser/*.test.js\""
+    "test:browser": "bash scripts/build.sh && env PREBUILT=1 node --test --test-concurrency=3 \"tests/browser/*.test.js\""
   },
   "dependencies": {
     "bootstrap": "5.3.8"

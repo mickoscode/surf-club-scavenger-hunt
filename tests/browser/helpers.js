@@ -15,7 +15,7 @@ const { GAME, CONFIG, START, END } = require('../api/helpers.js');
 const root = path.join(__dirname, '..', '..');
 let built = false;
 function ensureBuilt() {
-  if (built) return;
+  if (built || process.env.PREBUILT) return; // PREBUILT: built once before the files started (npm run test:browser), so they can run side by side
   const r = spawnSync('bash', ['scripts/build.sh'], { cwd: root, encoding: 'utf8' });
   if (r.status !== 0) throw new Error(`build failed: ${r.stderr || r.stdout}`);
   built = true;
