@@ -5,6 +5,7 @@ import { $, el, refreshInterval } from './dom.js';
 import { formatScore } from './format.js';
 import { safeWhatsAppUrl } from './whatsapp.js';
 import { guardAdminPage, isLocked } from './admin-auth.js';
+import { wireHelp } from './help.js';
 
 const STATUS_TEXT = { loading: 'loading', unconfigured: 'no game set up yet', pre: 'before the game', active: 'game in progress', post: 'game finished' };
 const EVENT_PROBLEM = {
@@ -34,6 +35,7 @@ let shownTeams = null;
 const form = $('config-form');
 const fields = { name: $('config-name'), timeZone: $('config-timezone'), day: $('config-day'), start: $('config-start'), end: $('config-end'), whatsappUrl: $('config-whatsapp'), joinCode: $('config-join-code') };
 const teamNamesBox = $('config-team-names'); // a checkbox: whether teams have names
+wireHelp(); // the ? buttons beside the fields
 const eventSelect = $('config-event'); // which stored event the live game is loaded from
 let events = []; // the stored events, from /api/admin/events
 let eventsKey = null;

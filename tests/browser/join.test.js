@@ -213,3 +213,12 @@ withPage('the join form with a code fits a phone', { page: { viewport: { width: 
   await page.click($('join-button'));
   assert.ok((await overflow(page)) <= 0);
 });
+
+withPage('the join code field comes before the team name field', {}, async ({ site, page }) => {
+  await site.api.configure({ joinCode: 'SURF24' });
+  await page.goto(`${site.url}/view/?refresh=500`);
+  await page.click($('join-button'));
+  const codeFirst = await page.locator($('join-code-input')).evaluate((code) => !!(code.compareDocumentPosition(document.querySelector('[data-testid="team-name-input"]')) & Node.DOCUMENT_POSITION_FOLLOWING));
+  assert.equal(codeFirst, true);
+  assert.equal(await page.evaluate(() => document.activeElement?.dataset.testid), 'join-code-input'); // and the cursor starts there
+});

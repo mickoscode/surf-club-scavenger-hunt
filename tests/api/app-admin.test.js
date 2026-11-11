@@ -179,3 +179,12 @@ test('API Gateway events become requests (cookies, base64 bodies) and responses 
   );
   assert.equal('cookies' in toLambdaResponse({ status: 200, headers: {}, cookies: [], body: {} }), false);
 });
+
+test('the configuration accepts the two offered time zones and refuses any other, and the page is told which are offered', async () => {
+  const env = setup({ now: START - 60_000 });
+  const admin = env.admin();
+  assert.deepEqual((await admin.get('/api/admin/config')).body.timeZones.map((z) => z.id), ['Australia/Perth', 'Europe/Dublin']);
+  assert.equal((await admin.put('/api/admin/config', { ...CONFIG, timeZone: 'Europe/Dublin' })).status, 200);
+  const refused = await admin.put('/api/admin/config', { ...CONFIG, timeZone: 'Australia/Sydney' });
+  assert.deepEqual([refused.status, refused.body.error, refused.body.fields], [400, 'invalid-config', ['timeZone']]);
+});

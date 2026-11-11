@@ -44,13 +44,19 @@
         </section>
 
         <section class="card card-body mb-4">
-          <h2 class="h5" data-testid="upload-heading">Upload an event</h2>
-          <p class="small text-muted">Choose the event's folder: <code>game-questions.json</code>, the map images it names, and optionally <code>player-instructions.md</code> and <code>game-config.json</code>. Uploading to a name that already exists replaces its questions, maps and instructions. Maps are made smaller on this computer before they are uploaded.</p>
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <h2 class="h5 mb-0" data-testid="upload-heading">Upload an event</h2>
+            <button class="btn btn-outline-secondary btn-sm rounded-circle py-0 px-2" type="button" aria-label="What does this do?" aria-expanded="false" data-help-for="upload-help-text" data-testid="upload-help">?</button>
+          </div>
+          <p class="small text-muted" id="upload-help-text" hidden>Choose the event's folder: <code>game-questions.json</code>, the map images it names, and optionally <code>player-instructions.md</code> and <code>game-config.json</code>. Uploading to a name that already exists replaces its questions, maps and instructions. Maps are made smaller on this computer before they are uploaded.</p>
           <form data-testid="upload-form" novalidate>
             <div class="mb-3">
-              <label class="form-label" for="event-name">Event name</label>
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <label class="form-label mb-0" for="event-name">Event name</label>
+                <button class="btn btn-outline-secondary btn-sm rounded-circle py-0 px-2" type="button" aria-label="What does this do?" aria-expanded="false" data-help-for="event-name-help-text" data-testid="event-name-help">?</button>
+              </div>
               <input class="form-control" id="event-name" name="eventName" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" data-testid="event-name">
-              <div class="form-text">Lower case letters, digits and hyphens, up to 40 characters (for example <code>sorrento-2026</code>).</div>
+              <div class="form-text" id="event-name-help-text" hidden>Lower case letters, digits and hyphens, up to 40 characters (for example <code>sorrento-2026</code>).</div>
             </div>
             <div class="mb-3">
               <label class="form-label" for="event-folder">Event folder</label>

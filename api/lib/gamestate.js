@@ -8,14 +8,10 @@ const { normaliseJoinCode } = require('./joincode');
 
 const DEFAULT_GAME_NAME = 'Sorrento Youth Scavenger Hunt';
 const DEFAULT_TIME_ZONE = 'Australia/Perth'; // AWST, UTC+8, no daylight saving
-const AU_TIME_ZONES = [
+// The time zones a game can be set in (more can be added here; the server clock decides everything, in this zone).
+const TIME_ZONES = [
   { id: 'Australia/Perth', label: 'AWST - Perth (UTC+8)' },
-  { id: 'Australia/Darwin', label: 'ACST - Darwin (UTC+9:30)' },
-  { id: 'Australia/Adelaide', label: 'ACST/ACDT - Adelaide' },
-  { id: 'Australia/Brisbane', label: 'AEST - Brisbane (UTC+10)' },
-  { id: 'Australia/Sydney', label: 'AEST/AEDT - Sydney, Canberra' },
-  { id: 'Australia/Melbourne', label: 'AEST/AEDT - Melbourne' },
-  { id: 'Australia/Hobart', label: 'AEST/AEDT - Hobart' },
+  { id: 'Europe/Dublin', label: 'Dublin, Ireland (GMT/IST)' },
 ];
 
 const formatters = new Map();
@@ -59,7 +55,7 @@ function validateConfig(config) {
   if (config === null || typeof config !== 'object' || Array.isArray(config)) return ['config must be an object'];
   const problems = [];
   if (typeof config.name !== 'string' || config.name.trim() === '' || config.name.trim().length > 80) problems.push('name');
-  if (!AU_TIME_ZONES.some((z) => z.id === config.timeZone)) problems.push('timeZone');
+  if (!TIME_ZONES.some((z) => z.id === config.timeZone)) problems.push('timeZone');
   if (!isRealDate(config.day)) problems.push('day');
   if (!isTime(config.start)) problems.push('start');
   if (!isTime(config.end)) problems.push('end');
@@ -104,6 +100,6 @@ const PERMISSIONS = {
 const can = (status, action) => PERMISSIONS[status]?.[action] === true;
 
 module.exports = {
-  DEFAULT_GAME_NAME, DEFAULT_TIME_ZONE, AU_TIME_ZONES,
+  DEFAULT_GAME_NAME, DEFAULT_TIME_ZONE, TIME_ZONES,
   localToUtcMs, validateConfig, gameWindow, gameStatus, describeGame, can,
 };

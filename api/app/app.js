@@ -7,7 +7,7 @@
 // official answer, and never receives what a team submitted. Rules: docs/requirements.md.
 const crypto = require('node:crypto');
 const { HttpError, respond, parseCookies, sessionCookie, adminCookie, readJson, COOKIE_NAME, ADMIN_COOKIE_NAME } = require('./http');
-const { gameStatus, describeGame, can, validateConfig, AU_TIME_ZONES, DEFAULT_GAME_NAME, DEFAULT_TIME_ZONE } = require('../lib/gamestate');
+const { gameStatus, describeGame, can, validateConfig, TIME_ZONES, DEFAULT_GAME_NAME, DEFAULT_TIME_ZONE } = require('../lib/gamestate');
 const { checkAnswer } = require('../lib/answers');
 const { questionPoints, isDecision } = require('../lib/scoring');
 const { validateTeamName, sortScoreboard, teamNamesOn, teamLabel } = require('../lib/teams');
@@ -258,7 +258,7 @@ function createApp({
         // Photos teams say they sent that have not been scored yet (they would count as 0% if the results were published).
         unscoredPhotos: teams.reduce((n, team) => n + Object.values(team.photos).filter((photo) => !photo.decision).length, 0),
         results: { published: publishedAt !== null, publishedAt },
-        timeZones: AU_TIME_ZONES,
+        timeZones: TIME_ZONES,
         defaults: { name: DEFAULT_GAME_NAME, timeZone: DEFAULT_TIME_ZONE },
       });
     },

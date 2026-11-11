@@ -5,6 +5,7 @@
 import { getJson, putJson, deleteJson } from './api.js';
 import { $, el, refreshInterval } from './dom.js';
 import { guardAdminPage, isLocked } from './admin-auth.js';
+import { wireHelp } from './help.js';
 import { planUpload, suggestName } from './event-files.js';
 import { shrinkImage } from './image-shrink.js';
 
@@ -17,6 +18,7 @@ let confirming = null; // the event whose deletion awaits a confirmation
 let shown = null; // what the list shows now (it is only rebuilt when this changes)
 let busy = false; // an upload is running: the list is left alone
 
+wireHelp(); // the ? buttons beside the fields
 const form = $('upload-form');
 const nameInput = $('event-name');
 

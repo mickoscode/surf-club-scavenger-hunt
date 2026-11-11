@@ -2,7 +2,7 @@
 // tests pin the boundaries and the time zone maths with hand-calculated UTC instants.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { localToUtcMs, validateConfig, gameStatus, describeGame, can, AU_TIME_ZONES } = require('../../api/lib/gamestate.js');
+const { localToUtcMs, validateConfig, gameStatus, describeGame, can, TIME_ZONES } = require('../../api/lib/gamestate.js');
 
 const perth = { name: 'Test game', timeZone: 'Australia/Perth', day: '2026-11-14', start: '10:00', end: '12:00' };
 // Perth is UTC+8 all year: 10:00 AWST = 02:00Z, 12:00 AWST = 04:00Z.
@@ -19,7 +19,7 @@ test('wall-clock times convert to the right instant, including daylight saving',
 });
 
 test('every offered time zone is understood by the runtime', () => {
-  for (const z of AU_TIME_ZONES) {
+  for (const z of TIME_ZONES) {
     assert.ok(Number.isFinite(localToUtcMs('2026-11-14', '09:00', z.id)), z.id);
   }
 });
@@ -76,4 +76,15 @@ test('who may do what in each status', () => {
 test('describeGame gives the pages what they need and nothing else', () => {
   assert.deepEqual(describeGame(perth, START), { status: 'active', serverNowMs: START, startMs: START, endMs: END });
   assert.deepEqual(describeGame(null, 5), { status: 'unconfigured', serverNowMs: 5 });
+});
+
+test('the two time zones on offer are Perth and Dublin, and a game in Dublin follows its daylight saving', () => {
+  assert.deepEqual(TIME_ZONES.map((z) => z.id), ['Australia/Perth', 'Europe/Dublin']);
+  assert.equal(localToUtcMs('2026-11-14', '10:00', 'Europe/Dublin'), Date.UTC(2026, 10, 14, 10, 0)); // winter: GMT, the same as UTC
+  assert.equal(localToUtcMs('2026-07-14', '10:00', 'Europe/Dublin'), Date.UTC(2026, 6, 14, 9, 0)); // summer: IST, an hour ahead of UTC
+  const dublin = { ...perth, timeZone: 'Europe/Dublin', day: '2026-07-14' };
+  assert.deepEqual(validateConfig(dublin), []);
+  assert.equal(gameStatus(dublin, Date.UTC(2026, 6, 14, 8, 59)), 'pre');
+  assert.equal(gameStatus(dublin, Date.UTC(2026, 6, 14, 9, 0)), 'active');
+  assert.deepEqual(validateConfig({ ...perth, timeZone: 'Australia/Sydney' }), ['timeZone']); // other zones are not offered (for now)
 });

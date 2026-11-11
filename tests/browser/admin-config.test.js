@@ -26,7 +26,7 @@ withPage('a new game is set up from the page: defaults, then saved with its zone
   assert.equal(await status(page), 'unconfigured');
   assert.equal(await page.inputValue($('config-name')), 'Sorrento Youth Scavenger Hunt'); // the default name
   assert.equal(await page.inputValue($('config-timezone')), 'Australia/Perth'); // AWST by default
-  assert.ok((await page.locator(`${$('config-timezone')} option`).count()) >= 7);
+  assert.deepEqual(await page.locator(`${$('config-timezone')} option`).evaluateAll((os) => os.map((o) => o.value)), ['Australia/Perth', 'Europe/Dublin']); // the two zones on offer
 
   await fill(page, site);
   await page.fill($('config-name'), 'Autumn hunt');
@@ -184,3 +184,24 @@ withPage('the join code is set on the page, shown back to the admin tidy, refuse
   await page.waitForSelector($('config-success'));
   assert.equal((await site.api.config()).config.joinCode, undefined);
 });
+
+// The ? buttons keep the forms short: each explanation is hidden until its button is tapped, and tapping again hides it.
+for (const [path, wait] of [['/game-config/', 'game-status'], ['/game-events/', 'upload-button']]) {
+  withPage(`on ${path} every explanation is hidden behind its ? button, which shows and hides it`, { site: { now: START - 3_600_000 } }, async ({ site, page }) => {
+    await page.goto(`${site.url}${path}?refresh=500`);
+    await page.waitForSelector($(wait));
+    const buttons = page.locator('button[data-help-for]');
+    assert.ok((await buttons.count()) >= 2);
+    for (let i = 0; i < (await buttons.count()); i++) {
+      const button = buttons.nth(i);
+      const text = page.locator(`#${await button.getAttribute('data-help-for')}`);
+      assert.equal(await text.isHidden(), true);
+      assert.equal(await button.getAttribute('aria-expanded'), 'false');
+      await button.click();
+      assert.equal(await text.isVisible(), true);
+      assert.equal(await button.getAttribute('aria-expanded'), 'true');
+      await button.click();
+      assert.equal(await text.isHidden(), true);
+    }
+  });
+}
