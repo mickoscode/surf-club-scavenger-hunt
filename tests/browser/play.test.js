@@ -43,6 +43,24 @@ withPage('a team sees its number and name, a way back to the scoreboard, and the
   await page.waitForSelector($('play-link')); // still joined: back to Play
 });
 
+withPage('the team\'s score shows beside the scoreboard link once the game is active, and follows its answers', { site: { now: START - 60_000 } }, async ({ site, page, context }) => {
+  await site.api.configure();
+  const team = await joined(site, context);
+  await page.goto(`${site.url}/play/?refresh=500`);
+  await page.waitForSelector(`${$('status')}[data-phase="pre"]`);
+  assert.equal(await page.locator($('score')).isHidden(), true); // not started: no score yet
+
+  site.clock.now = START + 1000;
+  await page.waitForSelector(`${$('score')}[data-score="0"]`);
+  await team.answer('zone 1', 'Q2', '42'); // 20 points
+  await page.waitForSelector(`${$('score')}[data-score="20"]`);
+  assert.equal(await page.locator($('score')).isVisible(), true);
+
+  site.clock.now = END + 1;
+  await page.waitForSelector(`${$('status')}[data-phase="post"]`);
+  assert.equal(await page.locator($('score')).getAttribute('data-score'), '20'); // still shown when the game is over
+});
+
 withPage('the instructions are hidden until the heading is tapped, and tapping again hides them', {}, async ({ site, page, context }) => {
   await site.api.configure();
   await joined(site, context);
