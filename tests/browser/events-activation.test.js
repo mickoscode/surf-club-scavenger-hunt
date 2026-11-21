@@ -32,7 +32,6 @@ const choose = async (page, name) => {
   await page.selectOption($('config-event'), name);
 };
 const save = async (page) => { await page.click($('config-save')); await page.waitForSelector(`${$('config-success')}:not([hidden]), ${$('config-error')}:not([hidden])`); };
-const errorCode = (page) => page.locator($('config-error')).getAttribute('data-error');
 const imagesLoaded = (page, selector) => page.waitForFunction((sel) => { const imgs = [...document.querySelectorAll(sel)]; return imgs.length > 0 && imgs.every((i) => i.complete && i.naturalWidth > 0); }, selector, { timeout: 8000 });
 
 withPage('an event is chosen on the config page, its settings fill the form, and saving makes it the live game', BEFORE, async ({ site, page }) => {
@@ -57,25 +56,23 @@ withPage('an event that is not complete cannot be chosen', BEFORE, async ({ site
   assert.equal(await page.locator(`${$('config-event')} option[value="half"]`).isDisabled(), true);
 });
 
-withPage('another event cannot replace a game that has teams, and works once the player data is deleted; the same event can be saved again', BEFORE, async ({ site, page }) => {
+withPage("every event keeps its own teams: another event can be made live, and switching back brings the teams back", BEFORE, async ({ site, page }) => {
   await prepare(site, 'summer', { config: SETTINGS });
   await prepare(site, 'winter', { config: SETTINGS });
   await open(page, site);
   await choose(page, 'summer');
   await save(page);
   await site.api.join('Sea Dogs');
-  await choose(page, 'winter');
-  await save(page);
-  assert.equal(await errorCode(page), 'players-exist');
-  assert.equal((await site.api.config()).event, 'summer');
-  await choose(page, 'summer');
-  await save(page);
-  assert.equal(await page.locator($('config-success')).isVisible(), true); // the same event again keeps the team
-  assert.equal((await site.api.admin('GET', '/api/admin/teams')).body.teams.length, 1);
-  await site.api.admin('POST', '/api/admin/delete-all', { confirm: 'delete' });
+  await until(async () => (await page.locator($('team-item')).count()) === 1);
   await choose(page, 'winter');
   await save(page);
   assert.equal(await page.locator($('config-success')).isVisible(), true);
+  assert.equal((await site.api.config()).event, 'winter');
+  await until(async () => (await page.locator($('team-item')).count()) === 0); // winter has no teams of its own yet
+  await choose(page, 'summer');
+  await save(page);
+  assert.equal(await page.locator($('config-success')).isVisible(), true);
+  await until(async () => (await page.locator($('team-item')).count()) === 1); // summer's team is back
 });
 
 withPage('the event chooser is locked while the game is in progress', BEFORE, async ({ site, page }) => {

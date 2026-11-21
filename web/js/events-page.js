@@ -72,7 +72,7 @@ function renderList({ events, active }) {
         message.hidden = false;
         message.dataset.state = res.ok ? 'ok' : 'error';
         message.dataset.error = res.ok ? '' : (res.body?.error ?? 'unknown');
-        message.textContent = res.ok ? `Deleted ${event.name}.` : res.body?.error === 'event-active' ? `${event.name} is the live game's event, so it cannot be deleted.` : 'Could not delete it. Please try again.';
+        message.textContent = res.ok ? `Deleted ${event.name}.` : res.body?.error === 'event-active' ? `${event.name} is the live game's event, so it cannot be deleted.` : res.body?.error === 'players-exist' ? `${event.name} has teams, so it cannot be deleted. Make it the live event and delete its player data first.` : 'Could not delete it. Please try again.';
         shown = null;
         await refresh();
       });
@@ -141,7 +141,7 @@ async function upload() {
   try {
     let s = step('Questions');
     let res = await putJson(`${base}/questions`, game);
-    if (!res.ok) { s.fail(res.body?.error ?? 'network'); return finish(false, 'The questions were not accepted, so nothing else was uploaded:', res.body?.problems ?? [], res.body?.error ?? 'network'); }
+    if (!res.ok) { s.fail(res.body?.error ?? 'network'); return finish(false, res.body?.error === 'players-exist' ? 'This event has teams, so it cannot be replaced. Make it the live event and delete its player data first.' : 'The questions were not accepted, so nothing else was uploaded:', res.body?.problems ?? [], res.body?.error ?? 'network'); }
     s.done();
 
     if (plan.instructions) {

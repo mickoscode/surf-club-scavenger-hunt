@@ -98,15 +98,6 @@ test('deleting all player data needs confirmation and is refused during the game
   assert.notEqual((await env.admin().get('/api/admin/config')).body.config, null); // the game stays
 });
 
-test('the export is a download containing the teams', async () => {
-  const { env } = await activeGame();
-  const res = await env.admin().get('/api/admin/export');
-  assert.match(res.headers['content-disposition'], /^attachment; filename="scavenger-hunt-data-2026-11-14\.json"$/);
-  assert.equal(res.body.teams.length, 1);
-  assert.equal(res.body.game.config.name, CONFIG.name);
-  assert.equal(res.headers['cache-control'], 'no-store');
-});
-
 // ------------------------------------------------------------------------------------------------ safety
 
 test('the two roles only serve their own routes', async () => {

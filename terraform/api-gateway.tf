@@ -33,7 +33,6 @@ locals {
       "POST /api/admin/photos/apply",
       "POST /api/admin/results/publish",
       "POST /api/admin/results/unpublish",
-      "GET /api/admin/export",
       "POST /api/admin/delete-all",
     ]
   }

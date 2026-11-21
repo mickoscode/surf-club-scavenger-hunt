@@ -193,10 +193,12 @@ test('deleting the player data returns the results to provisional', async () => 
   assert.equal((await admin.get('/api/admin/config')).body.results.published, false);
 });
 
-test('saving the game configuration returns the results to provisional', async () => {
+test('saving changed settings returns the results to provisional, and saving them as they were does not', async () => {
   const { env, admin } = await finishedGame();
   await publish(admin);
-  assert.equal((await admin.put('/api/admin/config', CONFIG)).status, 200); // allowed after the game
+  assert.equal((await admin.put('/api/admin/config', CONFIG)).status, 200); // the same settings again: allowed after the game, and nothing is undone
+  assert.equal((await gameOf(env)).published, true);
+  assert.equal((await admin.put('/api/admin/config', { ...CONFIG, name: 'Renamed' })).status, 200);
   assert.equal((await gameOf(env)).published, false);
 });
 
