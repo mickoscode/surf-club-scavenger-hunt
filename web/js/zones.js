@@ -185,6 +185,9 @@ export function createZones({ container, onSubmitted }) {
     panel.hidden = true;
     const back = el('button', { type: 'button', class: 'btn btn-outline-primary btn-sm', 'data-testid': 'zone-back' }, '‹ All zones');
     back.addEventListener('click', () => { location.hash = ''; });
+    // The same again at the bottom, so a long list of questions does not need a scroll back to the top first.
+    const backBottom = el('button', { type: 'button', class: 'btn btn-outline-primary w-100 mt-3', 'data-testid': 'zone-back-bottom' }, '‹ All zones');
+    backBottom.addEventListener('click', () => { location.hash = ''; window.scrollTo(0, 0); });
 
     const mapButton = el('button', { type: 'button', class: 'map-button p-0 border-0 bg-transparent w-100', 'data-testid': 'map-open' });
     mapButton.append(el('img', { src: mapThumb(zone), alt: `Map of ${zone.name}. Tap to enlarge.`, class: 'rounded border' }));
@@ -198,6 +201,7 @@ export function createZones({ container, onSubmitted }) {
       mapButton,
       el('p', { class: 'small text-muted mt-1 mb-3' }, 'Tap the map to enlarge it.'),
       ...zone.questions.map((q) => (isPhoto(q) ? buildPhoto(zone, q, zone.questions.filter(isPhoto).indexOf(q)) : buildQuestion(zone, q))),
+      backBottom,
     );
     return panel;
   }

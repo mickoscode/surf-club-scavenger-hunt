@@ -1,6 +1,7 @@
 // The /game-score/ admin page: the photo challenges teams say they sent to WhatsApp, to be scored by hand.
 // Not yet scored first, in the order sent; scored ones after. Choosing a score and pressing Apply records it; applying
-// again replaces the previous decision (the server never counts a photo twice). Behind the admin passcode (web/js/admin-auth.js).
+// again replaces the previous decision (the server never counts a photo twice). Once every score has been applied the same
+// page publishes the final results (and returns them to provisional). Behind the admin passcode (web/js/admin-auth.js).
 import { getJson, postJson } from './api.js';
 import { $, el, refreshInterval } from './dom.js';
 import { formatScore } from './format.js';
@@ -87,6 +88,30 @@ function updateRow(row, photo) {
   updateApply(row);
 }
 
+// The final-results form: only possible once the game is over, and only after ticking that all scores have been applied.
+let results = { published: false, unscored: 0 };
+let status = 'loading'; // the game's phase, from the server
+function renderPublish() {
+  const over = status === 'post';
+  const { published, unscored } = results;
+  const state = $('results-state');
+  state.dataset.published = String(published);
+  state.textContent = published ? 'final (published)' : 'provisional';
+  state.className = `badge ${published ? 'text-bg-success' : 'text-bg-secondary'}`;
+  $('results-notice').textContent = published
+    ? 'Players can see their results, and scores are locked. Return to provisional to change a score.'
+    : over ? 'The game is over. Publishing shows each team its results and the official answers.' : 'Available when the game is over.';
+  const note = $('unscored-note');
+  note.hidden = published || !over || unscored === 0;
+  note.textContent = `${unscored} photo${unscored === 1 ? ' has' : 's have'} not been scored yet and will count as 0%.`;
+  const confirm = $('publish-confirm');
+  confirm.disabled = !over || published;
+  if (published) confirm.checked = false;
+  $('publish-button').hidden = published;
+  $('publish-button').disabled = !over || published || !confirm.checked;
+  $('unpublish-button').hidden = !published;
+}
+
 async function refresh() {
   if (isLocked()) return; // not logged in (yet, or any more)
   const [info, list] = await Promise.all([getJson('/api/admin/config'), getJson('/api/admin/photos')]);
@@ -103,6 +128,9 @@ async function refresh() {
   notice.hidden = ['active', 'post'].includes(info.body.status);
   notice.dataset.status = info.body.status;
   $('published-notice').hidden = !published;
+  status = info.body.status;
+  results = { published, unscored: info.body.unscoredPhotos };
+  renderPublish();
 
   const photos = list.body.photos;
   const keys = new Set(photos.map(rowKey));
@@ -116,6 +144,28 @@ async function refresh() {
   }
   $('no-photos').hidden = photos.length > 0;
 }
+
+$('publish-confirm').addEventListener('change', renderPublish);
+$('publish-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const error = $('publish-error');
+  error.hidden = true;
+  $('publish-button').disabled = true;
+  const res = await postJson('/api/admin/results/publish', { confirm: $('publish-confirm').checked });
+  if (!res.ok) {
+    const code = res.status === 0 ? 'network' : (res.body?.error ?? 'unknown');
+    error.dataset.error = code;
+    error.textContent = { 'game-not-over': 'The game is not over yet.', 'confirmation-required': 'Tick the box to confirm every score has been applied.', network: 'Could not publish. Check the connection and try again.' }[code] ?? 'Something went wrong. Please try again.';
+    error.hidden = false;
+  }
+  await refresh();
+});
+$('unpublish-button').addEventListener('click', async () => {
+  $('unpublish-button').disabled = true;
+  await postJson('/api/admin/results/unpublish', {});
+  $('unpublish-button').disabled = false;
+  await refresh();
+});
 
 renderAdminNav();
 guardAdminPage({

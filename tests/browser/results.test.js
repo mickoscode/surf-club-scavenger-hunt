@@ -207,16 +207,15 @@ withPage('the play page links to the results once they are published', {}, async
 
 // ------------------------------------------------------------------------------------------ the admin form
 
-withPage('the admin publishes the final results: only after the game, with the confirmation, and scoring locks until the admin returns to provisional', {}, async ({ site, page }) => {
+withPage('the admin publishes the final results on the scoring page: only after the game, with the confirmation, and scoring locks until the admin returns to provisional', {}, async ({ site, page }) => {
   await finishedGame(site, { publish: false }); // ends at END + 1; Bravo's zone 2 photo is not scored
   site.clock.now = END - 1000; // look at the form while the game is still on
-  await page.goto(`${site.url}/game-config/?refresh=500`);
-  await page.waitForSelector(`${$('game-status')}[data-status="active"]`);
+  await page.goto(`${site.url}/game-score/?refresh=500`);
+  await until(async () => await page.locator($('publish-confirm')).isDisabled()); // shut while the game is on
   assert.equal(await page.locator($('publish-button')).isDisabled(), true);
-  assert.equal(await page.locator($('publish-confirm')).isDisabled(), true);
 
   site.clock.now = END + 1; // the game ends
-  await page.waitForSelector(`${$('game-status')}[data-status="post"]`);
+  await until(async () => !(await page.locator($('publish-confirm')).isDisabled()));
   assert.equal(await page.locator($('unscored-note')).isVisible(), true); // 1 photo not scored yet
   assert.match(await page.locator($('unscored-note')).textContent(), /^1 photo has not been scored/);
   assert.equal(await page.locator($('publish-button')).isDisabled(), true); // not until the box is ticked
@@ -227,23 +226,22 @@ withPage('the admin publishes the final results: only after the game, with the c
   assert.equal(await page.locator($('unpublish-button')).isVisible(), true);
   assert.equal(await page.locator($('publish-button')).isHidden(), true);
 
-  const score = await page.context().newPage();
-  await score.goto(`${site.url}/game-score/?refresh=500`);
-  await score.waitForSelector(`${$('published-notice')}:not([hidden])`);
-  await score.click(`${$('photo-row')}[data-team-number="2"] ${$('decision-half')} + label`);
-  assert.equal(await score.locator(`${$('photo-row')}[data-team-number="2"] ${$('apply')}`).isDisabled(), true); // locked
+  await page.waitForSelector(`${$('published-notice')}:not([hidden])`);
+  await page.click(`${$('photo-row')}[data-team-number="2"] ${$('decision-half')} + label`);
+  assert.equal(await page.locator(`${$('photo-row')}[data-team-number="2"] ${$('apply')}`).isDisabled(), true); // locked
 
   await page.click($('unpublish-button'));
   await page.waitForSelector(`${$('results-state')}[data-published="false"]`);
-  await score.waitForSelector(`${$('published-notice')}[hidden]`, { state: 'attached' });
-  await until(async () => !(await score.locator(`${$('photo-row')}[data-team-number="2"] ${$('apply')}`).isDisabled()));
+  await page.waitForSelector(`${$('published-notice')}[hidden]`, { state: 'attached' });
+  await until(async () => !(await page.locator(`${$('photo-row')}[data-team-number="2"] ${$('apply')}`).isDisabled()));
 });
 
 withPage('deleting the player data returns the results to provisional', {}, async ({ site, page }) => {
   await finishedGame(site);
+  assert.equal((await site.api.config()).results.published, true);
   await page.goto(`${site.url}/game-config/?refresh=500`);
-  await page.waitForSelector(`${$('results-state')}[data-published="true"]`);
+  await page.waitForSelector(`${$('game-status')}[data-status="post"]`);
   await page.fill($('delete-confirm'), 'delete');
   await page.click($('delete-button'));
-  await page.waitForSelector(`${$('results-state')}[data-published="false"]`);
+  await until(async () => (await site.api.config()).results.published === false);
 });

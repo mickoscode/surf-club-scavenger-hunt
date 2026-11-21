@@ -64,6 +64,11 @@ withPage('a tile opens its zone, All zones and the browser Back button return, a
   await page.waitForSelector(`${$('zone-tiles')}:not([hidden])`);
   assert.equal(await page.locator(panel('zone 1')).isHidden(), true);
 
+  await open(page, 'zone 1'); // the button at the bottom of the panel does the same, so there is no scrolling back to the top first
+  await page.click(`${panel('zone 1')} ${$('zone-back-bottom')}`);
+  await page.waitForSelector(`${$('zone-tiles')}:not([hidden])`);
+  assert.equal(await page.locator(panel('zone 1')).isHidden(), true);
+
   await open(page, 'zone 2');
   await page.goBack();
   await page.waitForSelector(`${$('zone-tiles')}:not([hidden])`); // Back goes to the zones, not out of the game

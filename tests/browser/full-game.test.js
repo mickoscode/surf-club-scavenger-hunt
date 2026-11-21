@@ -127,8 +127,8 @@ for (const passcode of [false, true]) withPage(`a whole game: set up, join, play
   assert.equal(await dogs.page.locator($('play-link')).count(), 0);
 
   // ---- The admin confirms every score has been applied and publishes the final results.
-  await adminPage(admin, site, '/game-config/?refresh=500');
-  await admin.waitForSelector(`${$('game-status')}[data-status="post"]`);
+  await adminPage(admin, site, '/game-score/?refresh=500');
+  await until(async () => !(await admin.locator($('publish-confirm')).isDisabled())); // the game is over: the form opens
   assert.equal(await admin.locator($('unscored-note')).isHidden(), true); // every photo has been scored
   await admin.check($('publish-confirm'));
   await admin.click($('publish-button'));
@@ -163,7 +163,7 @@ for (const passcode of [false, true]) withPage(`a whole game: set up, join, play
   await admin.waitForSelector(`${$('delete-result')}:not([hidden])`);
   await until(async () => (await spectator.page.locator($('scoreboard-row')).count()) === 0);
   await spectator.page.waitForSelector(`${$('no-teams')}:not([hidden])`);
-  await admin.waitForSelector(`${$('results-state')}[data-published="false"]`); // deleting the data returned the results to provisional
+  await until(async () => (await site.api.config()).results.published === false); // deleting the data returned the results to provisional
 
   assert.deepEqual(problems, []); // the admin's pages had no errors along the way
   for (const other of [spectator, dogs, sharks]) {
