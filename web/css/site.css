@@ -28,9 +28,14 @@ body {
   font-weight: 600;
 }
 
-/* Orange for half points on a photo challenge (Bootstrap's own warning colour is too pale to read on white): #c2410c is 5.2:1. */
+/* Orange for half points on a photo challenge, clearly apart from the red of a cross. Bootstrap's own warning colour is too pale to read on
+   white, and a darker orange turns brown, so the words are #b85c00 (4.6:1 on white) and the tick itself a brighter orange. */
 .text-orange {
-  color: #c2410c;
+  color: #b85c00;
+}
+
+.icon-orange {
+  color: #e86400;
 }
 
 /* The instructions block on the play page: tapping the heading shows or hides the text. */

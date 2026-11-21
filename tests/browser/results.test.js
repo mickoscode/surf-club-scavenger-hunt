@@ -92,7 +92,7 @@ withPage('the results page: the link back at the top, then the place, total, and
   assert.equal(await q3.locator($('your-answer')).count(), 0);
   assert.equal(await q3.locator($('official-answer')).textContent(), 'Official answer: 2.5'); // shown even so
   assert.deepEqual(await page.locator(photo('zone 1')).evaluate((e) => [e.dataset.state, e.dataset.percent]), ['scored', '100']);
-  assert.equal(await page.locator(`${photo('zone 1')} ${$('photo-result')}`).textContent(), 'Full: 100% - 30 of 30 points');
+  assert.equal(await page.locator(`${photo('zone 1')} ${$('photo-result')}`).textContent(), '30 of 30 points');
   assert.deepEqual(await page.locator(photo('zone 2')).evaluate((e) => [e.dataset.state, e.dataset.percent]), ['not-submitted', '']);
 });
 
@@ -178,7 +178,7 @@ withPage("once published every team's name on the scoreboard links to its result
   assert.ok((await page.locator($('your-answer')).count()) > 0);
 });
 
-withPage('a photo challenge has a tick or a cross like a question: green for full points, orange for half, red for none, not scored or no photo, the same on the player, viewer and admin pages', {}, async ({ site, page, context }) => {
+withPage('a photo challenge has an icon like a question: a green tick for full points, an orange tick for half, a red cross for zero, a red ! for not scored or no photo, the same on the player, viewer and admin pages', {}, async ({ site, page, context }) => {
   await site.api.configure();
   const [alpha, bravo] = [await site.api.join('Alpha'), await site.api.join('Bravo')];
   await site.api.join('Charlie'); // sends nothing
@@ -188,9 +188,16 @@ withPage('a photo challenge has a tick or a cross like a question: green for ful
   await site.api.apply(1, 'zone 1', 'full'); await site.api.apply(1, 'zone 2', 'half');
   await site.api.apply(2, 'zone 1', 'zero'); // Bravo's zone 2 photo is never scored
   await site.api.publish();
-  const expected = { 1: [['full', 'tick'], ['half', 'tick']], 2: [['none', 'cross'], ['none', 'cross']], 3: [['none', 'cross'], ['none', 'cross']] };
+  const expected = { 1: [['full', 'tick'], ['half', 'tick']], 2: [['none', 'cross'], ['none', 'alert']], 3: [['none', 'alert'], ['none', 'alert']] }; // Bravo: zero, then never scored
   const marks = (target) => target.locator($('photo-mark')).evaluateAll((els) => els.map((e) => [e.dataset.tone, e.dataset.icon]));
   const colours = (target) => target.locator($('photo-mark')).evaluateAll((els) => els.map((e) => getComputedStyle(e).color));
+  const hue = (rgb) => { // the colour's hue in degrees, from "rgb(r, g, b)"
+    const [r, g, b] = rgb.match(/\d+/g).map((n) => Number(n) / 255);
+    const [max, min] = [Math.max(r, g, b), Math.min(r, g, b)];
+    const h = max === r ? ((g - b) / (max - min)) % 6 : max === g ? (b - r) / (max - min) + 2 : (r - g) / (max - min) + 4;
+    return (h * 60 + 360) % 360;
+  };
+  const apart = (a, b) => Math.min(Math.abs(hue(a) - hue(b)), 360 - Math.abs(hue(a) - hue(b)));
 
   await signIn(context, site.url, alpha); // the player
   await page.goto(`${site.url}/results/`);
@@ -206,8 +213,11 @@ withPage('a photo challenge has a tick or a cross like a question: green for ful
   }
   await page.goto(`${site.url}/results/?team=2`);
   await page.waitForSelector($('photo-mark'));
-  assert.equal((await colours(page))[0], (await colours(page))[1]); // both red
-  assert.notEqual((await colours(page))[0], green);
+  const [red, alsoRed] = await colours(page);
+  assert.equal(red, alsoRed); // both red
+  assert.notEqual(red, green);
+  assert.ok(apart(orange, red) >= 25, 'half points look red, not orange'); // clearly orange, not red
+  assert.ok(apart(orange, green) >= 60);
 
   for (const number of [1, 2, 3]) { // the admin's view of a team
     await adminPage(page, site, '/game-teams/?refresh=500');

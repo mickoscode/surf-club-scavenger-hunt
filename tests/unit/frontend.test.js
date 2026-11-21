@@ -77,24 +77,24 @@ test('1st, 2nd and 3rd get a gold, silver or bronze medal and nobody else does',
   assert.equal(medalFor(0), null);
 });
 
-test('results wording: accepted answers, question outcome and the photo states', async () => {
-  const { joinAnswers, outcomeOf, describePhoto } = await load('results-format.js');
+test('results wording: accepted answers, question outcome, points and the photo states', async () => {
+  const { joinAnswers, outcomeOf, pointsText, photoState, photoMark } = await load('results-format.js');
   assert.equal(joinAnswers(['bike', 'bicycle']), 'bike or bicycle');
   assert.equal(joinAnswers(['paris']), 'paris');
   assert.equal(outcomeOf({ answered: false, correct: null }), 'unanswered');
   assert.equal(outcomeOf({ answered: true, correct: true }), 'correct');
   assert.equal(outcomeOf({ answered: true, correct: false }), 'wrong');
+  assert.equal(pointsText(15, 30), '15 of 30 points');
+  assert.equal(pointsText(12.5, 25), '12.5 of 25 points'); // halves are not rounded
+  assert.equal(pointsText(0, 5), '0 of 5 points');
 
   const photo = (over) => ({ points: 30, submitted: true, scored: true, decision: 'half', percent: 50, earned: 15, ...over });
-  assert.deepEqual(describePhoto(photo({})), { state: 'scored', text: 'Half: 50% - 15 of 30 points' });
-  assert.equal(describePhoto(photo({ decision: 'full', percent: 100, earned: 30 })).text, 'Full: 100% - 30 of 30 points');
-  assert.equal(describePhoto(photo({ decision: 'zero', percent: 0, earned: 0 })).text, 'Zero: 0% - 0 of 30 points');
-  assert.equal(describePhoto(photo({ points: 25, decision: 'half', earned: 12.5 })).text, 'Half: 50% - 12.5 of 25 points'); // halves are not rounded
-  assert.deepEqual(describePhoto(photo({ scored: false, decision: null, percent: 0, earned: 0 })), { state: 'not-scored', text: 'Photo sent, but not scored: 0% - 0 of 30 points' });
-  const { photoMark } = await load('results-format.js'); // the icon: a tick for full and half points, a cross for none, not scored or no photo
-  const marks = [photo({ decision: 'full', percent: 100 }), photo({}), photo({ decision: 'zero', percent: 0 }), photo({ scored: false, decision: null }), photo({ submitted: false, scored: false })].map((p) => photoMark(p));
-  assert.deepEqual(marks.map((m) => [m.icon, m.tone]), [['tick', 'full'], ['tick', 'half'], ['cross', 'none'], ['cross', 'none'], ['cross', 'none']]);
-  assert.deepEqual(describePhoto(photo({ submitted: false, scored: false, decision: null, percent: null, earned: 0 })), { state: 'not-submitted', text: 'No photo submitted' });
+  const photos = [photo({ decision: 'full', percent: 100 }), photo({}), photo({ decision: 'zero', percent: 0 }), photo({ scored: false, decision: null }), photo({ submitted: false, scored: false })];
+  assert.deepEqual(photos.map(photoState), ['scored', 'scored', 'scored', 'not-scored', 'not-submitted']);
+  // A tick for full and half points, a cross for zero, a "!" for not scored yet or no photo; one short description each, never a repeat of the points.
+  assert.deepEqual(photos.map((p) => { const m = photoMark(p); return [m.icon, m.tone, m.text]; }), [
+    ['tick', 'full', 'Full'], ['tick', 'half', 'Half'], ['cross', 'none', 'Zero'], ['alert', 'none', 'Not scored yet'], ['alert', 'none', 'No photo submitted'],
+  ]);
 });
 
 test('every mention of WhatsApp, in any capitalisation, is found in a text', async () => {
