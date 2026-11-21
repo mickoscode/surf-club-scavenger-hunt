@@ -7,6 +7,13 @@ resource "aws_dynamodb_table" "game" {
   hash_key     = "pk"
   range_key    = "sk"
 
+  # The only copy of every event's teams, answers and scores: neither a console click nor a Terraform change may remove it.
+  deletion_protection_enabled = true
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
   attribute {
     name = "pk"
     type = "S"
