@@ -62,9 +62,14 @@ export function createZones({ container, onSubmitted }) {
     const tile = tiles.get(zone.key);
     tile.dataset.done = String(n);
     tile.dataset.total = String(total);
-    tile.querySelector('[data-testid="zone-progress"]').textContent = `${n}/${total} done`;
-    const panel = panels.get(zone.key);
-    panel.querySelector('[data-testid="panel-progress"]').textContent = `${n}/${total} done`;
+    setRemaining(tile.querySelector('[data-testid="zone-progress"]'), total - n);
+    setRemaining(panels.get(zone.key).querySelector('[data-testid="panel-progress"]'), total - n);
+  }
+
+  // "X to complete" with X in bold, or a bold "completed" when nothing is left (text only, never innerHTML).
+  function setRemaining(node, left) {
+    const bold = el('strong', {}, left > 0 ? String(left) : 'completed');
+    node.replaceChildren(...(left > 0 ? [bold, ' to complete'] : [bold]));
   }
 
   function markDone(form, zone) {
