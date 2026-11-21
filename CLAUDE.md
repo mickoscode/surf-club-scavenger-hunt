@@ -2,6 +2,10 @@
 
 Website for the Sorrento SLS Youth Scavenger Hunt 2026/27: a static site (`web/`) in a private S3 bucket behind CloudFront, Terraform in `terraform/`, GitHub Actions for CI/CD. Same AWS account as `surf-club-signin` (account `722937635825`, `ap-southeast-2`). The site runs the scavenger hunt game (rules: `docs/requirements.md`). See `README.md` for layout and `docs/setup.md` for one-time setup.
 
+## Vocabulary
+
+An **event** is the named thing the admin prepares, stores, picks and deletes (`youth-2026`), with its own teams and results (one set of player data per event; there is no "run" of an event). The **active event** is the one the site is serving. The **game** is only the playing of the active event (phases, "game in progress"); in code, `game` / `META/GAME` is the live copy of the active event. Keep these three words separate in pages, docs and code comments (`docs/requirements.md`, "Events").
+
 ## Running a game
 
 `docs/runbook.md` (what the admin does, in order, and what to do when something goes wrong) and `docs/rehearsal-checklist.md` (the manual dress rehearsal on real phones) are the operating manual: keep them in step with the pages and the admin controls. `tests/browser/full-game.test.js` is the automated rehearsal of a whole game; when you change how a game runs, run it.
