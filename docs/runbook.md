@@ -11,8 +11,8 @@ For the person running the game (the admin). What the site does is in `requireme
 | `/results/` | teams | each team's final results (only once you have published them) |
 | `/game-events/` | you | upload and manage the prepared games (events) |
 | `/game-teams/` | you | the live scoreboard; tap a team to see everything it has submitted |
-| `/game-config/` | you | choose the event that is live, set up the game, remove teams, publish the final results, delete the data |
-| `/game-score/` | you | score the photos |
+| `/game-config/` | you | choose the event that is live, set up the game, remove teams, delete the data |
+| `/game-score/` | you | score the photos, publish the final results |
 
 The four admin pages are protected by your **admin passcode**. Open either address and a login box appears; type the passcode (capitals, spaces and dashes don't matter) and you are in for **12 hours**, on that browser. **Log out** (top right) ends it sooner, and when 12 hours pass the box comes back by itself. After **10 wrong tries in 5 minutes** (counted across everybody) logging in is refused until those 5 minutes have passed, even for the right passcode, so if you are locked out just wait. Until the passcode has been set up the pages open without a login. Keep the passcode in your password manager; the page names are in this public repo, so the passcode is what protects the pages.
 
@@ -72,11 +72,11 @@ Things to know:
 
 - The game ends by itself at the end time; teams' play pages say "The game is over. Final results will be published soon!", answers are refused, and the **Play** button on the scoreboard page becomes a **Results** button straight away (before you publish, it leads to a page saying the results are not ready). **You can keep scoring afterwards** and the scoreboard stays up.
 - **Score the remaining photos** on `/game-score/`.
-- **Publish the final results** (only possible once the game has ended): `/game-config/`, section **Final results**. It tells you how many photos have not been scored yet (they will count as 0%). Tick **I have applied all scores** and press **Publish final results**. Then:
+- **Publish the final results** (only possible once the game has ended): `/game-score/`, section **Final results**, above the photos. It tells you how many photos have not been scored yet (they will count as 0%). Tick **I have applied all scores** and press **Publish final results**. Then:
   - the scoreboard heading changes from "provisional results:" to "final results:";
   - the play page's message changes from "Final results will be published soon!" to "The final results are in!", and it gets a Results link;
   - each team's results page shows how it finished ("You finished 3rd of 12", with a gold, silver or bronze medal for the top three; teams on the same score share a place), its total, and for every question what it answered, whether that was right, the points, and the **official answer**, plus the percentage it was awarded for each photo challenge.
-- **A mistake after publishing?** Press **Return to provisional**, fix the score on `/game-score/`, and publish again. While results are published, scores are locked (the scoring page says so).
+- **A mistake after publishing?** Press **Return to provisional** (same section), fix the score, and publish again. While results are published, scores are locked (the scoring page says so).
 - Announce the result from the scoreboard.
 - **Keep the results:** nothing to do. The event keeps its teams, answers and scores. Make another event live for the next game; when you choose this event again later (**Save & Load Game** with the settings as they are), its scoreboard and final results are back as they were. Delete an event's data only when you really want it gone.
 - **Back up a real event's data** (once, after the final results are published): the table's point-in-time recovery only reaches back 35 days, so take an on-demand backup, which is kept until you delete it. In AWS CloudShell (region `ap-southeast-2`) run `aws dynamodb create-backup --table-name scavenger-hunt --backup-name youth-2026-final` (use the event's name). The table is protected from deletion (`terraform/dynamodb.tf`), and every event keeps its own teams, so switching to another event does not touch them.
@@ -97,7 +97,7 @@ Things to know:
 | **Save & Load Game** says the WhatsApp link is wrong | Only the group's invite link is accepted, which starts with `https://chat.whatsapp.com/`. Copy it again from WhatsApp (not a link to a person's chat) or leave the field empty |
 | **Save & Load Game** lists problems in the event's questions | Nothing was saved. The list says what to fix in `game-questions.json`; fix it, upload the event again (**Replace** on `/game-events/`), then Save again |
 | **Publish final results** is greyed out | The game has not ended yet (it is only possible after the end time), or the "I have applied all scores" box is not ticked |
-| The scoring page says scores are locked | The final results are published. Press **Return to provisional** on `/game-config/` to change a score, then publish again |
+| The scoring page says scores are locked | The final results are published. Press **Return to provisional** under **Final results** on `/game-score/`, change the score, then publish again |
 | A team says its Results page only shows a link | Results are not published yet (the page says so), or that phone has no team: it was removed, or the browser data was cleared. A phone without a team never sees results |
 | A team says its answer was refused as invalid | A number question was left empty or has a non-digit; it can try again (the question is not used up) |
 | A team lost its place (cleared the browser, changed phone) | Sessions live in the phone's browser and cannot be recovered (a known, parked limit). They join again under a new name; remove the old team on `/game-config/` if you wish. Their earlier answers stay with the old team |
