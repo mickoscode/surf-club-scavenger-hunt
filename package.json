@@ -15,15 +15,15 @@
     "test:browser": "bash scripts/build.sh && env PREBUILT=1 node --test --test-concurrency=3 \"tests/browser/*.test.js\""
   },
   "dependencies": {
-    "bootstrap": "5.3.8"
+    "bootstrap": "5.3.9"
   },
   "engines": {
     "node": ">=24"
   },
   "devDependencies": {
-    "@aws-sdk/client-dynamodb": "3.1164.0",
-    "@aws-sdk/client-s3": "3.1164.0",
-    "@aws-sdk/lib-dynamodb": "3.1164.0",
-    "playwright": "1.63.0"
+    "@aws-sdk/client-dynamodb": "3.1169.0",
+    "@aws-sdk/client-s3": "3.1169.0",
+    "@aws-sdk/lib-dynamodb": "3.1169.0",
+    "playwright": "1.65.1"
   }
 }
