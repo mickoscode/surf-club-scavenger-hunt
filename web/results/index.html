@@ -20,9 +20,12 @@
       <!-- Everything below is filled in only for a player, once the final results are published. -->
       <p class="alert alert-info" data-testid="results-not-ready" hidden>The final results are not ready yet. They will be published soon.</p>
 
+      <p class="alert alert-info" data-testid="results-no-team" hidden>That team was not found.</p>
+
       <div data-testid="results-body" hidden>
         <h1 class="display-6 fw-bold text-center mb-1" data-testid="place-heading"></h1>
-        <p class="text-center fs-5 mb-4" data-testid="total"></p>
+        <p class="text-center fs-5 mb-2" data-testid="total"></p>
+        <p class="text-center small text-muted mb-4" data-testid="summary-note" hidden>Only the points are shown here. Each team sees its own answers.</p>
         <div data-testid="result-zones"></div>
       </div>
     </div>

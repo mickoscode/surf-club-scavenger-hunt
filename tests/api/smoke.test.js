@@ -46,6 +46,17 @@ test('results sent to a visitor with no team, or cacheable, fail', async () => {
   });
 });
 
+test("a team's public results containing an answer, or cacheable, fail", async () => {
+  const leak = (req) => (req.path === '/api/results/team/1' ? respond(200, { published: true, team: { number: 1 }, results: { zones: [{ questions: [{ yourAnswer: 'x' }] }] } }, { 'cache-control': 'no-store' }) : undefined);
+  await withSite(leak, async (url) => assert.equal((await smoke(url)).length, 1));
+  const cacheable = (req) => (req.path === '/api/results/team/1' ? respond(200, { published: false }, { 'cache-control': 'public, max-age=3' }) : undefined);
+  await withSite(cacheable, async (url) => {
+    const failures = await smoke(url);
+    assert.equal(failures.length, 1);
+    assert.match(failures[0], /Cache-Control/);
+  });
+});
+
 test('a missing results page fails', async () => {
   const server = http.createServer((req, res) => (req.url.startsWith('/api/') ? createApiHandler()(req, res) : res.writeHead(req.url === '/results/' ? 404 : 200).end('x')));
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));

@@ -19,8 +19,9 @@ function questionCard(question) {
   // What happened and what the answers were share a line (they wrap on a narrow screen); the points earned come last, in purple.
   const answers = el('div', { class: 'd-flex flex-wrap align-items-baseline column-gap-3' });
   answers.append(mark);
-  if (question.answered) answers.append(el('div', { class: 'team-name', 'data-testid': 'your-answer' }, `Your answer: ${question.yourAnswer}`));
-  answers.append(el('div', { class: 'small text-muted team-name', 'data-testid': 'official-answer' }, `Official answer: ${joinAnswers(question.officialAnswers)}`));
+  // Someone else's results (from the scoreboard) come without any answers: only what a team's own results carry is shown.
+  if (question.answered && 'yourAnswer' in question) answers.append(el('div', { class: 'team-name', 'data-testid': 'your-answer' }, `Your answer: ${question.yourAnswer}`));
+  if (question.officialAnswers) answers.append(el('div', { class: 'small text-muted team-name', 'data-testid': 'official-answer' }, `Official answer: ${joinAnswers(question.officialAnswers)}`));
   card.append(
     el('div', { class: 'fw-semibold team-name' }, question.text),
     answers,

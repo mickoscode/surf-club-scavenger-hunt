@@ -39,6 +39,16 @@ const CHECKS = [
     },
   },
   {
+    name: "API: a team's public results never contain an answer, and are never cached", path: '/api/results/team/1',
+    check: (res, text) => {
+      const body = isJson(text);
+      const ok = (res.status === 200 && typeof body?.published === 'boolean') || (res.status === 400 && body?.error === 'no-team');
+      if (!ok) return `status ${res.status}: ${text.slice(0, 100)}`;
+      if (/yourAnswer|officialAnswers|"answer"/.test(text)) return 'the response contains answers';
+      return (res.headers.get('cache-control') ?? '').includes('no-store') ? null : 'missing Cache-Control: no-store';
+    },
+  },
+  {
     name: 'API: a personal response is never cached', path: '/api/me', headers: { cookie: NO_SESSION },
     check: (res, text) => {
       if (res.status !== 200 || isJson(text)?.team !== null) return `status ${res.status}: ${text.slice(0, 100)}`;

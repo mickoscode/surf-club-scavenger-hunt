@@ -10,7 +10,7 @@ Expected size: fewer than 50 teams. No cap on the number of teams is required.
 - Static pages (HTML, Bootstrap, JavaScript) on S3 + CloudFront.
 - The game needs shared state (teams, answers, scores, config), so the site also needs a small backend in the same AWS account, managed by Terraform: API Gateway + Lambda + DynamoDB (same pattern as the surf-club-signin repo).
 - All validation happens on the server: answer checking, scoring, one-submission-only, and game timing. The server clock is the only clock that counts; the browser clock is used only to display the countdown.
-- The official answers never leave the server, and neither does the answer a team submitted, with one exception: once the admin has published the final results, a team's own results page receives its answers, which were right, and the official answers (see "Answer rules" and "Results page"). Before that nothing is sent, and a browser without a team session never receives any of it.
+- The official answers never leave the server, and neither does the answer a team submitted, with one exception: once the admin has published the final results, a team's own results page receives its answers, which were right, and the official answers (see "Answer rules" and "Results page"). Before that nothing is sent, and a browser without a team session never receives any of it. The one thing anybody may see once the results are published is a team's summary (see "Any team's results"): its place, total and points, never any answer.
 - Games ("events") are stored in a private S3 bucket, not in this repository (see "Events"): several can be prepared, and the admin chooses which one is live. `docs/` holds documentation and an example event only. The repository is public, so the example is readable by anyone, but a real game's questions and answers are not.
 - Earlier decision (2026-11-07, superseded by events): while the game lived in `docs/game-questions.json` its answers were readable on public GitHub, which was accepted. Real games no longer have that exposure.
 - The admin pages and their API calls are protected by an admin passcode (see "Admin passcode"). The API is limited to 50 requests a second sustained, with a burst of 200 (see "Request limits and cost").
@@ -162,6 +162,7 @@ The scoreboard is a simple table with 4 columns, optimised for mobile display, h
 - **score**: the team's total score, shown as now (whole number, or one decimal place only when needed).
 The scoreboard does not show team numbers (a team sees its own on its play page).
 The player's own team row is highlighted.
+Once the final results are published, every team's name in the scoreboard (on the view page, for viewers and players alike) is a link to that team's results (see "Any team's results"); a player's own name leads to their own full results. Before that the names are plain text.
 Scores are shown as whole numbers, and with 1 decimal place only when a total needs it (e.g. 12.5).
 
 ### Play page
@@ -326,7 +327,17 @@ Only available once the final results are published. A player (a browser with a 
 - **Layout of a card** (questions and photo challenges alike): the question, then one line (wrapping on a narrow screen) with what happened (the icon and text) and the answers ("Your answer: ...", "Official answer: ..."), then, last, the points earned ("20 of 20 points") in a vivid purple used for nothing else on the page, so the score is easy to find on every card. The points are never squeezed to the right of the question.
 - For each photo challenge in each zone: the percentage awarded and the points ("Full: 100% - 30 of 30 points", "Half: 50%", "Zero: 0%"), or clearly "No photo submitted". A photo that was submitted but never scored shows 0% and says it was not scored.
 
-Before the results are published (including during the game) the page tells a player the results are not ready yet and shows only the link back to the scoreboard; nothing about the answers is sent to the browser. A viewer (no team session, or a removed team) always sees only the link back to the scoreboard. Like all pages it is mobile first and must fit a phone.
+Before the results are published (including during the game) the page tells a player the results are not ready yet and shows only the link back to the scoreboard; nothing about the answers is sent to the browser. A viewer (no team session, or a removed team) sees only the link back to the scoreboard, unless they arrive from a team's link in the scoreboard (below). Like all pages it is mobile first and must fit a phone.
+
+### Any team's results
+
+page: <cloudfront_url>/results/?team=<team number>
+
+Once the final results are published, anybody (a viewer, a player of another team) may open any team's results from its name in the scoreboard. This is a **summary without answers**: the team's place ("<name> finished 3rd of 12", with the medal for 1st to 3rd), its total, and for every question whether it was right, wrong or not answered with the points earned, and for every photo challenge the percentage and points, laid out exactly like a team's own results cards. It never contains the answer the team gave nor the official answers: those are only ever sent to the team itself (a team with a session, on its own `/results/`), and the page says so. This is the only change to the rule that answers are private; the typed answers of teams, which may contain anything, stay private.
+- Before the results are published the address says the results are not ready, and the server sends nothing about any team (an unknown number is not told apart from a real one).
+- An unknown team number says the team was not found (the API answers 400 `no-team`). The number is never put on the page.
+- With team names off the page labels the team by its number, as everywhere.
+- The data comes from `GET /api/results/team/:number` (public, never cached), built from the same results as a team's own, with the answers removed.
 
 ### Instructions
 

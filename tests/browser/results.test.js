@@ -151,6 +151,47 @@ withPage('what teams typed is shown as text, a very long answer fits a phone, an
 
 // ------------------------------------------------------------------------------------------ the scoreboard and buttons
 
+withPage("once published every team's name on the scoreboard links to its results: the points and never the answers; a team's own name leads to its own full results", {}, async ({ site, page, context }) => {
+  const { alpha } = await finishedGame(site, { publish: false });
+  await page.goto(`${site.url}/view/?refresh=500`);
+  await page.waitForSelector(`${$('scoreboard-row')}[data-team-number="3"]`);
+  assert.equal(await page.locator($('team-results-link')).count(), 0); // nothing to open before the results are published
+
+  await site.api.publish();
+  await until(async () => (await page.locator($('team-results-link')).count()) === 4);
+  await page.click(`${$('scoreboard-row')}[data-team-number="3"] ${$('team-results-link')}`); // a visitor with no team opens Charlie's
+  await page.waitForSelector(`${$('results-body')}:not([hidden])`);
+  assert.equal(await page.locator($('results-body')).getAttribute('data-viewing'), 'true');
+  assert.deepEqual(await page.locator($('place-heading')).evaluate((e) => [e.dataset.place, e.dataset.teamCount]), ['3', '4']);
+  assert.equal(await page.locator($('total')).getAttribute('data-total'), '20');
+  assert.equal(await page.locator(question('zone 1', 'Q1')).getAttribute('data-outcome'), 'wrong'); // right or wrong is shown...
+  assert.equal(await page.locator($('your-answer')).count() + await page.locator($('official-answer')).count(), 0); // ...never the answers
+  assert.equal((await page.locator('body').innerText()).includes('purple'), false); // what Charlie typed
+
+  await signIn(context, site.url, alpha); // a player: other teams' names lead to their points, their own to their full results
+  await page.goto(`${site.url}/view/?refresh=500`);
+  await until(async () => (await page.locator($('team-results-link')).count()) === 4);
+  assert.equal(await page.locator(`${$('scoreboard-row')}[data-team-number="1"] ${$('team-results-link')}`).getAttribute('href'), '/results/');
+  assert.match(await page.locator(`${$('scoreboard-row')}[data-team-number="2"] ${$('team-results-link')}`).getAttribute('href'), /^\/results\/\?team=2$/);
+  await page.click(`${$('scoreboard-row')}[data-team-number="1"] ${$('team-results-link')}`);
+  await page.waitForSelector(`${$('results-body')}:not([hidden])`);
+  assert.equal(await page.locator($('results-body')).getAttribute('data-viewing'), 'false');
+  assert.ok((await page.locator($('your-answer')).count()) > 0);
+});
+
+withPage("a team's results address says they are not ready before publishing and that the team was not found for an unknown number", {}, async ({ site, page }) => {
+  await finishedGame(site, { publish: false });
+  await page.goto(`${site.url}/results/?team=3`);
+  await page.waitForSelector(`${$('results-not-ready')}:not([hidden])`);
+  assert.equal(await page.locator($('results-body')).isHidden(), true);
+  await site.api.publish();
+  await page.goto(`${site.url}/results/?team=99`);
+  await page.waitForSelector(`${$('results-no-team')}:not([hidden])`);
+  assert.equal(await page.locator($('results-body')).isHidden(), true);
+  await page.goto(`${site.url}/results/?team=%3Cb%3E`); // nothing from the address is ever put on the page as markup
+  await page.waitForSelector(`${$('results-no-team')}:not([hidden])`);
+});
+
 withPage('the scoreboard says "provisional results:" above the table, then "final results:" once published', {}, async ({ site, page }) => {
   await site.api.configure();
   await page.goto(`${site.url}/view/?refresh=500`);

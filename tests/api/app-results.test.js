@@ -202,6 +202,49 @@ test('saving changed settings returns the results to provisional, and saving the
   assert.equal((await gameOf(env)).published, false);
 });
 
+// ---------------------------------------------------------------------------------------- any team's results, without answers
+
+const teamResults = (p, number) => p.get(`/api/results/team/${number}`);
+const NO_ANSWERS = ['secret one', 'alt one', 'secret two', 'purple', 'yourAnswer', 'officialAnswers', '"answer"'];
+
+test("anyone can see a team's place, total and points once the results are published, and never an answer", async () => {
+  const { env, admin, bravo } = await finishedGame();
+  const visitor = env.player();
+  assert.deepEqual((await teamResults(visitor, 2)).body, { published: false }); // not before, and nothing about the team
+  assert.deepEqual((await teamResults(visitor, 99)).body, { published: false }); // so an unknown number is not told apart either
+  await publish(admin);
+  const res = await teamResults(visitor, 2); // Bravo: no session needed
+  assert.equal(res.status, 200);
+  assert.equal(res.headers['cache-control'], 'no-store');
+  const { published, team, results: summary } = res.body;
+  assert.deepEqual([published, team, summary.place, summary.teamCount, summary.total], [true, { number: 2, name: 'Bravo' }, 3, 3, 0]);
+  const q1 = summary.zones[0].questions[0]; // Bravo's wrong answer to Q1
+  assert.deepEqual([q1.id, q1.answered, q1.correct, q1.earned, q1.points], ['Q1', true, false, 0, 10]);
+  assert.ok(summary.zones[0].photos[0].submitted && !summary.zones[0].photos[0].scored); // sent, never scored
+  const own = (await results(bravo)).body.results; // the team's own results carry the same points, plus its answers
+  assert.deepEqual(summary.zones.map((z) => z.questions.map((q) => q.earned)), own.zones.map((z) => z.questions.map((q) => q.earned)));
+  for (const forbidden of NO_ANSWERS) assert.ok(!JSON.stringify(res.body).includes(forbidden), `leaked: ${forbidden}`);
+  assert.equal((await results(env.player())).body.team, null); // and the plain results route still tells a visitor nothing
+});
+
+test("an unknown team is 400, a team's results go back to nothing when returned to provisional, and a team with names off is labelled by its number", async () => {
+  const { env, admin } = await finishedGame();
+  await publish(admin);
+  for (const number of ['99', '0', 'abc', '1.5', '-1', '1e3', '9999999']) {
+    const res = await teamResults(env.player(), number);
+    assert.deepEqual([res.status, res.body.error], [400, 'no-team'], number);
+  }
+  await admin.post('/api/admin/results/unpublish', {});
+  assert.deepEqual((await teamResults(env.player(), 1)).body, { published: false });
+
+  const plain = setup();
+  await configure(plain, { teamNames: false });
+  await plain.player().post('/api/join', {});
+  plain.clock.now = END + 1;
+  await plain.admin().post('/api/admin/results/publish', { confirm: true });
+  assert.equal((await teamResults(plain.player(), 1)).body.team.name, 'Team 1');
+});
+
 // ---------------------------------------------------------------------------------------- safety
 
 test('the new routes belong to their own role only', async () => {
@@ -217,6 +260,7 @@ test('the new routes never answer 403 or 404 for their own errors, which CloudFr
   const calls = [
     () => publish(admin, {}), () => publish(admin), () => apply(admin, 2, 'zone 1', 'half'), () => results(alpha),
     () => results(env.player()), () => admin.post('/api/admin/results/unpublish', {}), () => publish(admin, { confirm: 'yes' }),
+    () => teamResults(env.player(), 1), () => teamResults(env.player(), 99), () => teamResults(env.player(), 'x'),
   ];
   for (const now of [START - 1000, START + 1000, END + 1]) {
     env.clock.now = now;

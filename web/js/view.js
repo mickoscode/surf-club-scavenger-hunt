@@ -22,8 +22,18 @@ function renderMeArea() {
   if (started) meArea.render({ team: me, canJoin: canJoin(), gameOver: clock.phase() === 'post' || clock.published(), teamNames, joinCodeRequired });
 }
 
+// Once the results are published every team's name is a link to its results (the place, the total and the points, never the answers);
+// a team's own name leads to its full results. Names go on the page as text.
+function resultsLink(team) {
+  const link = document.createElement('a');
+  link.href = me?.number === team.number ? '/results/' : `/results/?team=${encodeURIComponent(String(team.number))}`;
+  link.dataset.testid = 'team-results-link';
+  link.textContent = team.name;
+  return link;
+}
+
 function renderScoreboard(teams, questionTotal) {
-  const rows = scoreboardRows(teams, questionTotal, { isMine: (team) => me?.number === team.number });
+  const rows = scoreboardRows(teams, questionTotal, { isMine: (team) => me?.number === team.number, nameCell: clock.published() ? resultsLink : null });
   $('scoreboard-body').replaceChildren(...rows);
   const heading = $('scoreboard-heading'); // "provisional results:" until the admin publishes, then "final results:"
   heading.dataset.published = String(clock.published());

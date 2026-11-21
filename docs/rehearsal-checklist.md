@@ -52,7 +52,8 @@ Allow about 30 minutes. Tick as you go; write down anything odd.
 - [ ] `/game-score/`, Final results: it counts the photos not scored yet; the publish button stays disabled until "I have applied all scores" is ticked
 - [ ] Publish. The scoreboard heading changes from "provisional results:" to "final results:" on every phone, the play page says the final results are in, and each team's **Results** button now shows its results
 - [ ] Each team's results page: the place ("You finished 2nd of 3", a medal for 1st to 3rd), its total, every question with its own answer, right or wrong, and the official answer, and the photo percentages (try one team that sent no photo and one whose photo you never scored)
-- [ ] Someone who is not a team (a spectator's phone) opening the results address sees only the link back to the scoreboard
+- [ ] After publishing, on the scoreboard, a spectator's phone and a player's phone: every team's name is a link. Another team's page shows its place, total and the points for each question and photo (right, wrong or not answered) but **no answers**; your own name opens your full results with your answers. Before publishing the names are plain text
+- [ ] Someone who is not a team (a spectator's phone) opening the plain results address (no team in the address) sees only the link back to the scoreboard
 - [ ] The scoring page is locked while published; **Return to provisional** unlocks it and the scoreboard says "provisional results:" again
 - [ ] `/game-config/`: type `delete`, delete (this only clears the live event; other events keep their teams)
 - [ ] The scoreboard is empty and says nothing about final results; the next team to join is **Team 1**
