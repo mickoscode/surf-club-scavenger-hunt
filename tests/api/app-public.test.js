@@ -147,7 +147,7 @@ test('a photo challenge is sent once, and nothing scores until the admin applies
 test('no public response ever contains an official answer, a submitted answer or a team secret', async () => {
   const { env, p } = await activeGame();
   await answer(p, 'zone 1', 'Q1', 'my private guess');
-  const secretId = (await env.store.listTeams())[0].playerId;
+  const secretId = (await env.store.forEvent((await env.store.getGame()).event.name).listTeams())[0].playerId;
   const bodies = [];
   for (const path of ['/api/game', '/api/scoreboard', '/api/me', '/api/health']) bodies.push(JSON.stringify((await p.get(path)).body));
   bodies.push(JSON.stringify((await answer(p, 'zone 1', 'Q1', 'again')).body));

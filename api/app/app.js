@@ -56,6 +56,10 @@ function createApp({
   if (role !== 'public' && role !== 'admin') throw new Error('role must be "public" or "admin"');
   const passcodeRequired = typeof adminPasscodeHash === 'string' && adminPasscodeHash !== '';
 
+  // The player data of the event the game is loaded from (the active event): teams, scores, results. Nothing is read here:
+  // routes that already have the saved game pass it in, so choosing the event costs no database call.
+  const playersOf = (saved) => store.forEvent(saved?.event?.name ?? null);
+
   async function snapshot() {
     const saved = await store.getGame();
     const config = saved?.config ?? null;
@@ -65,18 +69,18 @@ function createApp({
   // What the pages need to know about the game, including whether the final results are published (so the scoreboard
   // heading and the Results button can follow). The same for everyone, so CloudFront may share it briefly.
   async function gameSummary(saved, info) {
-    return { name: saved?.config?.name ?? DEFAULT_GAME_NAME, ...info, teamNames: teamNamesOn(saved?.config), joinCodeRequired: Boolean(saved?.config?.joinCode), published: (await store.getPublishedAt()) !== null };
+    return { name: saved?.config?.name ?? DEFAULT_GAME_NAME, ...info, teamNames: teamNamesOn(saved?.config), joinCodeRequired: Boolean(saved?.config?.joinCode), published: (await playersOf(saved).getPublishedAt()) !== null };
   }
-  async function sessionTeam(request) {
+  async function sessionTeam(request, saved) {
     const id = parseCookies(request.headers.cookie)[COOKIE_NAME];
-    return id && PLAYER_ID.test(id) ? store.getTeam(id) : null;
+    return id && PLAYER_ID.test(id) ? playersOf(saved).getTeam(id) : null;
   }
-  const requireTeam = async (request) => {
-    const team = await sessionTeam(request);
+  const requireTeam = async (request, saved) => {
+    const team = await sessionTeam(request, saved);
     if (!team) throw new HttpError(401, 'no-session');
     return team;
   };
-  const teamByNumber = async (number) => (await store.listTeams()).find((t) => t.number === number) ?? null;
+  const teamByNumber = async (saved, number) => (await playersOf(saved).listTeams()).find((t) => t.number === number) ?? null;
   // A team as the pages show it: with team names off its name is "Team <number>" (config: the saved game configuration).
   const summary = (team, config) => ({ number: team.number, name: teamLabel(team, config), score: team.score });
 
@@ -132,7 +136,7 @@ function createApp({
 
     'GET /api/scoreboard': async () => {
       const { saved, info } = await snapshot();
-      const all = await store.listTeams();
+      const all = await playersOf(saved).listTeams();
       const config = saved?.config;
       // rank: teams on the same score share a place (1, 1, 3); done: questions and photo challenges attempted, of questionTotal.
       const teams = sortScoreboard(all.map((x) => summary(x, config)), { namesOn: teamNamesOn(config) }).map((t) => {
@@ -144,9 +148,9 @@ function createApp({
 
     // The caller's own team and which forms they have already submitted (never what they submitted).
     'GET /api/me': async (request) => {
-      const team = await sessionTeam(request);
-      if (!team) return respond(200, { team: null });
       const saved = await store.getGame();
+      const team = await sessionTeam(request, saved);
+      if (!team) return respond(200, { team: null });
       return respond(200, {
         team: summary(team, saved?.config),
         done: { answers: Object.keys(team.subs), photos: Object.keys(team.photos) },
@@ -159,20 +163,20 @@ function createApp({
     // A team's own final results. Nothing about answers is sent unless the final results are published AND the caller has a
     // team session: otherwise only whether they are published (and who the caller is), so a page can say "not ready yet".
     'GET /api/results': async (request) => {
-      const published = (await store.getPublishedAt()) !== null;
-      const team = await sessionTeam(request);
-      if (!team) return respond(200, { published, team: null });
       const { saved } = await snapshot();
+      const published = (await playersOf(saved).getPublishedAt()) !== null;
+      const team = await sessionTeam(request, saved);
+      if (!team) return respond(200, { published, team: null });
       const who = { number: team.number, name: teamLabel(team, saved?.config) };
       if (!published) return respond(200, { published: false, team: who });
-      const results = buildResults({ team, teams: await store.listTeams(), game: saved.game });
+      const results = buildResults({ team, teams: await playersOf(saved).listTeams(), game: saved.game });
       return respond(200, { published: true, team: who, results });
     },
 
     'POST /api/join': async (request) => {
       const body = readJson(request);
-      const existing = await sessionTeam(request);
-      const { status, config } = await snapshot();
+      const { saved, status, config } = await snapshot();
+      const existing = await sessionTeam(request, saved);
       if (existing) return respond(200, { team: { number: existing.number, name: teamLabel(existing, config) } });
       if (!can(status, 'join')) throw new HttpError(409, 'not-joinable');
       // The join code, when one is set: checked first, so nothing else about joining is revealed to someone without it.
@@ -184,22 +188,22 @@ function createApp({
         name = validateTeamName(body.name);
         if (!name.ok) throw new HttpError(400, name.error);
       }
-      const created = await store.createTeam({ playerId, name: name.name, key: name.key, joinedAt: now() });
+      const created = await playersOf(saved).createTeam({ playerId, name: name.name, key: name.key, joinedAt: now() });
       if (!created.ok) throw new HttpError(409, created.error);
       return respond(200, { team: { number: created.team.number, name: teamLabel(created.team, config) } }, {}, [sessionCookie(playerId, { secure: cookieSecure })]);
     },
 
     'POST /api/answer': async (request) => {
       const body = readJson(request);
-      const team = await requireTeam(request);
       const { saved, status, t } = await snapshot();
+      const team = await requireTeam(request, saved);
       if (!can(status, 'play')) throw new HttpError(409, 'not-playing');
       const zone = findZone(saved.game, body.zone);
       const question = findQuestion(zone, body.question);
       if (!question || isPhoto(question)) throw new HttpError(400, 'unknown-question');
       const result = checkAnswer(question, body.answer);
       if (!result.valid) throw new HttpError(400, 'invalid-answer'); // does not use up the one submission
-      const recorded = await store.recordAnswer(team.playerId, body.zone, body.question, {
+      const recorded = await playersOf(saved).recordAnswer(team.playerId, body.zone, body.question, {
         answerGiven: body.answer, correct: result.correct, points: questionPoints(question, result.correct), at: t,
       });
       if (!recorded.ok) throw new HttpError(recorded.error === 'no-team' ? 401 : 409, recorded.error === 'no-team' ? 'no-session' : recorded.error);
@@ -208,13 +212,13 @@ function createApp({
 
     'POST /api/photo': async (request) => {
       const body = readJson(request);
-      const team = await requireTeam(request);
       const { saved, status, t } = await snapshot();
+      const team = await requireTeam(request, saved);
       if (!can(status, 'play')) throw new HttpError(409, 'not-playing');
       const zone = findZone(saved.game, body.zone);
       if (!zone) throw new HttpError(400, 'unknown-zone');
       if (!findPhoto(zone, body.question)) throw new HttpError(400, 'unknown-question'); // not there, or not a photo challenge
-      const recorded = await store.recordPhotoSent(team.playerId, `${body.zone}#${body.question}`, { at: t });
+      const recorded = await playersOf(saved).recordPhotoSent(team.playerId, `${body.zone}#${body.question}`, { at: t });
       if (!recorded.ok) throw new HttpError(recorded.error === 'no-team' ? 401 : 409, recorded.error === 'no-team' ? 'no-session' : recorded.error);
       return respond(200, { done: true });
     },
@@ -251,8 +255,8 @@ function createApp({
 
     'GET /api/admin/config': async () => {
       const { saved, status } = await snapshot();
-      const teams = await store.listTeams();
-      const publishedAt = await store.getPublishedAt();
+      const teams = await playersOf(saved).listTeams();
+      const publishedAt = await playersOf(saved).getPublishedAt();
       return respond(200, {
         config: saved?.config ?? null,
         configuredAt: saved?.configuredAt ?? null,
@@ -273,15 +277,15 @@ function createApp({
     // never reads the events bucket again. The saved values are also written back to the event.
     'PUT /api/admin/config': async (request) => {
       const body = readJson(request);
-      const { status } = await snapshot();
+      const { saved: live, status } = await snapshot();
       if (!can(status, 'configure')) overrideLock(body, 'configure', status);
       const config = buildConfig(body);
       if (!events) throw new HttpError(409, 'events-unavailable');
       if (typeof body.event !== 'string' || body.event === '') throw new HttpError(400, 'event-required');
       if (!isEventName(body.event) || !(await events.exists(body.event))) throw new HttpError(400, 'unknown-event');
       // Another event means another set of questions, so it cannot replace a game that has players (download and delete the data first).
-      const current = (await store.getGame())?.event?.name ?? null;
-      if (current !== body.event && (await store.listTeams()).length > 0) throw new HttpError(409, 'players-exist');
+      const current = live?.event?.name ?? null;
+      if (current !== body.event && (await playersOf(live).listTeams()).length > 0) throw new HttpError(409, 'players-exist');
       const loaded = await events.activate(body.event);
       if (!loaded.ok) throw new HttpError(422, loaded.error === 'maps-missing' ? 'event-incomplete' : 'invalid-event', { problems: loaded.problems, missing: loaded.missing });
       const game = loaded.game;
@@ -289,7 +293,7 @@ function createApp({
       await events.putConfig(body.event, config); // the stored event always matches what was last used
       const t = now();
       await store.saveGame({ config, game, event, configuredAt: t });
-      await store.unpublishResults(); // a new configuration starts a new game: the results are provisional again
+      await store.forEvent(body.event).unpublishResults(); // a new configuration starts a new game: the results are provisional again
       return respond(200, { config, event: event.name, zoneCount: Object.keys(game).length, status: gameStatus(config, t) });
     },
 
@@ -346,8 +350,8 @@ function createApp({
     },
 
     'GET /api/admin/teams': async () => {
-      const { config } = await snapshot();
-      const teams = (await store.listTeams()).map((x) => summary(x, config)).sort((a, b) => a.number - b.number);
+      const { saved, config } = await snapshot();
+      const teams = (await playersOf(saved).listTeams()).map((x) => summary(x, config)).sort((a, b) => a.number - b.number);
       return respond(200, { teams });
     },
 
@@ -355,18 +359,18 @@ function createApp({
     // check on a team during the game. Admin only: the public results route sends nothing until the results are published.
     'GET /api/admin/teams/:number/results': async (request, params) => {
       const { saved, config } = await snapshot();
-      const team = await teamByNumber(Number(params.number));
+      const team = await teamByNumber(saved, Number(params.number));
       if (!team) throw new HttpError(400, 'no-team');
       if (!saved) throw new HttpError(409, 'no-game');
-      const teams = await store.listTeams();
-      return respond(200, { team: summary(team, config), published: (await store.getPublishedAt()) !== null, results: buildResults({ team, teams, game: saved.game }) });
+      const teams = await playersOf(saved).listTeams();
+      return respond(200, { team: summary(team, config), published: (await playersOf(saved).getPublishedAt()) !== null, results: buildResults({ team, teams, game: saved.game }) });
     },
 
     'DELETE /api/admin/teams/:number': async (request, params) => {
-      const { status } = await snapshot();
+      const { saved, status } = await snapshot();
       if (!can(status, 'removeTeam')) throw new HttpError(409, 'not-allowed');
-      const team = await teamByNumber(Number(params.number));
-      if (!team || !(await store.removeTeam(team.playerId))) throw new HttpError(400, 'no-team');
+      const team = await teamByNumber(saved, Number(params.number));
+      if (!team || !(await playersOf(saved).removeTeam(team.playerId))) throw new HttpError(400, 'no-team');
       return respond(200, { removed: true });
     },
 
@@ -374,7 +378,7 @@ function createApp({
     'GET /api/admin/photos': async () => {
       const { saved } = await snapshot();
       const rows = [];
-      for (const team of await store.listTeams()) {
+      for (const team of await playersOf(saved).listTeams()) {
         for (const [key, photo] of Object.entries(team.photos)) { // key: "<zone>#<question id>"
           const [zoneKey, id] = key.split('#');
           const zone = findZone(saved?.game, zoneKey);
@@ -395,15 +399,15 @@ function createApp({
       const body = readJson(request);
       const { saved, status, t } = await snapshot();
       if (!can(status, 'score')) throw new HttpError(409, 'not-scoring');
-      if ((await store.getPublishedAt()) !== null) throw new HttpError(409, 'results-published'); // return to provisional to correct a score
+      if ((await playersOf(saved).getPublishedAt()) !== null) throw new HttpError(409, 'results-published'); // return to provisional to correct a score
       if (!isDecision(body.decision)) throw new HttpError(400, 'invalid-decision');
       const zone = findZone(saved?.game, body.zone);
       if (!zone) throw new HttpError(400, 'unknown-zone');
       const challenge = findPhoto(zone, body.question);
       if (!challenge) throw new HttpError(400, 'unknown-question');
-      const team = Number.isInteger(body.teamNumber) ? await teamByNumber(body.teamNumber) : null;
+      const team = Number.isInteger(body.teamNumber) ? await teamByNumber(saved, body.teamNumber) : null;
       if (!team) throw new HttpError(400, 'no-team');
-      const applied = await store.applyPhotoDecision(team.playerId, `${body.zone}#${body.question}`, { decision: body.decision, photoScore: challenge.score, at: t });
+      const applied = await playersOf(saved).applyPhotoDecision(team.playerId, `${body.zone}#${body.question}`, { decision: body.decision, photoScore: challenge.score, at: t });
       if (!applied.ok) throw new HttpError(400, applied.error);
       return respond(200, { delta: applied.delta, score: applied.score });
     },
@@ -412,31 +416,32 @@ function createApp({
     // unscored count as 0%. Publishing again changes nothing.
     'POST /api/admin/results/publish': async (request) => {
       const body = readJson(request);
-      const { status, t } = await snapshot();
+      const { saved, status, t } = await snapshot();
       if (!can(status, 'publish')) throw new HttpError(409, 'game-not-over');
       if (body.confirm !== true) throw new HttpError(400, 'confirmation-required');
-      const publishedAt = await store.publishResults(t);
+      const publishedAt = await playersOf(saved).publishResults(t);
       return respond(200, { published: true, publishedAt });
     },
 
     // Back to provisional (a mistake, or a late correction): scoring opens again and the results page closes.
     'POST /api/admin/results/unpublish': async () => {
-      await store.unpublishResults();
+      await playersOf(await store.getGame()).unpublishResults();
       return respond(200, { published: false });
     },
 
     'GET /api/admin/export': async () => {
       const t = now();
       const day = new Date(t).toISOString().slice(0, 10);
-      return respond(200, { exportedAt: t, ...(await store.exportAll()) }, { 'content-disposition': `attachment; filename="scavenger-hunt-data-${day}.json"` });
+      const saved = await store.getGame();
+      return respond(200, { exportedAt: t, game: saved, teams: await playersOf(saved).listTeams() }, { 'content-disposition': `attachment; filename="scavenger-hunt-data-${day}.json"` });
     },
 
     'POST /api/admin/delete-all': async (request) => {
       const body = readJson(request);
-      const { status } = await snapshot();
+      const { saved, status } = await snapshot();
       if (!can(status, 'deleteData')) overrideLock(body, 'delete-all', status);
       if (body.confirm !== 'delete') throw new HttpError(400, 'confirmation-required');
-      await store.deleteAllPlayerData();
+      await playersOf(saved).deleteAllPlayerData();
       return respond(200, { deleted: true });
     },
   };
