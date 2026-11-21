@@ -172,7 +172,7 @@ The play page works as follows:
 - a 'view scoreboard' link is displayed below team name, which links back to the view page.
 - once the final results are published, a link to the results page is also shown (the same 'results' button as on the view page).
 
-Under the 'view scoreboard' link, display small tiles using the zone names and zone map images. Each tile shows the player's progress in that zone, e.g. "3/6 done" (questions plus the photo challenges; a zone may have several photo challenges or none).
+Under the 'view scoreboard' link, display small tiles using the zone names and zone map images. Each tile shows the player's progress in that zone, as the number still to do, e.g. "3 to complete" (number in bold), or "completed" in bold when none are left (questions plus the photo challenges; a zone may have several photo challenges or none).
 clicking a zone tile should display individual forms to submit answers to each of the questions for that zone.
 Players must also be able to view full size zone-map, and close it, returning to the zone questions.
 Players must also be able to return to the play page, where they can again select any of the zone tiles, or click the 'view scoreboard' link.
