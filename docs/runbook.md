@@ -79,6 +79,7 @@ Things to know:
 - **A mistake after publishing?** Press **Return to provisional**, fix the score on `/game-score/`, and publish again. While results are published, scores are locked (the scoring page says so).
 - Announce the result from the scoreboard.
 - **Keep the results:** `/game-config/`, Player data, **Download the player data**. The file has every team, its answers and its score (keep it private: it also contains each team's secret session id).
+- **Back up a real event's data** (once, after the final results are published): the table's point-in-time recovery only reaches back 35 days, so take an on-demand backup, which is kept until you delete it. In AWS CloudShell (region `ap-southeast-2`) run `aws dynamodb create-backup --table-name scavenger-hunt --backup-name youth-2026-final` (use the event's name). The table is protected from deletion (`terraform/dynamodb.tf`), and every event keeps its own teams, so switching to another event does not touch them.
 - **Clean up** (before the next game or rehearsal): type `delete` and delete. The next game then starts with no teams, team numbers back at 1, and results provisional again (saving a new game configuration also returns the results to provisional).
 
 ---
