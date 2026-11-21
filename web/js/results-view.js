@@ -14,23 +14,25 @@ const OUTCOME = {
 function questionCard(question) {
   const outcome = outcomeOf(question);
   const card = el('div', { class: 'list-group-item', 'data-testid': 'result-question', 'data-question': question.id, 'data-outcome': outcome, 'data-earned': String(question.earned), 'data-points': String(question.points) });
-  const head = el('div', { class: 'd-flex justify-content-between gap-2' });
-  head.append(
-    el('div', { class: 'fw-semibold team-name' }, question.text),
-    el('div', { class: 'text-nowrap text-muted small' }, `${formatScore(question.earned)} of ${formatScore(question.points)} points`),
-  );
-  const mark = el('div', { class: `fw-semibold ${OUTCOME[outcome].classes}`, 'data-testid': 'outcome' });
+  const mark = el('div', { class: `fw-semibold text-nowrap ${OUTCOME[outcome].classes}`, 'data-testid': 'outcome' });
   mark.append(el('span', { 'aria-hidden': 'true' }, `${OUTCOME[outcome].icon} `), document.createTextNode(OUTCOME[outcome].text)); // an icon and text, never colour alone
-  card.append(head, mark);
-  if (question.answered) card.append(el('div', { class: 'team-name', 'data-testid': 'your-answer' }, `Your answer: ${question.yourAnswer}`));
-  card.append(el('div', { class: 'small text-muted team-name', 'data-testid': 'official-answer' }, `Official answer: ${joinAnswers(question.officialAnswers)}`));
+  // What happened and what the answers were share a line (they wrap on a narrow screen); the points earned come last, in purple.
+  const answers = el('div', { class: 'd-flex flex-wrap align-items-baseline column-gap-3' });
+  answers.append(mark);
+  if (question.answered) answers.append(el('div', { class: 'team-name', 'data-testid': 'your-answer' }, `Your answer: ${question.yourAnswer}`));
+  answers.append(el('div', { class: 'small text-muted team-name', 'data-testid': 'official-answer' }, `Official answer: ${joinAnswers(question.officialAnswers)}`));
+  card.append(
+    el('div', { class: 'fw-semibold team-name' }, question.text),
+    answers,
+    el('div', { class: 'points-earned', 'data-testid': 'question-points' }, `${formatScore(question.earned)} of ${formatScore(question.points)} points`),
+  );
   return card;
 }
 
 function photoCard(photo) {
   const { state, text } = describePhoto(photo);
   const card = el('div', { class: 'list-group-item', 'data-testid': 'result-photo', 'data-state': state, 'data-percent': photo.percent === null ? '' : String(photo.percent) });
-  card.append(el('div', { class: 'fw-semibold' }, 'Photo challenge'), el('div', { class: 'small text-muted team-name' }, photo.challenge), el('div', { 'data-testid': 'photo-result' }, text));
+  card.append(el('div', { class: 'fw-semibold' }, 'Photo challenge'), el('div', { class: 'small text-muted team-name' }, photo.challenge), el('div', { class: state === 'not-submitted' ? '' : 'points-earned', 'data-testid': 'photo-result' }, text)); // no points message when nothing was sent
   return card;
 }
 

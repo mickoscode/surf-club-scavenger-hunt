@@ -1,8 +1,8 @@
 // Layout rules from the requirements ("UX Modifications", "Play page"): the status text and the countdown share a line, the
-// play page shows team number and name on one line told apart by size and colour, and the view page does not repeat the
-// team's name. Checked in a real browser on a phone-sized screen, by measuring where things are, never by their wording.
+// play page shows team number and name on one line told apart by size and colour, the view page does not repeat the
+// team's name, and on the results page every card ends with its points in one colour used for nothing else. Checked in a real browser on a phone-sized screen, by measuring where things are, never by their wording.
 const assert = require('node:assert/strict');
-const { browserSuite, signIn, START } = require('./helpers.js');
+const { browserSuite, signIn, START, END } = require('./helpers.js');
 
 const { withPage } = browserSuite();
 const phone = { page: { viewport: { width: 360, height: 640 } } };
@@ -82,4 +82,29 @@ withPage('on a phone the scoreboard with its four columns fits the screen even w
   await page.goto(`${site.url}/view/?refresh=500`);
   await page.waitForSelector($('scoreboard-row'));
   assert.ok((await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)) <= 0, 'the scoreboard is wider than the screen');
+});
+
+withPage('on the results page the outcome and the answers share a line and the points come last, in their own colour, on questions and photo challenges alike', phone, async ({ site, page, context }) => {
+  await site.api.configure();
+  const team = await site.api.join('Sea Dogs');
+  await team.answer('zone 1', 'Q2', '42');
+  await team.photo('zone 1');
+  site.clock.now = END + 1;
+  await site.api.apply(1, 'zone 1', 'half');
+  await site.api.publish();
+  await signIn(context, site.url, team);
+  await page.goto(`${site.url}/results/`);
+  const card = page.locator(`${$('result-zone')}[data-zone="zone 1"] ${$('result-question')}[data-question="Q2"]`);
+  await card.waitFor();
+  const inCard = (testId) => card.locator($(testId)).boundingBox();
+  const [outcome, yours, official, points] = [await inCard('outcome'), await inCard('your-answer'), await inCard('official-answer'), await inCard('question-points')];
+  assert.ok(sameLine(outcome, yours), 'the outcome and the answer are on different lines');
+  assert.ok(points.y >= Math.max(yours.y + yours.height, official.y + official.height) - 1, 'the points are not below the answers');
+  assert.ok(points.x < 40 + yours.x, 'the points are not at the left, below the content'); // not squeezed to the right of the question
+
+  const colour = (locator) => locator.evaluate((e) => getComputedStyle(e).color);
+  const photo = page.locator(`${$('result-zone')}[data-zone="zone 1"] ${$('result-photo')}`);
+  const pointsColour = await colour(card.locator($('question-points')));
+  assert.equal(await colour(photo.locator($('photo-result'))), pointsColour, 'questions and photo challenges use the same colour for their points');
+  for (const other of [card.locator($('official-answer')), card.locator($('your-answer')), photo.locator(`div >> nth=0`)]) assert.notEqual(await colour(other), pointsColour, 'the points colour is also used for something else');
 });

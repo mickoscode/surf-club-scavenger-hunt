@@ -21,6 +21,13 @@ body {
   overflow-wrap: anywhere;
 }
 
+/* The points a question or photo challenge earned on the results page: vivid purple, used for nothing else, so the score is easy to
+   find on every card. (#7c3aed on white is 5.7:1: readable in daylight on a phone.) */
+.points-earned {
+  color: #7c3aed;
+  font-weight: 600;
+}
+
 /* The instructions block on the play page: tapping the heading shows or hides the text. */
 .instructions ul {
   padding-left: 1.25rem;
