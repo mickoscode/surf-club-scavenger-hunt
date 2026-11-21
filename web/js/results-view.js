@@ -3,7 +3,7 @@
 // exactly what the player will see. Everything from the server is put on the page as text.
 import { el } from './dom.js';
 import { formatScore } from './format.js';
-import { medalFor, placeHeading, joinAnswers, outcomeOf, describePhoto, photoMark } from './results-format.js';
+import { medalFor, placeHeading, joinAnswers, outcomeOf, photoState, photoMark, pointsText } from './results-format.js';
 
 const OUTCOME = {
   correct: { icon: '✓', text: 'Correct', classes: 'text-success' },
@@ -14,33 +14,37 @@ const OUTCOME = {
 const PHOTO_TONE = { full: 'text-success', half: 'text-orange', none: 'text-danger' };
 const GLYPH = { tick: '✓', cross: '✗' };
 
+// The one line that ends every card: the icon and what happened, then the points ("✓ Correct 10 of 10 points"). The icon and the words
+// say it, never colour alone; the points are in purple (a colour used for nothing else), and wrap below on a very narrow screen.
+function statusLine(mark, pointsTestId, earned, points) {
+  const line = el('div', { class: 'd-flex flex-wrap align-items-baseline column-gap-3', 'data-testid': 'result-status' });
+  line.append(mark, el('div', { class: 'points-earned', 'data-testid': pointsTestId }, pointsText(earned, points)));
+  return line;
+}
+
 function questionCard(question) {
   const outcome = outcomeOf(question);
   const card = el('div', { class: 'list-group-item', 'data-testid': 'result-question', 'data-question': question.id, 'data-outcome': outcome, 'data-earned': String(question.earned), 'data-points': String(question.points) });
   const mark = el('div', { class: `fw-semibold text-nowrap ${OUTCOME[outcome].classes}`, 'data-testid': 'outcome' });
-  mark.append(el('span', { 'aria-hidden': 'true' }, `${OUTCOME[outcome].icon} `), document.createTextNode(OUTCOME[outcome].text)); // an icon and text, never colour alone
-  // What happened and what the answers were share a line (they wrap on a narrow screen); the points earned come last, in purple.
-  const answers = el('div', { class: 'd-flex flex-wrap align-items-baseline column-gap-3' });
-  answers.append(mark);
-  // Someone else's results (from the scoreboard) come without any answers: only what a team's own results carry is shown.
+  mark.append(el('span', { 'aria-hidden': 'true' }, `${OUTCOME[outcome].icon} `), document.createTextNode(OUTCOME[outcome].text));
+  card.append(el('div', { class: 'fw-semibold team-name' }, question.text));
+  // The answers share a line (it wraps on a narrow screen). Someone else's results (from the scoreboard) come without any answers:
+  // only what a team's own results carry is shown.
+  const answers = el('div', { class: 'd-flex flex-wrap column-gap-3' });
   if (question.answered && 'yourAnswer' in question) answers.append(el('div', { class: 'team-name', 'data-testid': 'your-answer' }, `Your answer: ${question.yourAnswer}`));
   if (question.officialAnswers) answers.append(el('div', { class: 'small text-muted team-name', 'data-testid': 'official-answer' }, `Official answer: ${joinAnswers(question.officialAnswers)}`));
-  card.append(
-    el('div', { class: 'fw-semibold team-name' }, question.text),
-    answers,
-    el('div', { class: 'points-earned', 'data-testid': 'question-points' }, `${formatScore(question.earned)} of ${formatScore(question.points)} points`),
-  );
+  if (answers.children.length) card.append(answers);
+  card.append(statusLine(mark, 'question-points', question.earned, question.points));
   return card;
 }
 
 function photoCard(photo) {
-  const { state, text } = describePhoto(photo);
+  const state = photoState(photo);
   const card = el('div', { class: 'list-group-item', 'data-testid': 'result-photo', 'data-state': state, 'data-percent': photo.percent === null ? '' : String(photo.percent) });
-  const { tone, icon, text: markText } = photoMark(photo);
+  const { tone, icon, text } = photoMark(photo);
   const mark = el('div', { class: `fw-semibold ${PHOTO_TONE[tone]}`, 'data-testid': 'photo-mark', 'data-tone': tone, 'data-icon': icon });
-  mark.append(el('span', { 'aria-hidden': 'true' }, `${GLYPH[icon]} `), document.createTextNode(markText)); // an icon and text, never colour alone
-  card.append(el('div', { class: 'fw-semibold' }, 'Photo challenge'), el('div', { class: 'small text-muted team-name' }, photo.challenge), mark);
-  if (state !== 'not-submitted') card.append(el('div', { class: 'points-earned', 'data-testid': 'photo-result' }, text)); // no points message when nothing was sent
+  mark.append(el('span', { 'aria-hidden': 'true', class: tone === 'half' ? 'icon-orange' : '' }, `${GLYPH[icon]} `), document.createTextNode(text));
+  card.append(el('div', { class: 'fw-semibold' }, 'Photo challenge'), el('div', { class: 'small text-muted team-name' }, photo.challenge), statusLine(mark, 'photo-result', photo.earned, photo.points));
   return card;
 }
 

@@ -26,22 +26,18 @@ export const joinAnswers = (answers) => answers.join(' or ');
 // 'correct', 'wrong' or 'unanswered' for one question of the results.
 export const outcomeOf = (question) => (!question.answered ? 'unanswered' : question.correct ? 'correct' : 'wrong');
 
-// The icon and colour of a photo challenge, like the tick and cross of a question: a green tick for full points, an orange tick for
-// half, a red cross for no points, for a photo never scored (0% until it is) and for no photo sent. { tone, icon, text }.
+// "10 of 20 points": what a question or photo challenge earned, in the one place it is said.
+export const pointsText = (earned, points) => `${formatScore(earned)} of ${formatScore(points)} points`;
+
+// The icon and colour of a photo challenge, like the tick and cross of a question: a green tick for Full, an orange tick for Half, a red
+// cross for Zero, for a photo never scored (0% until it is) and for no photo sent. { tone, icon, text }.
 export function photoMark(photo) {
   if (!photo.submitted) return { tone: 'none', icon: 'cross', text: 'No photo submitted' };
   if (!photo.scored) return { tone: 'none', icon: 'cross', text: 'Not scored yet' };
-  if (photo.decision === 'full') return { tone: 'full', icon: 'tick', text: 'Full points' };
-  if (photo.decision === 'half') return { tone: 'half', icon: 'tick', text: 'Half points' };
-  return { tone: 'none', icon: 'cross', text: 'No points' };
+  if (photo.decision === 'full') return { tone: 'full', icon: 'tick', text: 'Full' };
+  if (photo.decision === 'half') return { tone: 'half', icon: 'tick', text: 'Half' };
+  return { tone: 'none', icon: 'cross', text: 'Zero' };
 }
 
-const PHOTO_LABEL = { full: 'Full', half: 'Half', zero: 'Zero' };
-
-// How a photo challenge is described: { state: 'not-submitted' | 'not-scored' | 'scored', text }.
-export function describePhoto(photo) {
-  const of = `${formatScore(photo.earned)} of ${formatScore(photo.points)} points`;
-  if (!photo.submitted) return { state: 'not-submitted', text: 'No photo submitted' };
-  if (!photo.scored) return { state: 'not-scored', text: `Photo sent, but not scored: 0% - ${of}` };
-  return { state: 'scored', text: `${PHOTO_LABEL[photo.decision]}: ${photo.percent}% - ${of}` };
-}
+// 'not-submitted', 'not-scored' (sent, 0% until scored) or 'scored'.
+export const photoState = (photo) => (!photo.submitted ? 'not-submitted' : !photo.scored ? 'not-scored' : 'scored');
