@@ -1,7 +1,7 @@
 // The /view/ page in a real browser (Chromium), served with the real Content-Security-Policy. Elements are found by
 // data-testid and state is read from data-* attributes (phase, seconds, team number, score), never from wording.
 const assert = require('node:assert/strict');
-const { browserSuite, until, START, END } = require('./helpers.js');
+const { browserSuite, until, signIn, START, END } = require('./helpers.js');
 
 const { withPage } = browserSuite();
 
@@ -161,4 +161,22 @@ withPage('a visitor with no team does not ask who they are on every refresh (the
   await new Promise((resolve) => setTimeout(resolve, 3000)); // about six refreshes
   assert.ok(requests.scoreboard >= 4, `the scoreboard was only refreshed ${requests.scoreboard} times`);
   assert.equal(requests.me, 1);
+});
+
+withPage("the game name shows nothing until the server has answered (never a default that is then replaced), then it and the tab's title follow the game", {}, async ({ site, page, context }) => {
+  await site.api.configure(); // the fixture game is named "Test game"
+  await signIn(context, site.url, await site.api.join('Sea Dogs'));
+  const name = () => page.locator('[data-testid="game-name"]').textContent();
+  for (const [path, api] of [['view', 'scoreboard'], ['play', 'game']]) {
+    let release;
+    const held = new Promise((resolve) => { release = resolve; });
+    await page.route(`**/api/${api}*`, async (route) => { await held; await route.continue(); }); // the server's answer is still on its way
+    await page.goto(`${site.url}/${path}/?refresh=500`);
+    await page.waitForSelector('[data-testid="game-name"]');
+    assert.equal((await name()).trim(), '', `${path}: a name is shown before the server has answered`);
+    release();
+    await until(async () => (await name()).trim() === 'Test game');
+    assert.ok((await page.title()).endsWith(' - Test game'), `${path}: the tab title does not follow the game: ${await page.title()}`);
+    await page.unroute(`**/api/${api}*`);
+  }
 });
