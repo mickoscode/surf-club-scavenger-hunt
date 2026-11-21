@@ -28,6 +28,11 @@ body {
   font-weight: 600;
 }
 
+/* Orange for half points on a photo challenge (Bootstrap's own warning colour is too pale to read on white): #c2410c is 5.2:1. */
+.text-orange {
+  color: #c2410c;
+}
+
 /* The instructions block on the play page: tapping the heading shows or hides the text. */
 .instructions ul {
   padding-left: 1.25rem;

@@ -91,6 +91,9 @@ test('results wording: accepted answers, question outcome and the photo states',
   assert.equal(describePhoto(photo({ decision: 'zero', percent: 0, earned: 0 })).text, 'Zero: 0% - 0 of 30 points');
   assert.equal(describePhoto(photo({ points: 25, decision: 'half', earned: 12.5 })).text, 'Half: 50% - 12.5 of 25 points'); // halves are not rounded
   assert.deepEqual(describePhoto(photo({ scored: false, decision: null, percent: 0, earned: 0 })), { state: 'not-scored', text: 'Photo sent, but not scored: 0% - 0 of 30 points' });
+  const { photoMark } = await load('results-format.js'); // the icon: a tick for full and half points, a cross for none, not scored or no photo
+  const marks = [photo({ decision: 'full', percent: 100 }), photo({}), photo({ decision: 'zero', percent: 0 }), photo({ scored: false, decision: null }), photo({ submitted: false, scored: false })].map((p) => photoMark(p));
+  assert.deepEqual(marks.map((m) => [m.icon, m.tone]), [['tick', 'full'], ['tick', 'half'], ['cross', 'none'], ['cross', 'none'], ['cross', 'none']]);
   assert.deepEqual(describePhoto(photo({ submitted: false, scored: false, decision: null, percent: null, earned: 0 })), { state: 'not-submitted', text: 'No photo submitted' });
 });
 
