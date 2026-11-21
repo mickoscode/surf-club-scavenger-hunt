@@ -89,6 +89,7 @@ withPage('the pages load without console errors, failed requests or Content-Secu
 
   await page.goto(`${site.url}/`); // the home page sends people to the scoreboard
   await page.waitForURL('**/view/');
+  await page.waitForLoadState('networkidle'); // do not navigate away while the first page's requests are still in flight
   await page.goto(`${site.url}/view/?refresh=500`);
   await until(async () => (await rowsOf(page).count()) === 1);
   await new Promise((resolve) => setTimeout(resolve, 2000)); // several refreshes

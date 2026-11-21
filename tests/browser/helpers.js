@@ -195,7 +195,7 @@ async function openPage(browser, { viewport } = {}) {
   });
   page.on('console', (m) => { if (m.type() === 'error') problems.push(`console: ${m.text()}`); });
   page.on('pageerror', (e) => problems.push(`page error: ${e}`));
-  page.on('requestfailed', (r) => problems.push(`request failed: ${r.url()}`));
+  page.on('requestfailed', (r) => problems.push(`request failed: ${r.url()} (${r.failure()?.errorText})`));
   page.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('/nope')) problems.push(`${r.status()} ${r.url()}`); });
   const cspViolations = () => page.evaluate(() => window.__csp);
   return { context, page, problems, cspViolations };
