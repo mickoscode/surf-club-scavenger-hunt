@@ -3,13 +3,16 @@
 // exactly what the player will see. Everything from the server is put on the page as text.
 import { el } from './dom.js';
 import { formatScore } from './format.js';
-import { medalFor, placeHeading, joinAnswers, outcomeOf, describePhoto } from './results-format.js';
+import { medalFor, placeHeading, joinAnswers, outcomeOf, describePhoto, photoMark } from './results-format.js';
 
 const OUTCOME = {
   correct: { icon: '✓', text: 'Correct', classes: 'text-success' },
   wrong: { icon: '✗', text: 'Wrong', classes: 'text-danger' },
   unanswered: { icon: '–', text: 'Not answered', classes: 'text-muted' },
 };
+
+const PHOTO_TONE = { full: 'text-success', half: 'text-orange', none: 'text-danger' };
+const GLYPH = { tick: '✓', cross: '✗' };
 
 function questionCard(question) {
   const outcome = outcomeOf(question);
@@ -33,7 +36,11 @@ function questionCard(question) {
 function photoCard(photo) {
   const { state, text } = describePhoto(photo);
   const card = el('div', { class: 'list-group-item', 'data-testid': 'result-photo', 'data-state': state, 'data-percent': photo.percent === null ? '' : String(photo.percent) });
-  card.append(el('div', { class: 'fw-semibold' }, 'Photo challenge'), el('div', { class: 'small text-muted team-name' }, photo.challenge), el('div', { class: state === 'not-submitted' ? '' : 'points-earned', 'data-testid': 'photo-result' }, text)); // no points message when nothing was sent
+  const { tone, icon, text: markText } = photoMark(photo);
+  const mark = el('div', { class: `fw-semibold ${PHOTO_TONE[tone]}`, 'data-testid': 'photo-mark', 'data-tone': tone, 'data-icon': icon });
+  mark.append(el('span', { 'aria-hidden': 'true' }, `${GLYPH[icon]} `), document.createTextNode(markText)); // an icon and text, never colour alone
+  card.append(el('div', { class: 'fw-semibold' }, 'Photo challenge'), el('div', { class: 'small text-muted team-name' }, photo.challenge), mark);
+  if (state !== 'not-submitted') card.append(el('div', { class: 'points-earned', 'data-testid': 'photo-result' }, text)); // no points message when nothing was sent
   return card;
 }
 

@@ -3,7 +3,7 @@
 // Elements by data-testid; state from data-* attributes. Words on the page are only asserted where the requirements fix them
 // (the scoreboard heading, "You finished 3rd of 12", "bike or bicycle").
 const assert = require('node:assert/strict');
-const { browserSuite, signIn, until, END } = require('./helpers.js');
+const { browserSuite, signIn, until, adminPage, END } = require('./helpers.js');
 
 const { withPage } = browserSuite();
 
@@ -94,7 +94,6 @@ withPage('the results page: the link back at the top, then the place, total, and
   assert.deepEqual(await page.locator(photo('zone 1')).evaluate((e) => [e.dataset.state, e.dataset.percent]), ['scored', '100']);
   assert.equal(await page.locator(`${photo('zone 1')} ${$('photo-result')}`).textContent(), 'Full: 100% - 30 of 30 points');
   assert.deepEqual(await page.locator(photo('zone 2')).evaluate((e) => [e.dataset.state, e.dataset.percent]), ['not-submitted', '']);
-  assert.equal(await page.locator(`${photo('zone 2')} ${$('photo-result')}`).textContent(), 'No photo submitted');
 });
 
 withPage('wrong answers and photos that were sent but never scored are marked clearly', {}, async ({ site, browser, page, context }) => {
@@ -177,6 +176,46 @@ withPage("once published every team's name on the scoreboard links to its result
   await page.waitForSelector(`${$('results-body')}:not([hidden])`);
   assert.equal(await page.locator($('results-body')).getAttribute('data-viewing'), 'false');
   assert.ok((await page.locator($('your-answer')).count()) > 0);
+});
+
+withPage('a photo challenge has a tick or a cross like a question: green for full points, orange for half, red for none, not scored or no photo, the same on the player, viewer and admin pages', {}, async ({ site, page, context }) => {
+  await site.api.configure();
+  const [alpha, bravo] = [await site.api.join('Alpha'), await site.api.join('Bravo')];
+  await site.api.join('Charlie'); // sends nothing
+  await alpha.photo('zone 1'); await alpha.photo('zone 2');
+  await bravo.photo('zone 1'); await bravo.photo('zone 2');
+  site.clock.now = END + 1;
+  await site.api.apply(1, 'zone 1', 'full'); await site.api.apply(1, 'zone 2', 'half');
+  await site.api.apply(2, 'zone 1', 'zero'); // Bravo's zone 2 photo is never scored
+  await site.api.publish();
+  const expected = { 1: [['full', 'tick'], ['half', 'tick']], 2: [['none', 'cross'], ['none', 'cross']], 3: [['none', 'cross'], ['none', 'cross']] };
+  const marks = (target) => target.locator($('photo-mark')).evaluateAll((els) => els.map((e) => [e.dataset.tone, e.dataset.icon]));
+  const colours = (target) => target.locator($('photo-mark')).evaluateAll((els) => els.map((e) => getComputedStyle(e).color));
+
+  await signIn(context, site.url, alpha); // the player
+  await page.goto(`${site.url}/results/`);
+  await page.waitForSelector($('photo-mark'));
+  assert.deepEqual(await marks(page), expected[1]);
+  const [green, orange] = await colours(page);
+  assert.notEqual(green, orange);
+  await context.clearCookies();
+  for (const number of [1, 2, 3]) { // a viewer with no team
+    await page.goto(`${site.url}/results/?team=${number}`);
+    await page.waitForSelector($('photo-mark'));
+    assert.deepEqual(await marks(page), expected[number], `viewer, team ${number}`);
+  }
+  await page.goto(`${site.url}/results/?team=2`);
+  await page.waitForSelector($('photo-mark'));
+  assert.equal((await colours(page))[0], (await colours(page))[1]); // both red
+  assert.notEqual((await colours(page))[0], green);
+
+  for (const number of [1, 2, 3]) { // the admin's view of a team
+    await adminPage(page, site, '/game-teams/?refresh=500');
+    await page.click(`${$('scoreboard-row')}[data-team-number="${number}"] ${$('team-link')}`);
+    await page.waitForSelector($('photo-mark'));
+    assert.deepEqual(await marks(page), expected[number], `admin, team ${number}`);
+  }
+  assert.equal((await colours(page))[0], (await colours(page))[1]);
 });
 
 withPage("a team's results address says they are not ready before publishing and that the team was not found for an unknown number", {}, async ({ site, page }) => {

@@ -26,6 +26,16 @@ export const joinAnswers = (answers) => answers.join(' or ');
 // 'correct', 'wrong' or 'unanswered' for one question of the results.
 export const outcomeOf = (question) => (!question.answered ? 'unanswered' : question.correct ? 'correct' : 'wrong');
 
+// The icon and colour of a photo challenge, like the tick and cross of a question: a green tick for full points, an orange tick for
+// half, a red cross for no points, for a photo never scored (0% until it is) and for no photo sent. { tone, icon, text }.
+export function photoMark(photo) {
+  if (!photo.submitted) return { tone: 'none', icon: 'cross', text: 'No photo submitted' };
+  if (!photo.scored) return { tone: 'none', icon: 'cross', text: 'Not scored yet' };
+  if (photo.decision === 'full') return { tone: 'full', icon: 'tick', text: 'Full points' };
+  if (photo.decision === 'half') return { tone: 'half', icon: 'tick', text: 'Half points' };
+  return { tone: 'none', icon: 'cross', text: 'No points' };
+}
+
 const PHOTO_LABEL = { full: 'Full', half: 'Half', zero: 'Zero' };
 
 // How a photo challenge is described: { state: 'not-submitted' | 'not-scored' | 'scored', text }.
