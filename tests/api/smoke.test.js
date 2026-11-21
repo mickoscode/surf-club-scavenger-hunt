@@ -57,6 +57,17 @@ test("a team's public results containing an answer, or cacheable, fail", async (
   });
 });
 
+test("a team's public results route that Terraform has not added yet is a warning, not a failed deploy", async () => {
+  const notRouted = (req) => (req.path === '/api/results/team/1' ? respond(404, null) : undefined);
+  await withSite(notRouted, async (url) => {
+    const { failures, warnings } = await runSmokeDetailed(url, { attempts: 1 });
+    assert.deepEqual(failures, []);
+    assert.equal(warnings.filter((w) => /apply Terraform/.test(w)).length, 1);
+  });
+  const broken = (req) => (req.path === '/api/results/team/1' ? respond(500, { error: 'server-error' }) : undefined);
+  await withSite(broken, async (url) => assert.equal((await smoke(url)).length, 1)); // any other answer still fails
+});
+
 test('a missing results page fails', async () => {
   const server = http.createServer((req, res) => (req.url.startsWith('/api/') ? createApiHandler()(req, res) : res.writeHead(req.url === '/results/' ? 404 : 200).end('x')));
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));

@@ -39,9 +39,17 @@ const CHECKS = [
     },
   },
   {
-    name: "API: a team's public results never contain an answer, and are never cached", path: '/api/results/team/1',
-    check: (res, text) => {
+    // A new API route exists only once Terraform has been applied, which happens after the deploy: until then CloudFront answers 404
+    // (the API itself never answers 404 for its own errors, see tests/api). That is a warning, not a failed deploy.
+    name: "API: a team's public results never contain an answer, and are never cached",
+    custom: async (baseUrl, warn) => {
+      const res = await fetch(new URL('/api/results/team/1', baseUrl), { redirect: 'manual', signal: AbortSignal.timeout(15000) });
+      const text = await res.text();
       const body = isJson(text);
+      if (res.status === 404) {
+        warn('GET /api/results/team/{number} is not routed yet: apply Terraform (terraform-apply.yml) to add the API Gateway route.');
+        return null;
+      }
       const ok = (res.status === 200 && typeof body?.published === 'boolean') || (res.status === 400 && body?.error === 'no-team');
       if (!ok) return `status ${res.status}: ${text.slice(0, 100)}`;
       if (/yourAnswer|officialAnswers|"answer"/.test(text)) return 'the response contains answers';
