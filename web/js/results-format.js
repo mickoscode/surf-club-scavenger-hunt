@@ -30,10 +30,10 @@ export const outcomeOf = (question) => (!question.answered ? 'unanswered' : ques
 export const pointsText = (earned, points) => `${formatScore(earned)} of ${formatScore(points)} points`;
 
 // The icon and colour of a photo challenge, like the tick and cross of a question: a green tick for Full, an orange tick for Half, a red
-// cross for Zero, for a photo never scored (0% until it is) and for no photo sent. { tone, icon, text }.
+// cross for Zero, and a red "!" for a photo not scored yet (0 points until it is) and for no photo sent. { tone, icon, text }.
 export function photoMark(photo) {
-  if (!photo.submitted) return { tone: 'none', icon: 'cross', text: 'No photo submitted' };
-  if (!photo.scored) return { tone: 'none', icon: 'cross', text: 'Not scored yet' };
+  if (!photo.submitted) return { tone: 'none', icon: 'alert', text: 'No photo submitted' };
+  if (!photo.scored) return { tone: 'none', icon: 'alert', text: 'Not scored yet' };
   if (photo.decision === 'full') return { tone: 'full', icon: 'tick', text: 'Full' };
   if (photo.decision === 'half') return { tone: 'half', icon: 'tick', text: 'Half' };
   return { tone: 'none', icon: 'cross', text: 'Zero' };

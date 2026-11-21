@@ -91,9 +91,9 @@ test('results wording: accepted answers, question outcome, points and the photo 
   const photo = (over) => ({ points: 30, submitted: true, scored: true, decision: 'half', percent: 50, earned: 15, ...over });
   const photos = [photo({ decision: 'full', percent: 100 }), photo({}), photo({ decision: 'zero', percent: 0 }), photo({ scored: false, decision: null }), photo({ submitted: false, scored: false })];
   assert.deepEqual(photos.map(photoState), ['scored', 'scored', 'scored', 'not-scored', 'not-submitted']);
-  // A tick for full and half points, a cross for none, not scored or no photo; one short description each, never a repeat of the points.
+  // A tick for full and half points, a cross for zero, a "!" for not scored yet or no photo; one short description each, never a repeat of the points.
   assert.deepEqual(photos.map((p) => { const m = photoMark(p); return [m.icon, m.tone, m.text]; }), [
-    ['tick', 'full', 'Full'], ['tick', 'half', 'Half'], ['cross', 'none', 'Zero'], ['cross', 'none', 'Not scored yet'], ['cross', 'none', 'No photo submitted'],
+    ['tick', 'full', 'Full'], ['tick', 'half', 'Half'], ['cross', 'none', 'Zero'], ['alert', 'none', 'Not scored yet'], ['alert', 'none', 'No photo submitted'],
   ]);
 });
 

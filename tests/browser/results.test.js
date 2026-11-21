@@ -178,7 +178,7 @@ withPage("once published every team's name on the scoreboard links to its result
   assert.ok((await page.locator($('your-answer')).count()) > 0);
 });
 
-withPage('a photo challenge has a tick or a cross like a question: green for full points, orange for half, red for none, not scored or no photo, the same on the player, viewer and admin pages', {}, async ({ site, page, context }) => {
+withPage('a photo challenge has an icon like a question: a green tick for full points, an orange tick for half, a red cross for zero, a red ! for not scored or no photo, the same on the player, viewer and admin pages', {}, async ({ site, page, context }) => {
   await site.api.configure();
   const [alpha, bravo] = [await site.api.join('Alpha'), await site.api.join('Bravo')];
   await site.api.join('Charlie'); // sends nothing
@@ -188,7 +188,7 @@ withPage('a photo challenge has a tick or a cross like a question: green for ful
   await site.api.apply(1, 'zone 1', 'full'); await site.api.apply(1, 'zone 2', 'half');
   await site.api.apply(2, 'zone 1', 'zero'); // Bravo's zone 2 photo is never scored
   await site.api.publish();
-  const expected = { 1: [['full', 'tick'], ['half', 'tick']], 2: [['none', 'cross'], ['none', 'cross']], 3: [['none', 'cross'], ['none', 'cross']] };
+  const expected = { 1: [['full', 'tick'], ['half', 'tick']], 2: [['none', 'cross'], ['none', 'alert']], 3: [['none', 'alert'], ['none', 'alert']] }; // Bravo: zero, then never scored
   const marks = (target) => target.locator($('photo-mark')).evaluateAll((els) => els.map((e) => [e.dataset.tone, e.dataset.icon]));
   const colours = (target) => target.locator($('photo-mark')).evaluateAll((els) => els.map((e) => getComputedStyle(e).color));
   const hue = (rgb) => { // the colour's hue in degrees, from "rgb(r, g, b)"

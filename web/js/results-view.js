@@ -12,7 +12,7 @@ const OUTCOME = {
 };
 
 const PHOTO_TONE = { full: 'text-success', half: 'text-orange', none: 'text-danger' };
-const GLYPH = { tick: '✓', cross: '✗' };
+const GLYPH = { tick: '✓', cross: '✗', alert: '!' };
 
 // The one line that ends every card: the icon and what happened, then the points ("✓ Correct 10 of 10 points"). The icon and the words
 // say it, never colour alone; the points are in purple (a colour used for nothing else), and wrap below on a very narrow screen.
