@@ -1,4 +1,4 @@
-// The /game-config/ admin page: the game's configuration, the teams (remove one), and the player data (download, delete).
+// The /game-config/ admin page: the game's configuration, the teams (remove one), and the player data (delete).
 // Behind the admin passcode (web/js/admin-auth.js). Names and messages are set as text only.
 import { getJson, putJson, postJson, deleteJson } from './api.js';
 import { $, el, refreshInterval } from './dom.js';
@@ -11,7 +11,6 @@ import { wireHelp } from './help.js';
 
 const STATUS_TEXT = { loading: 'loading', unconfigured: 'no game set up yet', pre: 'before the game', active: 'game in progress', post: 'game finished' };
 const EVENT_PROBLEM = {
-  'players-exist': 'Another event cannot replace a game that has teams. Download and delete the player data first, then try again.',
   'event-incomplete': 'That event is missing map images. Upload it again on the Events page.',
   'unknown-event': 'That event no longer exists.',
   'event-required': 'Choose the event to make live first. Upload one on the Events page if there is none.',

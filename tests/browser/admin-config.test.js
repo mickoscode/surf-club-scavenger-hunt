@@ -2,7 +2,6 @@
 // player data. Fixture game (tests/api/helpers.js). Elements by data-testid; results from data-* attributes and the
 // server's state, not wording.
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const { browserSuite, until, chooseEvent, START, END } = require('./helpers.js');
 
 const { withPage } = browserSuite();
@@ -93,7 +92,7 @@ withPage('teams are listed as text and can be removed, after confirming, even du
   assert.equal(await page.locator(item(1)).count(), 1);
 });
 
-withPage('player data needs the word typed before it can be deleted (downloading it first is optional), then the next game starts clean', {}, async ({ site, page }) => {
+withPage('player data needs the word typed before it can be deleted, then the next game starts clean', {}, async ({ site, page }) => {
   site.clock.now = START - 1000;
   await site.api.configure();
   const team = await site.api.join('Sea Dogs');
@@ -105,11 +104,6 @@ withPage('player data needs the word typed before it can be deleted (downloading
   assert.equal(await del.isDisabled(), true);
   await page.fill($('delete-confirm'), 'dele');
   assert.equal(await del.isDisabled(), true); // the wrong word
-
-  const [download] = await Promise.all([page.waitForEvent('download'), page.click($('export-link'))]);
-  const exported = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
-  assert.equal(exported.teams.length, 2);
-  assert.equal(exported.game.config.name, 'Test game');
 
   await page.fill($('delete-confirm'), 'dele');
   assert.equal(await del.isDisabled(), true); // wrong word

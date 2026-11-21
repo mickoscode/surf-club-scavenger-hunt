@@ -81,6 +81,9 @@ function createEvents({ blobs, siteBlobs, newId }) {
 
     async exists(name) { return (await events.names()).includes(name); },
 
+    // The settings last saved with the event (what the config page fills its form from), or null.
+    async getConfig(name) { return readJson(name, CONFIG); },
+
     // The game file as text (a copy of what was uploaded), for the admin to download or edit.
     async download(name) {
       const [config, questions, instructions] = [await readJson(name, CONFIG), await readJson(name, QUESTIONS), await read(name, INSTRUCTIONS)];

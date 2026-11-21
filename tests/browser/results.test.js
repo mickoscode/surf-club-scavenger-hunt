@@ -3,7 +3,6 @@
 // Elements by data-testid; state from data-* attributes. Words on the page are only asserted where the requirements fix them
 // (the scoreboard heading, "You finished 3rd of 12", "bike or bicycle").
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const { browserSuite, signIn, until, END } = require('./helpers.js');
 
 const { withPage } = browserSuite();
@@ -244,8 +243,6 @@ withPage('deleting the player data returns the results to provisional', {}, asyn
   await finishedGame(site);
   await page.goto(`${site.url}/game-config/?refresh=500`);
   await page.waitForSelector(`${$('results-state')}[data-published="true"]`);
-  const [download] = await Promise.all([page.waitForEvent('download'), page.click($('export-link'))]);
-  assert.ok(JSON.parse(fs.readFileSync(await download.path(), 'utf8')).teams.length === 4);
   await page.fill($('delete-confirm'), 'delete');
   await page.click($('delete-button'));
   await page.waitForSelector(`${$('results-state')}[data-published="false"]`);

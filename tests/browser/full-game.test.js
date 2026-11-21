@@ -7,7 +7,6 @@
 // Fixture game (tests/api/helpers.js): zone 1 "Alpha": Q1 text 10 pts ("alt one" is accepted), Q2 number 20 (42),
 // Q3 decimal 5 (2.5), photo 30; zone 2 "Bravo": Q1 text 10 (secret two), photo 25.
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const { browserSuite, openPage, adminPage, chooseEvent, until, START, END } = require('./helpers.js');
 
 const { withPage } = browserSuite();
@@ -156,12 +155,9 @@ for (const passcode of [false, true]) withPage(`a whole game: set up, join, play
   await dogs.page.waitForSelector(`${$('result-question')}[data-question="Q3"]`);
   assert.equal(await dogs.page.locator(`${$('result-zone')}[data-zone="zone 1"] ${$('result-question')}[data-question="Q3"]`).getAttribute('data-outcome'), 'wrong');
 
-  // ---- Clean up: download the data, delete it, and the next game starts empty (and provisional again).
+  // ---- Clean up: delete the data, and the next game starts empty (and provisional again).
   await adminPage(admin, site, '/game-config/?refresh=500');
   await admin.waitForSelector(`${$('game-status')}[data-status="post"]`);
-  const [download] = await Promise.all([admin.waitForEvent('download'), admin.click($('export-link'))]);
-  const exported = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
-  assert.deepEqual(exported.teams.map((t) => [t.name, t.score]).sort(), [['Sea Dogs', 60], ['Sharks', 22.5]]);
   await admin.fill($('delete-confirm'), 'delete');
   await admin.click($('delete-button'));
   await admin.waitForSelector(`${$('delete-result')}:not([hidden])`);

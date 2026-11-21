@@ -110,19 +110,72 @@ test('only a complete and valid event can be activated, and the game is unchange
   assert.equal((await admin.get('/api/admin/config')).body.config, null);
 });
 
-test('switching to a different event is refused while teams exist, but saving the same event again keeps them', async () => {
+test('every event keeps its own teams: switching is always allowed, and switching back finds them as they were', async () => {
+  const { env, admin } = await prepared('summer');
+  await upload(admin, 'winter');
+  await activate(admin, 'summer');
+  const dogs = env.player();
+  await dogs.post('/api/join', { name: 'Sea Dogs' });
+  const board = async () => (await env.player().get('/api/scoreboard')).body.teams.map((t) => [t.number, t.name]);
+  assert.equal((await activate(admin, 'winter')).status, 200); // summer has teams: no longer a reason to refuse
+  assert.deepEqual(await board(), []); // winter has none
+  assert.deepEqual((await dogs.get('/api/me')).body, { team: null }); // a summer team has no session in winter
+  assert.equal((await env.player().post('/api/join', { name: 'Sea Dogs' })).body.team.number, 1); // the same name, its own numbering
+  assert.equal((await activate(admin, 'summer', { name: 'Same event, new name' })).status, 200);
+  assert.deepEqual(await board(), [[1, 'Sea Dogs']]); // summer's team, not winter's
+  assert.equal((await dogs.get('/api/me')).body.team.number, 1); // and its own session works again
+  assert.equal((await admin.get('/api/admin/teams')).body.teams.length, 1);
+  assert.equal((await env.siteBlobs.list('event-maps/')).keys.every((k) => k.startsWith('event-maps/act3/')), true); // only the last activation's maps remain
+});
+
+test('deleting the player data only affects the live event', async () => {
   const { env, admin } = await prepared('summer');
   await upload(admin, 'winter');
   await activate(admin, 'summer');
   await env.player().post('/api/join', { name: 'Sea Dogs' });
-  const other = await activate(admin, 'winter');
-  assert.deepEqual([other.status, other.body.error], [409, 'players-exist']);
-  assert.equal((await admin.get('/api/admin/config')).body.event, 'summer'); // unchanged
-  assert.equal((await activate(admin, 'summer', { name: 'Same event, new name' })).status, 200);
-  assert.equal((await admin.get('/api/admin/teams')).body.teams.length, 1);
+  await activate(admin, 'winter');
+  await env.player().post('/api/join', { name: 'Sharks' });
+  assert.equal((await admin.post('/api/admin/delete-all', { confirm: 'delete' })).status, 200); // winter is live
+  assert.deepEqual((await admin.get('/api/admin/teams')).body.teams, []);
+  await activate(admin, 'summer');
+  assert.deepEqual((await admin.get('/api/admin/teams')).body.teams.map((t) => t.name), ['Sea Dogs']);
+});
+
+test('an event with teams cannot be replaced or deleted underneath them, and can again once its player data is deleted', async () => {
+  const { env, admin } = await prepared('summer');
+  await upload(admin, 'winter');
+  await activate(admin, 'summer');
+  await env.player().post('/api/join', { name: 'Sea Dogs' });
+  await activate(admin, 'winter');
+  const refused = [
+    await admin.put('/api/admin/events/summer/questions', GAME), await admin.put('/api/admin/events/summer/instructions', { text: 'new' }),
+    await admin.put('/api/admin/events/summer/maps/zone-1', { thumb: WEBP, full: WEBP }), await admin.del('/api/admin/events/summer'),
+  ];
+  assert.deepEqual(refused.map((r) => [r.status, r.body.error]), Array(4).fill([409, 'players-exist']));
+  assert.equal((await admin.get('/api/admin/events/summer')).body.complete, true); // nothing was changed
+  assert.equal((await admin.put('/api/admin/events/summer/config', CONFIG)).status, 200); // its settings are not part of the rule
+  assert.equal((await admin.put('/api/admin/events/winter/questions', GAME)).status, 200); // another event is free
+  await activate(admin, 'summer');
   await admin.post('/api/admin/delete-all', { confirm: 'delete' });
-  assert.equal((await activate(admin, 'winter')).status, 200); // no player data: free to switch
-  assert.equal((await env.siteBlobs.list('event-maps/')).keys.every((k) => k.startsWith('event-maps/act3/')), true); // only the last activation's maps remain
+  assert.equal((await admin.put('/api/admin/events/summer/questions', GAME)).status, 200);
+  await activate(admin, 'winter');
+  assert.equal((await admin.del('/api/admin/events/summer')).status, 200);
+});
+
+test('each event has its own published results; switching back keeps them, and changed settings return them to provisional', async () => {
+  const { env, admin } = await prepared('summer');
+  await upload(admin, 'winter');
+  await activate(admin, 'summer');
+  await env.player().post('/api/join', { name: 'Sea Dogs' });
+  env.clock.now = END + 1;
+  const published = async () => (await admin.get('/api/admin/config')).body.results.published;
+  assert.equal((await admin.post('/api/admin/results/publish', { confirm: true })).status, 200);
+  await activate(admin, 'winter');
+  assert.equal(await published(), false); // winter's own
+  await activate(admin, 'summer');
+  assert.equal(await published(), true); // summer's results survived the switch
+  await activate(admin, 'summer', { name: 'A different name' });
+  assert.equal(await published(), false); // changed settings start the event's game again
 });
 
 test('the live game cannot be changed while it is in progress, whichever event it is', async () => {

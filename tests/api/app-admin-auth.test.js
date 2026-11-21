@@ -17,7 +17,7 @@ const ADMIN_CALLS = [
   ['GET', '/api/admin/config'], ['PUT', '/api/admin/config', CONFIG], ['GET', '/api/admin/teams'], ['GET', '/api/admin/teams/1/results'], ['DELETE', '/api/admin/teams/1'],
   ['GET', '/api/admin/photos'], ['POST', '/api/admin/photos/apply', { teamNumber: 1, zone: 'zone 1', question: 'Q4', decision: 'full' }],
   ['POST', '/api/admin/results/publish', { confirm: true }], ['POST', '/api/admin/results/unpublish', {}],
-  ['GET', '/api/admin/export'], ['POST', '/api/admin/delete-all', { confirm: 'delete' }],
+  ['POST', '/api/admin/delete-all', { confirm: 'delete' }],
 ];
 const call = (admin, [method, path, body]) => admin.call(method, path, body);
 

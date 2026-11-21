@@ -56,7 +56,7 @@
               <button class="btn btn-outline-secondary btn-sm rounded-circle py-0 px-2" type="button" aria-label="What does this do?" aria-expanded="false" data-help-for="event-help-text" data-testid="event-help">?</button>
             </div>
             <select class="form-select" id="config-event" name="event" data-testid="config-event"></select>
-            <div class="form-text" id="event-help-text" hidden>The stored game to make live (its questions, maps and instructions). Saving loads it into the live game. <a href="/game-events/">Upload or manage events</a>. Another event can only replace the live one while there are no teams: download and delete the player data first.</div>
+            <div class="form-text" id="event-help-text" hidden>The stored game to make live (its questions, maps and instructions). Saving loads it into the live game. <a href="/game-events/">Upload or manage events</a>. Every event keeps its own teams and results, so you can switch to another event and back again.</div>
           </div>
           <div class="mb-3">
             <label class="form-label" for="config-name">Game name</label>
@@ -134,8 +134,7 @@
 
       <section class="card card-body mb-4">
         <h2 class="h5">Player data</h2>
-        <p class="small text-muted">Delete all teams, answers and scores, so the next game starts clean. Download the data first only if you want to keep it.</p>
-        <p><a class="btn btn-outline-primary w-100" href="/api/admin/export" download data-testid="export-link">Download the player data (optional)</a></p>
+        <p class="small text-muted">Delete all teams, answers and scores of the live event, so it starts clean. Other events keep their own teams.</p>
         <label class="form-label" for="delete-confirm">Type <strong>delete</strong> to confirm</label>
         <input class="form-control mb-2" id="delete-confirm" type="text" autocomplete="off" data-testid="delete-confirm">
         <button class="btn btn-danger w-100" type="button" data-testid="delete-button" disabled>Delete all player data</button>

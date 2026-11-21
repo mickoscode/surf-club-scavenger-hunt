@@ -109,6 +109,11 @@ function createApp({
     if (typeof body.override !== 'string' || body.override.trim().toLowerCase() !== 'override') throw new HttpError(409, 'game-active');
     console.log(JSON.stringify({ message: 'admin override of the game lock', action, status }));
   }
+  // The same settings, whatever the order of the keys (an uploaded game-config.json need not have been written by this site).
+  const sorted = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sorted(v[k])])) : v);
+  const sameSettings = (a, b) => JSON.stringify(sorted(a ?? null)) === JSON.stringify(sorted(b));
+  // An event that has teams cannot be changed underneath them: their answers are stored by zone and question.
+  const requireNoTeams = async (name) => { if ((await store.forEvent(name).listTeams()).length > 0) throw new HttpError(409, 'players-exist'); };
   const requireEvents = () => { if (!events) throw new HttpError(409, 'events-unavailable'); };
   const validName = (name) => { if (!isEventName(name)) throw new HttpError(400, 'invalid-event-name'); };
   // An event's summary, or 400 unknown-event (never 404: CloudFront would replace it).
@@ -277,23 +282,24 @@ function createApp({
     // never reads the events bucket again. The saved values are also written back to the event.
     'PUT /api/admin/config': async (request) => {
       const body = readJson(request);
-      const { saved: live, status } = await snapshot();
+      const { status } = await snapshot();
       if (!can(status, 'configure')) overrideLock(body, 'configure', status);
       const config = buildConfig(body);
       if (!events) throw new HttpError(409, 'events-unavailable');
       if (typeof body.event !== 'string' || body.event === '') throw new HttpError(400, 'event-required');
       if (!isEventName(body.event) || !(await events.exists(body.event))) throw new HttpError(400, 'unknown-event');
-      // Another event means another set of questions, so it cannot replace a game that has players (download and delete the data first).
-      const current = live?.event?.name ?? null;
-      if (current !== body.event && (await playersOf(live).listTeams()).length > 0) throw new HttpError(409, 'players-exist');
+      // Every event keeps its own teams, so any event can be made live: the others' data is left alone (docs/requirements.md, "Events").
       const loaded = await events.activate(body.event);
       if (!loaded.ok) throw new HttpError(422, loaded.error === 'maps-missing' ? 'event-incomplete' : 'invalid-event', { problems: loaded.problems, missing: loaded.missing });
       const game = loaded.game;
       const event = { name: body.event, instructions: loaded.instructions, maps: loaded.maps };
+      const before = await events.getConfig(body.event); // what the form was filled from: saving it unchanged is just switching to the event
       await events.putConfig(body.event, config); // the stored event always matches what was last used
       const t = now();
       await store.saveGame({ config, game, event, configuredAt: t });
-      await store.forEvent(body.event).unpublishResults(); // a new configuration starts a new game: the results are provisional again
+      // Changed settings (times, for one) start the event's game again, so its results are provisional again. Saving the settings as they
+      // were, which is what switching back to an old event does, keeps its published results.
+      if (!sameSettings(before, config)) await store.forEvent(body.event).unpublishResults();
       return respond(200, { config, event: event.name, zoneCount: Object.keys(game).length, status: gameStatus(config, t) });
     },
 
@@ -316,6 +322,7 @@ function createApp({
     // The game file itself is the request body (the zones and questions as the admin wrote them).
     'PUT /api/admin/events/:name/questions': async (request, params) => {
       requireEvents(); validName(params.name);
+      await requireNoTeams(params.name);
       const body = readJson(request, EVENT_LIMITS.questionsBytes);
       return eventResult(await events.putQuestions(params.name, body, Buffer.byteLength(request.body ?? '')));
     },
@@ -323,6 +330,7 @@ function createApp({
     'PUT /api/admin/events/:name/instructions': async (request, params) => {
       requireEvents(); validName(params.name);
       await eventSummary(params.name);
+      await requireNoTeams(params.name);
       return eventResult(await events.putInstructions(params.name, readJson(request, EVENT_LIMITS.instructionsBytes + 1024).text));
     },
 
@@ -330,6 +338,7 @@ function createApp({
     'PUT /api/admin/events/:name/maps/:map': async (request, params) => {
       requireEvents(); validName(params.name);
       await eventSummary(params.name);
+      await requireNoTeams(params.name);
       const body = readJson(request, 2 * Math.ceil((EVENT_LIMITS.imageBytes * 4) / 3) + 1024);
       return eventResult(await events.putMap(params.name, params.map, body));
     },
@@ -345,6 +354,7 @@ function createApp({
       requireEvents(); validName(params.name);
       await eventSummary(params.name);
       if ((await store.getGame())?.event?.name === params.name) throw new HttpError(409, 'event-active'); // the live game is loaded from it
+      await requireNoTeams(params.name);
       await events.remove(params.name);
       return respond(200, { removed: true });
     },
@@ -427,13 +437,6 @@ function createApp({
     'POST /api/admin/results/unpublish': async () => {
       await playersOf(await store.getGame()).unpublishResults();
       return respond(200, { published: false });
-    },
-
-    'GET /api/admin/export': async () => {
-      const t = now();
-      const day = new Date(t).toISOString().slice(0, 10);
-      const saved = await store.getGame();
-      return respond(200, { exportedAt: t, game: saved, teams: await playersOf(saved).listTeams() }, { 'content-disposition': `attachment; filename="scavenger-hunt-data-${day}.json"` });
     },
 
     'POST /api/admin/delete-all': async (request) => {
