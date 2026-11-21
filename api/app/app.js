@@ -15,7 +15,7 @@ const { countQuestions, countDone } = require('../lib/progress');
 const { normaliseJoinCode, matchesJoinCode } = require('../lib/joincode');
 const { isEventName, LIMITS: EVENT_LIMITS } = require('../lib/events');
 const { placeOf } = require('../lib/results');
-const { buildResults } = require('../lib/results');
+const { buildResults, summariseResults } = require('../lib/results');
 const { normaliseWhatsappUrl } = require('../lib/whatsapp');
 const { verifyPasscode, createSession, verifySession, SESSION_MS } = require('../lib/passcode');
 const { mapId } = require('../lib/gamedata');
@@ -176,6 +176,20 @@ function createApp({
       if (!published) return respond(200, { published: false, team: who });
       const results = buildResults({ team, teams: await playersOf(saved).listTeams(), game: saved.game });
       return respond(200, { published: true, team: who, results });
+    },
+
+    // Any team's results WITHOUT answers (its place, total, each question's outcome and points, each photo's percentage), for anyone,
+    // once the final results are published; before that nothing but `published: false`. Neither the team's answers nor the official
+    // answers are ever in it. An unknown team is 400 (never 404, which CloudFront would replace).
+    'GET /api/results/team/:number': async (request, params) => {
+      const { saved } = await snapshot();
+      const players = playersOf(saved);
+      if ((await players.getPublishedAt()) === null) return respond(200, { published: false });
+      const number = /^\d{1,6}$/.test(params.number) ? Number(params.number) : null;
+      const teams = await players.listTeams();
+      const team = teams.find((t) => t.number === number);
+      if (!team) throw new HttpError(400, 'no-team');
+      return respond(200, { published: true, team: { number: team.number, name: teamLabel(team, saved.config) }, results: summariseResults(buildResults({ team, teams, game: saved.game })) });
     },
 
     'POST /api/join': async (request) => {

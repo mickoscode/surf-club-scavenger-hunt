@@ -1,7 +1,7 @@
 // The results shown to a team once the final results are published. Pure logic, with made-up teams and a made-up game.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { buildResults, placeOf } = require('../../api/lib/results.js');
+const { buildResults, summariseResults, placeOf } = require('../../api/lib/results.js');
 
 const game = {
   'zone 1': {
@@ -72,4 +72,17 @@ test('it does not change what it is given', () => {
   const results = buildResults({ team: me, teams: [me], game });
   results.zones[0].questions[0].officialAnswers.push('hack'); // editing the result must not edit the game
   assert.equal(JSON.stringify([me, game]), snapshot);
+});
+
+test('the summary is the same results without any answer: the same places, points and outcomes, and never what was typed or the official answers', () => {
+  const me = team(2, 30, { 'zone 1#Q1': { answerGiven: 'purple', correct: false, points: 0 }, 'zone 1#Q2': { answerGiven: '42', correct: true, points: 20 } }, { 'zone 1#Q3': { sentAt: 1, decision: 'half', points: 15 } });
+  const full = buildResults({ team: me, teams: [team(1, 50), me], game });
+  const summary = summariseResults(full);
+  assert.deepEqual([summary.place, summary.teamCount, summary.total], [full.place, full.teamCount, full.total]);
+  assert.deepEqual(summary.zones[0].photos, full.zones[0].photos);
+  const [q1, q2] = summary.zones[0].questions;
+  assert.deepEqual([q1.id, q1.points, q1.answered, q1.correct, q1.earned], ['Q1', 10, true, false, 0]);
+  assert.deepEqual([q2.id, q2.points, q2.answered, q2.correct, q2.earned], ['Q2', 20, true, true, 20]);
+  assert.ok(!/purple|crimson|"42"|yourAnswer|officialAnswers/.test(JSON.stringify(summary)));
+  assert.ok(full.zones[0].questions[0].officialAnswers.includes('crimson')); // and the full results are untouched
 });

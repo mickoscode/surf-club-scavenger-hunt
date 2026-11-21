@@ -8,6 +8,7 @@ locals {
       "GET /api/scoreboard",
       "GET /api/me",
       "GET /api/results",
+      "GET /api/results/team/{number}",
       "POST /api/join",
       "POST /api/answer",
       "POST /api/photo",

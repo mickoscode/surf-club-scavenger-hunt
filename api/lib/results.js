@@ -62,4 +62,17 @@ function buildResults({ team, teams, game }) {
   };
 }
 
-module.exports = { buildResults, placeOf };
+// The same results without any answer: what anybody may see of a team once the results are published (its place, its total, and
+// for every question whether it was right and the points, for every photo challenge the percentage). Neither the answer the team
+// gave nor the official answers are in it. Built from buildResults, so the two can never disagree.
+function summariseResults(results) {
+  return {
+    ...results,
+    zones: results.zones.map((zone) => ({
+      ...zone,
+      questions: zone.questions.map(({ yourAnswer, officialAnswers, ...rest }) => rest),
+    })),
+  };
+}
+
+module.exports = { buildResults, summariseResults, placeOf };
