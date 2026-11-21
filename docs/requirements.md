@@ -62,16 +62,23 @@ Uploading a change to an event does not affect the live game until the config is
 
 ### Events
 
-An event is one complete game: its configuration, questions, photo challenges and maps. Many events can be stored; exactly one is active (the live game) at a time. This lets the admin prepare several games and switch the site between them (a demo for one audience, another for a different audience, then the real event).
+An event is one complete game: its configuration, questions, photo challenges and maps, **and its own teams, answers and scores**. Many events can be stored; exactly one is active (the live game) at a time. This lets the admin prepare several games and switch the site between them (a demo for one audience, another for a different audience, then the real event), and come back to an old event later to find its teams and results as they were.
+
+**Vocabulary** (used the same way in the pages, the docs and the code comments):
+- **Event**: the named thing the admin prepares, stores, picks and deletes (`youth-2026`). Its definition is in the events bucket; its player data is in the game's table under the event's name. One event has exactly one set of player data: there is no separate "run" or "session" of an event. To test an event again, the admin deletes its player data and starts over; to rehearse without touching a real event's data, use a separate event (e.g. `youth-demo`).
+- **Active event**: the one event the live site serves, chosen on `/game-config/`. Everything players and the admin see (teams, scoreboard, scoring, results) is that event's.
+- **Game**: only the playing of the active event: the phases (`unconfigured`, `pre`, `active`, `post`) and "game in progress". It is not something stored. In the code the live copy of the active event's questions and settings is still called `game` (`META/GAME`); that is the same thing as the active event.
 - **Storage**: a private S3 bucket (`<aws-account-id>-scavenger-events`) with one folder per event: `<event>/game-config.json`, `<event>/game-questions.json`, `<event>/player-instructions.md` and `<event>/game-zones/*`. The bucket is not public, is encrypted, and keeps old versions of files so a bad edit can be undone. Only the admin function can read or write it. Players and the public function never touch it.
 - **Event name**: 1 to 40 characters: lower case letters, digits and hyphens. It is the folder name and is only for the admin.
 - **Activating**: choosing an event on the config page and saving copies its configuration, questions, instructions and maps into the live game. The saved configuration values are also written back to the event's `game-config.json`, so the stored event always matches what was last used. Maps are copied to the site under a path unique to that activation. Nothing in the live game reads the bucket after that.
-- **Switching events is refused while any player data exists** (teams, submissions). The admin downloads and deletes the data first using the existing controls. Saving the same event again keeps the teams, as today. As always, the configuration cannot be changed while the game is active.
+- **Player data belongs to its event.** Teams, team numbering, team names, answers, photo decisions, scores and whether the final results are published are all stored per event. Switching to another event is always allowed (except while the game is active, as for any configuration change): the other event's teams are left untouched and simply not shown. Switching back shows them again exactly as they were (scoreboard, scores, published results). A team's session only works while its own event is active; the same team name can exist in two events.
+- **Player data controls act on the active event only**: removing a team, deleting all player data (typed `delete`) and the data download all apply to the active event. Deleting an event's player data never touches another event. Saving the same event again keeps its teams.
+- **An event with teams cannot be changed underneath them.** A team's answers are stored by zone and question, so replacing the questions, maps or instructions of an event that has teams, or deleting that event, is refused (`players-exist`). The admin deletes that event's player data first. (The event's settings, such as the game name and times, are not part of this: they are saved on `/game-config/` as always.)
 - **The events page** (`/game-events/`) lists the stored events (event name, game name, day, number of zones and questions, and which is active) and lets the admin:
   - **Upload** a new event: type its name and choose its folder (the questions file, the map images, and optionally `player-instructions.md` and `game-config.json`). The page checks the questions file with the same rules as the server (the "Game data" rules), shrinks the maps in the browser (a small thumbnail and a full-size image for each) and uploads them. Nothing is stored unless everything is valid.
-  - **Replace** the questions, maps or instructions of an existing event by uploading again (there is no in-browser editor for them).
+  - **Replace** the questions, maps or instructions of an existing event by uploading again (there is no in-browser editor for them). Refused while the event has teams.
   - **Download** an event's configuration, questions and instructions as one file (the maps are not included: keep your original images).
-  - **Delete** an event, after a confirmation. The active event cannot be deleted.
+  - **Delete** an event, after a confirmation. The active event cannot be deleted, and neither can an event that has teams.
 - **Limits**: the questions file at most 256 KB, each map image at most 500 KB after shrinking, at most 20 zones per event and 100 events. Images must really be images (checked by content, not by name), and the server builds every storage path itself from the validated event name, never from a path supplied by the browser.
 - **docs/**: nothing in the live game reads `docs/`. `docs/game-questions.json`, `docs/game-zones/` and `docs/player-instructions.md` stay as an example of the format; the "Game data" check validates the example so the documented format stays correct. To start, the admin can upload the example as an event.
 - With no event active the game is `unconfigured`, exactly as a new site is today.
@@ -84,7 +91,7 @@ PRE-GAME:
 - now < game-start
 - Admin can configure/edit game 
    - this step can be repeated while game is NOT active.
-- Admin can delete all player data
+- Admin can delete all player data (of the active event)
 - Players can join
 - Players CANNOT play yet
 - The view and play pages show a countdown to game-start
@@ -104,8 +111,8 @@ POST-GAME
 - Admin can score (so the scoreboard can still change after the game ends), until the final results are published
 - Admin can publish the final results, only once now > game-end, and can return them to provisional (see "Publishing the final results")
 - As soon as the game is over (now > game-end) the 'play' button on the view page becomes a 'results' button, whether or not the final results have been published yet (the results page says they are not ready until they are). Once they are published, players can see their results
-- Admin can delete all player data (names, answers, scores). This also returns the results to provisional.
-- Admin can configure/edit game. Saving the configuration also returns the results to provisional.
+- Admin can delete all player data (names, answers, scores) of the active event. This also returns that event's results to provisional.
+- Admin can configure/edit game. Saving the configuration also returns the active event's results to provisional.
 
 ## Personas
 
@@ -249,11 +256,11 @@ game-end (datetime): <game-day> hh:mm:00   (must be > game-start)
 join-code (optional): the code a new team must enter to join (see "Join code"), 5 to 12 letters and digits, shown to the admin on the page; empty means no code.
 team-names (on/off): whether teams have names; on by default (see "Team names on or off").
 whatsapp-link (optional): the invite link of the WhatsApp group the teams send photos to, e.g. https://chat.whatsapp.com/AbCdEf123. Only links of that form are accepted. Leave it empty and everything simply says "WhatsApp" as plain text, as before. The page has a "Test link" next to the field.
-Saving the config (the button reads **Save & Load Game**) also loads the zones, questions and maps of the chosen event (see above). It is not possible while the game is active, so the join code and the WhatsApp link are also set (and the link tested) before the game starts. Choosing a different event is refused while any player data exists.
+Saving the config (the button reads **Save & Load Game**) also loads the zones, questions and maps of the chosen event (see above). It is not possible while the game is active, so the join code and the WhatsApp link are also set (and the link tested) before the game starts. Choosing a different event is allowed at any time except while the game is active; each event keeps its own teams (see "Events").
 
 The page also lists the teams, with a 'remove' button for each (with confirmation), for moderating team names. Removing a team deletes its data. This is allowed at any time, including while the game is active.
 
-Admins should also be able to delete all player data from a previous game. This is allowed before the game starts and after it ends, never while it is active (unless the admin overrides the lock, see "Overriding the lock"). The data (teams, team numbers, submissions, scores) can be downloaded as a single json file first (optional: the admin may not want to keep it); the admin must type the word "delete" to confirm. Once confirmed, the data is deleted, so that the next upcoming game has no players and no scores, and team numbers start again at 1.
+Admins should also be able to delete all player data of the active event (for example the test teams, before the real game). This is allowed before the game starts and after it ends, never while it is active (unless the admin overrides the lock, see "Overriding the lock"). The data (teams, team numbers, submissions, scores) can be downloaded as a single json file first (optional: the admin may not want to keep it); the admin must type the word "delete" to confirm. Once confirmed, the data is deleted, so that the event has no players and no scores, and its team numbers start again at 1. Other events' data is not touched.
 
 ### Teams page
 
@@ -363,7 +370,7 @@ As built: `.github/workflows/load-test.yml` runs `scripts/load-test.js` (code in
 
 ## Parked for later
 
-- Restoring an old game: uploading the downloaded json file back into the website.
+- Restoring an old game from a downloaded json file. (Keeping each event's teams and results in the site, and showing them again when the event is active, is built in: see "Events". The file download remains as a private backup.)
 - Recovering a team's session after a cleared browser or a different phone (e.g. rejoin with team number and name).
 
 ## As built
