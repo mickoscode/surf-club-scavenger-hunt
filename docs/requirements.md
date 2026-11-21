@@ -22,7 +22,7 @@ The site will only ever be accessible via a free aws cloudfront domain. Players 
 page: <cloudfront_url>/
 Redirects to /view/
 page: <cloudfront_url>/game-config/
-Used by Admin to choose the active event, edit its game config (name, time zone, day, start, end, team names on or off, join code, WhatsApp link), remove teams, and download/delete player data. Zones, questions and maps are NOT edited here: they are uploaded on the events page (see "Events").
+Used by Admin to choose the active event, edit its game config (name, time zone, day, start, end, team names on or off, join code, WhatsApp link), remove teams, and delete player data. Zones, questions and maps are NOT edited here: they are uploaded on the events page (see "Events").
 page: <cloudfront_url>/game-events/
 Used by Admin to upload, replace, download and delete events (see "Events").
 page: <cloudfront_url>/game-teams/
@@ -72,7 +72,7 @@ An event is one complete game: its configuration, questions, photo challenges an
 - **Event name**: 1 to 40 characters: lower case letters, digits and hyphens. It is the folder name and is only for the admin.
 - **Activating**: choosing an event on the config page and saving copies its configuration, questions, instructions and maps into the live game. The saved configuration values are also written back to the event's `game-config.json`, so the stored event always matches what was last used. Maps are copied to the site under a path unique to that activation. Nothing in the live game reads the bucket after that.
 - **Player data belongs to its event.** Teams, team numbering, team names, answers, photo decisions, scores and whether the final results are published are all stored per event. Switching to another event is always allowed (except while the game is active, as for any configuration change): the other event's teams are left untouched and simply not shown. Switching back shows them again exactly as they were (scoreboard, scores, published results). A team's session only works while its own event is active; the same team name can exist in two events.
-- **Player data controls act on the active event only**: removing a team, deleting all player data (typed `delete`) and the data download all apply to the active event. Deleting an event's player data never touches another event. Saving the same event again keeps its teams.
+- **Player data controls act on the active event only**: removing a team and deleting all player data (typed `delete`) apply to the active event. Deleting an event's player data never touches another event. Saving the same event again keeps its teams.
 - **An event with teams cannot be changed underneath them.** A team's answers are stored by zone and question, so replacing the questions, maps or instructions of an event that has teams, or deleting that event, is refused (`players-exist`). The admin deletes that event's player data first. (The event's settings, such as the game name and times, are not part of this: they are saved on `/game-config/` as always.)
 - **The events page** (`/game-events/`) lists the stored events (event name, game name, day, number of zones and questions, and which is active) and lets the admin:
   - **Upload** a new event: type its name and choose its folder (the questions file, the map images, and optionally `player-instructions.md` and `game-config.json`). The page checks the questions file with the same rules as the server (the "Game data" rules), shrinks the maps in the browser (a small thumbnail and a full-size image for each) and uploads them. Nothing is stored unless everything is valid.
@@ -233,10 +233,10 @@ The view page does not show the player's team name above the scoreboard (see "Jo
 
 ### Admin passcode
 
-There is one admin and no accounts. The admin pages and every admin API call (`/api/admin/*`: configuration, teams, scoring, publishing, export, delete) require the admin passcode. The pages themselves stay ordinary public files that contain nothing secret; they show a login form first.
+There is one admin and no accounts. The admin pages and every admin API call (`/api/admin/*`: configuration, teams, scoring, publishing, delete) require the admin passcode. The pages themselves stay ordinary public files that contain nothing secret; they show a login form first.
 - **The passcode** is random, generated on the admin's own computer by a script that also prints its one-way hash. Only the hash is stored: as a sensitive HCP Terraform variable (`admin_passcode_hash`) handed to the admin function. The passcode itself is never in the repo, in AWS or in GitHub, except where the admin chooses to store it as the GitHub secret the load test needs (see "Load test").
 - **Logging in** asks for the passcode once and starts a session of 12 hours, kept in a cookie that page scripts cannot read (HttpOnly, Secure, SameSite=Strict, only sent to the admin API). The session is signed with the stored hash, so changing the passcode ends every session. There is a log out button, and an expired session asks for the passcode again.
-- **Without a valid session** every admin call is refused with 401 `not-authenticated`, whatever it is (including the data export).
+- **Without a valid session** every admin call is refused with 401 `not-authenticated`, whatever it is.
 - **Guessing is limited**: at most 10 failed logins in any 5 minutes, counted across everybody. After that logins are refused until the window has passed. (Someone could therefore block the admin for a few minutes, but not guess the passcode.)
 - **Not set**: if the hash variable is empty, the admin pages and API stay open (this is how a new deployment starts), and the deploy's smoke test prints a warning saying so. Setting the variable and applying Terraform switches the passcode on.
 - **Changing or recovering it**: generate a new passcode and hash, update the variable, apply.
@@ -260,7 +260,7 @@ Saving the config (the button reads **Save & Load Game**) also loads the zones, 
 
 The page also lists the teams, with a 'remove' button for each (with confirmation), for moderating team names. Removing a team deletes its data. This is allowed at any time, including while the game is active.
 
-Admins should also be able to delete all player data of the active event (for example the test teams, before the real game). This is allowed before the game starts and after it ends, never while it is active (unless the admin overrides the lock, see "Overriding the lock"). The data (teams, team numbers, submissions, scores) can be downloaded as a single json file first (optional: the admin may not want to keep it); the admin must type the word "delete" to confirm. Once confirmed, the data is deleted, so that the event has no players and no scores, and its team numbers start again at 1. Other events' data is not touched.
+Admins should also be able to delete all player data of the active event (for example the test teams, before the real game). This is allowed before the game starts and after it ends, never while it is active (unless the admin overrides the lock, see "Overriding the lock"). There is no download of the player data (an event keeps its own data, see "Events", and "Keeping the data safe"); the admin must type the word "delete" to confirm. Once confirmed, the data is deleted, so that the event has no players and no scores, and its team numbers start again at 1. Other events' data is not touched.
 
 ### Teams page
 
@@ -350,6 +350,16 @@ page: <cloudfront_url>/view/
 
 ## Operations
 
+### Keeping the data safe
+
+The player data of every event lives in the game's DynamoDB table, which is the only copy. It is protected by:
+- **Point-in-time recovery** (continuous, 35 days): a mistaken write or delete can be undone by restoring the table to an earlier moment (into a new table).
+- **Deletion protection** on the table, and `prevent_destroy` in Terraform, so a console click or a Terraform change cannot remove the table by accident.
+- **A manual on-demand backup** after a real event (`docs/runbook.md`, "After the game"): it is kept until the admin deletes it, so the real results outlive the 35 days.
+- **The typed `delete`** for player data (the admin's own deliberate action), which only ever affects the active event.
+
+There is no file download or import of player data: it contained every team's secret session id and could not be loaded back.
+
 ### Request limits and cost
 
 The API accepts 50 requests a second sustained with a burst of 200 (API Gateway stage throttling, `api_throttle_rate_limit` / `api_throttle_burst_limit`). The scoreboard and game state are served from CloudFront's cache and do not count against the limit; a real game peaks at roughly 15 to 25 requests a second reaching the API.
@@ -370,7 +380,8 @@ As built: `.github/workflows/load-test.yml` runs `scripts/load-test.js` (code in
 
 ## Parked for later
 
-- Restoring an old game from a downloaded json file. (Keeping each event's teams and results in the site, and showing them again when the event is active, is built in: see "Events". The file download remains as a private backup.)
+- Restoring an old game from a file: not needed, because every event keeps its own teams and results (see "Events"). The player-data download was removed for that reason.
+- A results download (e.g. a CSV of place, team and score) for the club: only if it is asked for.
 - Recovering a team's session after a cleared browser or a different phone (e.g. rejoin with team number and name).
 
 ## As built
